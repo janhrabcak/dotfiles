@@ -1,0 +1,29 @@
+name: CI Verification
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-macOS:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Bootstrap (Workstation Mode)
+        # We run with --test to trigger your smoke test logic
+        run: zsh ./bootstrap.sh --test
+
+  test-Linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Bootstrap (Server Mode)
+        # Linux runners won't have 'defaults', but your script 
+        # already handles this via the --mode server logic.
+        run: zsh ./bootstrap.sh --mode server --test
