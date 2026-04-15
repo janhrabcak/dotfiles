@@ -15,7 +15,7 @@ jobs:
 
       - name: Run Bootstrap (Workstation Mode)
         # We run with --test to trigger your smoke test logic
-        run: zsh ./bootstrap.sh --test
+        run: sh ./bootstrap.sh --test
 
   test-Linux:
     runs-on: ubuntu-latest
@@ -26,4 +26,4 @@ jobs:
       - name: Run Bootstrap (Server Mode)
         # Linux runners won't have 'defaults', but your script 
         # already handles this via the --mode server logic.
-        run: zsh ./bootstrap.sh --mode server --test
+        run: sh ./bootstrap.sh --mode server --test
