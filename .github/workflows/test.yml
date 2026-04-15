@@ -13,6 +13,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Prepare Environment
+        run: |
+          # Move the checked-out code to the location the script expects
+          mkdir -p ~/.dotfiles
+          cp -R . ~/.dotfiles/
+          
+          # Ensure the SSH directory exists so grep doesn't crash
+          mkdir -p ~/.ssh
+          touch ~/.ssh/config
+
       - name: Run Bootstrap (Workstation Mode)
         # We run with --test to trigger your smoke test logic
         run: sh ./bootstrap.sh --test
