@@ -1,4 +1,4 @@
-#!/usr/bin/zsh
+#!/usr/bin/env zsh
 
 # ==============================================================================
 # BOOTSTRAP SCRIPT (v2.1)
@@ -230,14 +230,18 @@ run_smoke_tests() {
     fi
 
     # Test 3: Permissions
+    local ssh_perm
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        local ssh_perm=$(stat -f "%Lp" "$HOME/.ssh")
-        if [[ "$ssh_perm" == "700" ]]; then
-            log_success "[PASS] ~/.ssh permissions are secure (700)."
-        else
-            log_warn "[FAIL] ~/.ssh permissions are $ssh_perm (expected 700)."
-            ((errors++))
-        fi
+        ssh_perm=$(stat -f "%Lp" "$HOME/.ssh")
+    else
+        ssh_perm=$(stat -c "%a" "$HOME/.ssh")
+    fi
+
+    if [[ "$ssh_perm" == "700" ]]; then
+        log_success "[PASS] ~/.ssh permissions are secure (700)."
+    else
+        log_warn "[FAIL] ~/.ssh permissions are $ssh_perm (expected 700)."
+        ((errors++))
     fi
 
     if [[ $errors -eq 0 ]]; then

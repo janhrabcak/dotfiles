@@ -3,12 +3,17 @@
 " ==============================================================================
 
 " --- Plugin Management (Vim-Plug) ---
-call plug#begin('~/.vim/plugged')
-Plug 'tomasr/molokai'
-Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
-Plug 'tpope/vim-fugitive'
-Plug 'preservim/nerdtree'
-call plug#end()
+if empty(glob('~/.vim/autoload/plug.vim'))
+  " Log a warning if not in headless mode
+  if !has('batch') | echohl WarningMsg | echo "Vim-Plug not found. Run bootstrap.sh to install." | echohl None | endif
+else
+  call plug#begin('~/.vim/plugged')
+  Plug 'tomasr/molokai'
+  Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+  Plug 'tpope/vim-fugitive'
+  Plug 'preservim/nerdtree'
+  call plug#end()
+endif
 
 " --- General Settings ---
 set nocompatible
