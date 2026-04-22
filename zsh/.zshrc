@@ -87,34 +87,6 @@ function title() {
   esac
 }
 
-# Aliases
-#alias gv="$HOME/_profile/home_dir/bin/auth-refresh-gtunnel.py papagaj.hot.corp.google.com"
-alias gv="rw papagaj.hot.corp.google.com"
-alias vssh="$HOME/_profile/home_dir/bin/ssh-tmux papagaj.hot.corp.google.com"
-
-# Git
-alias gs="git status"
-
-# Tmux
-alias tn="tmux new"
-alias ta="tmux attach"
-
-
-alias sshp="ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no"
-
-alias ll="ls -laG"
-alias lo="ls -o"
-alias lh="ls -lh"
-alias la="ls -la"
-alias sl="ls"
-alias l="ls"
-alias s="ls"
-
-
-# Intel format plz
-alias objdump="command objdump -M intel"
-
-# Add an "alert" alias for long running commands.  Use like so:
-#   sleep 10; alert
-alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+# Load Aliases
+[[ -f "$DOT/zsh/aliases.zsh" ]] && source "$DOT/zsh/aliases.zsh"
 
