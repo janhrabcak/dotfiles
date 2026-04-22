@@ -18,6 +18,15 @@ Deploy your environment with a single command (no `git clone` required):
 *   `--mode [workstation|server]`: Optimizes the setup for daily macOS use or headless Linux environments.
 *   `--test`: Runs a post-setup verification suite to ensure symlinks and permissions are correct.
 
+### Manual Installation (Git Clone)
+If you prefer to clone the repository manually rather than using the curl one-liner:
+
+```zsh
+git clone https://github.com/janhrabcak/dotfiles.git ~/.dotfiles
+cd ~/.dotfiles
+./bootstrap.sh
+```
+
 ---
 
 ## 🏗️ Architecture & Design Principles

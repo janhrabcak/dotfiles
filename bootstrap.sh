@@ -119,6 +119,29 @@ install_omz() {
     done
 }
 
+set_default_shell() {
+    log_info "Setting default shell to Zsh..."
+    if [[ "$SHELL" == *"zsh"* ]]; then
+        log_success "Default shell is already Zsh."
+        return
+    fi
+
+    if command -v zsh >/dev/null 2>&1; then
+        local zsh_path=$(command -v zsh)
+        
+        if [[ "$GITHUB_ACTIONS" == "true" ]]; then
+            log_warn "[CI] Skipping chsh."
+            return
+        fi
+
+        log_info "Changing default shell to $zsh_path (may prompt for password)."
+        execute "chsh -s '$zsh_path'"
+        log_success "Default shell changed."
+    else
+        log_warn "Zsh is not installed. Cannot set as default."
+    fi
+}
+
 install_vim_plug() {
     log_info "Step 3: Setting up Vim-Plug..."
     local PLUG_URL="https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim"
@@ -284,6 +307,7 @@ main() {
     check_dependencies
     if [ "$REMOTE_MODE" = true ]; then download_assets; fi
     install_omz
+    set_default_shell
     link_configs
     install_vim_plug
     setup_git
