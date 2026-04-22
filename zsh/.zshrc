@@ -85,7 +85,7 @@ prompt_google_rainbow_font() {
     [[ $count -gt 0 ]] && colored_host+="%{%F{${colors[$i]}}%}${host_str:$start:$count}"
     (( start += count ))
   done
-  prompt_segment black white "%n@$colored_host"
+  prompt_segment black white "%B%n@$colored_host%b"
 }
 
 # Render hostname with rainbow background segments and white font
@@ -99,9 +99,10 @@ prompt_google_rainbow_bg() {
   local last_col=""
   
   # 1. Render username in standard black segment
-  prompt_segment black white "%n@"
+  prompt_segment black white "%B%n@%b"
   
   # 2. Render the rainbow hostname without padding between color changes
+  echo -n "%{%B%}" # Start bold
   for (( i=1; i<=6; i++ )); do
     local count=$block_size
     [[ $i -le $remainder ]] && (( count++ ))
@@ -121,6 +122,7 @@ prompt_google_rainbow_bg() {
       last_col=$current_col
     fi
   done
+  echo -n "%{%b%}" # End bold
   
   # 3. Update CURRENT_BG so the next Agnoster segment draws its arrow correctly
   CURRENT_BG=$last_col
