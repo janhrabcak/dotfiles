@@ -72,33 +72,52 @@ prompt_dir() {
 
 # Context: user@hostname (who am I and where am I)
 prompt_context() {
-  if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
+  if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" || -n "$SSH_CONNECTION" ]]; then
      # DANGER: Red background to warn we are on a remote server
-     prompt_segment red default "%(!.%{%F{yellow}%}.)%n@%m"
+     prompt_segment red white "%(!.%{%F{yellow}%}.)%n@%m"
   elif [[ "$USER" != "$DEFAULT_USER" ]]; then
      # SAFE: Black background for local non-default user (like root)
-     prompt_segment black default "%(!.%{%F{yellow}%}.)%n@%m"
+     prompt_segment black white "%(!.%{%F{yellow}%}.)%n@%m"
   fi
 }
 
 DEFAULT_USER=`whoami`
 
-function title() {
-  # escape '%' chars in $1, make nonprintables visible
-  a=${(V)1//\%/\%\%}
+# --- Terminal Title Management ---
 
-  # Truncate command, and join lines.
-  a=$(print -Pn "%40>...>$a" | tr -d "\n")
+function set_terminal_title() {
+  local title_str="$1"
+  
+  # Prefix with [REMOTE] if connected via SSH
+  if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" || -n "$SSH_CONNECTION" ]]; then
+    title_str="[REMOTE] $title_str"
+  fi
 
   case $TERM in
-  screen)
-    print -Pn "\ek$a:$3\e\\" # screen title (in ^A")
-    ;;
-  xterm*|rxvt)
-    print -Pn "\e]2;$2\a" # plain xterm title ($3 for pwd)
-    ;;
+    xterm*|rxvt*|alacritty|kitty|gnome*|screen*|tmux*)
+      # Use the standard OSC 2 escape sequence to set the window/tab title
+      # %n = username, %m = short hostname, %~ = directory with ~ expansion
+      print -Pn "\e]2;${title_str}\a"
+      ;;
   esac
 }
+
+# Automatically update title before showing the prompt (shows current directory)
+function title_precmd() {
+  set_terminal_title "%n@%m: %~"
+}
+
+# Automatically update title before running a command (shows the command name)
+function title_preexec() {
+  # $1 is the full command string
+  local cmd="${1[(w)1]}"
+  set_terminal_title "$cmd | %~"
+}
+
+# Register the hooks
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd title_precmd
+add-zsh-hook preexec title_preexec
 
 # Load Aliases
 [[ -f "$DOT/zsh/aliases.zsh" ]] && source "$DOT/zsh/aliases.zsh"
