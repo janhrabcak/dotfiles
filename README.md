@@ -73,3 +73,20 @@ To ensure the bootstrap script remains highly reliable, this repository features
 1.  **Strict Linting**: Automated syntax validation using `zsh -n` and headless Vim execution.
 2.  **Matrix Testing**: Concurrent testing on `macos-latest` (Workstation) and `ubuntu-latest` (Server).
 3.  **Dry-Run Assertions**: Verifies that safe-execution modes don't unintentionally alter the CI environment.
+
+---
+
+## 🔮 Future Roadmap
+
+Potential areas for expansion and further automation:
+
+### macOS Keyboard Shortcut Management
+While core system defaults are automated, complex keyboard-driven workflows can be expanded via:
+*   **Native hotkeys**: Deep-diving into `com.apple.symbolichotkeys` to automate Mission Control, Spotlight, and Spaces remapping via `defaults write`.
+*   **Karabiner-Elements**: Support for low-level key remapping via a symlinked `karabiner.json`.
+*   **skhd**: A simple hotkey daemon for macOS that uses a readable config file (`.skhdrc`).
+
+### Environment Expansion
+*   **Raycast/Alfred**: Automating the installation and syncing of productivity launcher configurations.
+*   **Language Managers**: Integrated support for `asdf`, `nvm`, or `pyenv` for consistent development environments.
+*   **Secrets Engine**: Expanding the 1Password integration to automatically provision SSH keys into the agent on bootstrap.
