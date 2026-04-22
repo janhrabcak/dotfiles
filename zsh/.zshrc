@@ -72,11 +72,27 @@ prompt_dir() {
 
 # Context: user@hostname (who am I and where am I)
 prompt_context() {
-  if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" || -n "$SSH_CONNECTION" ]]; then
-     # DANGER: Red background to warn we are on a remote server
+  # 1. Google-specific styling (Rainbow Hostname)
+  if [[ "$HOST" == *"google"* || "$(hostname)" == *"google"* || "$GOOGLE_PROMPT" == "true" ]]; then
+     local host_str=$(hostname -s)
+     local len=${#host_str}
+     local colored_host=""
+     local colors=(33 160 220 33 34 160)
+     local block_size=$(( len / 6 ))
+     local remainder=$(( len % 6 ))
+     local start=0
+     for (( i=1; i<=6; i++ )); do
+        local count=$block_size
+        [[ $i -le $remainder ]] && (( count++ ))
+        [[ $count -gt 0 ]] && colored_host+="%{%F{${colors[$i]}}%}${host_str:$start:$count}"
+        (( start += count ))
+     done
+     prompt_segment black white "%n@$colored_host"
+  # 2. General remote server warning (Red background)
+  elif [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" || -n "$SSH_CONNECTION" ]]; then
      prompt_segment red white "%(!.%{%F{yellow}%}.)%n@%m"
+  # 3. Local non-default user (Black background)
   elif [[ "$USER" != "$DEFAULT_USER" ]]; then
-     # SAFE: Black background for local non-default user (like root)
      prompt_segment black white "%(!.%{%F{yellow}%}.)%n@%m"
   fi
 }
