@@ -1,9 +1,10 @@
-#If you come from bash you might have to change your $PATH.
-export PATH=$HOME/.bin:$HOME/.bin/google-cloud-sdk/bin:/usr/local/bin:$PATH
+# Path management
+export PATH=$HOME/.bin:/usr/local/bin:$PATH
+[[ -d "$HOME/.bin/google-cloud-sdk/bin" ]] && export PATH="$HOME/.bin/google-cloud-sdk/bin:$PATH"
 
 # Path to your oh-my-zsh installation.
 export OHMYZSH=$HOME/.oh-my-zsh
-export DOT=$HOME/_profile/.dotfiles
+export DOT=$HOME/.dotfiles
 
 ZSH_THEME="agnoster"
 
@@ -21,11 +22,17 @@ export UPDATE_ZSH_DAYS=13
 # see 'man strftime' for details.
 # HIST_STAMPS="mm/dd/yyyy"
 
-# Standard plugins can be found in ~/.oh-my-zsh/plugins/*
-# Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
+# Standard plugins
 plugins=(git colorize golang macos zsh-syntax-highlighting zsh-autosuggestions) 
 
 source $OHMYZSH/oh-my-zsh.sh
+
+# Font Check for Agnoster Theme
+if [[ "$ZSH_THEME" == "agnoster" ]]; then
+  if ! (echo $TERMINAL_EMULATOR | grep -q "iTerm" || echo $TERM_PROGRAM | grep -q "Apple_Terminal"); then
+     echo "💡 Note: The 'agnoster' theme requires Powerline-compatible fonts."
+  fi
+fi
 
 # User configuration
 

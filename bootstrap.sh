@@ -1,17 +1,13 @@
 #!/usr/bin/zsh
 
 # ==============================================================================
-# BOOTSTRAP SCRIPT
+# BOOTSTRAP SCRIPT (v2.1)
 # ==============================================================================
 # USAGE (One-Liner):
-# /bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/your-username/dotfiles/main/bootstrap.sh)" -- --remote
-#
-# FLAGS:
-#   --remote    Downloads the full dotfiles archive from GitHub
-#   --dry-run   Show what would happen without making changes
-#   --mode      'workstation' (default) or 'server'
-#   --test      Runs post-setup verification suite
+# /bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/janhrabcak/dotfiles/main/bootstrap.sh)" -- --remote
 # ==============================================================================
+
+set -e # Exit on error
 
 # --- Configuration ---
 GITHUB_USER="janhrabcak"
@@ -21,10 +17,16 @@ DRY_RUN=false
 REMOTE_MODE=false
 WORK_MODE="workstation"
 
+# --- Logging Helpers ---
+log_info()  { echo "\033[0;34m[INFO]\033[0m  $1"; }
+log_warn()  { echo "\033[0;33m[WARN]\033[0m  $1"; }
+log_error() { echo "\033[0;31m[ERROR]\033[0m $1"; exit 1; }
+log_success() { echo "\033[0;32m[OK]\033[0m    $1"; }
+
 # --- CLI Argument Parsing ---
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        --dry-run|-d) DRY_RUN=true; echo "🔍 DRY RUN MODE ENABLED."; shift ;;
+        --dry-run|-d) DRY_RUN=true; log_warn "DRY RUN MODE ENABLED."; shift ;;
         --remote)    REMOTE_MODE=true; shift ;;
         --mode)      WORK_MODE="$2"; shift 2 ;;
         --test)      RUN_TESTS=true; shift ;;
@@ -42,51 +44,92 @@ execute() {
 }
 
 # --- Safety/Idempotency Helpers ---
-
 safe_append() {
     local line="$1"
     local file="$2"
     if [ ! -f "$file" ]; then execute "touch '$file'"; fi
     if grep -qsF "$line" "$file"; then
-        echo "   ✅ Entry already exists in $file"
+        log_success "Entry already exists in $(basename $file)"
     else
         execute "echo '$line' >> '$file'"
-        echo "   ✅ Successfully updated $file"
+        log_success "Updated $(basename $file)"
     fi
 }
 
 # --- Functions ---
 
+check_dependencies() {
+    log_info "Step 0: Checking dependencies..."
+    local deps=("git" "curl" "vim" "zsh")
+    for dep in "${deps[@]}"; do
+        if ! command -v "$dep" >/dev/null 2>&1; then
+            log_error "Missing dependency: $dep. Please install it before proceeding."
+        fi
+    done
+    log_success "All dependencies present."
+}
+
 download_assets() {
-    echo "\n📥 Step 1: Downloading dotfiles archive..."
+    log_info "Step 1: Downloading dotfiles archive..."
     local TARBALL_URL="https://github.com/$GITHUB_USER/$REPO_NAME/archive/refs/heads/main.tar.gz"
     [ ! -d "$DOTFILES_DIR" ] && execute "mkdir -p '$DOTFILES_DIR'"
     execute "curl -fsSL '$TARBALL_URL' | tar -xzp -C '$DOTFILES_DIR' --strip-components=1"
-    echo "   ✅ Assets synced to $DOTFILES_DIR"
+    log_success "Assets synced to $DOTFILES_DIR"
 }
 
 install_omz() {
-    # Inside your install_omz() function
     if [[ "$GITHUB_ACTIONS" == "true" ]]; then
-        echo "   [CI] Skipping Oh My Zsh install to save time."
+        log_warn "[CI] Skipping Oh My Zsh install."
         return
     fi
-    echo "\n🐚 Step 2: Checking Oh My Zsh..."
+    log_info "Step 2: Checking Oh My Zsh & Plugins..."
     if [ ! -d "$HOME/.oh-my-zsh" ]; then
         execute "sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended --keep-zshrc"
+        log_success "Oh My Zsh installed."
     else
-        echo "   ✅ Oh My Zsh already present."
+        log_success "Oh My Zsh already present."
     fi
+
+    # Install custom plugins
+    local ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+    local plugins=(
+        "zsh-autosuggestions:https://github.com/zsh-users/zsh-autosuggestions"
+        "zsh-syntax-highlighting:https://github.com/zsh-users/zsh-syntax-highlighting"
+    )
+
+    for plugin_pair in "${plugins[@]}"; do
+        local name="${plugin_pair%%:*}"
+        local url="${plugin_pair#*:}"
+        if [ ! -d "$ZSH_CUSTOM/plugins/$name" ]; then
+            log_info "Cloning $name..."
+            execute "git clone --depth=1 '$url' '$ZSH_CUSTOM/plugins/$name'"
+        fi
+    done
+}
+
+install_vim_plug() {
+    log_info "Step 3: Setting up Vim-Plug..."
+    local PLUG_URL="https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim"
+    local PLUG_DEST="$HOME/.vim/autoload/plug.vim"
+    
+    if [ ! -f "$PLUG_DEST" ]; then
+        execute "curl -fLo '$PLUG_DEST' --create-dirs '$PLUG_URL'"
+        log_success "Vim-Plug installed."
+    fi
+
+    log_info "Installing Vim plugins..."
+    execute "vim +PlugInstall +qall"
 }
 
 link_configs() {
-    echo "\n🔗 Step 3: Linking Configurations..."
+    log_info "Step 4: Linking Configurations..."
     [ -f "$DOTFILES_DIR/zsh/.zshrc" ] && execute "ln -sfn '$DOTFILES_DIR/zsh/.zshrc' '$HOME/.zshrc'"
     [ -f "$DOTFILES_DIR/vim/.vimrc" ] && execute "ln -sfn '$DOTFILES_DIR/vim/.vimrc' '$HOME/.vimrc'"
+    log_success "Symlinks created."
 }
 
 setup_ssh() {
-    echo "\n🔑 Step 4: Configuring SSH (Mode: $WORK_MODE)..."
+    log_info "Step 5: Configuring SSH (Mode: $WORK_MODE)..."
     execute "mkdir -p '$HOME/.ssh' && chmod 700 '$HOME/.ssh'"
     
     local GIT_SSH_CONF="$DOTFILES_DIR/ssh/config"
@@ -112,57 +155,80 @@ setup_ssh() {
 
 setup_macos() {
     if [[ "$OSTYPE" != "darwin"* || "$WORK_MODE" == "server" ]]; then return; fi
-    echo "\n💻 Step 5: Applying macOS System Defaults..."
+    log_info "Step 6: Applying macOS System Defaults..."
+    
+    # Keyboard & Trackpad
     execute "defaults write NSGlobalDomain KeyRepeat -int 1"
+    execute "defaults write NSGlobalDomain InitialKeyRepeat -int 15"
+    execute "defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true"
+    
+    # Finder
     execute "defaults write com.apple.finder AppleShowAllExtensions -bool true"
-    [ "$DRY_RUN" = false ] && killall Finder Dock > /dev/null 2>&1
+    execute "defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false"
+    
+    # Dock
+    execute "defaults write com.apple.dock autohide -bool true"
+    execute "defaults write com.apple.dock autohide-delay -float 0"
+    execute "defaults write com.apple.dock tilesize -int 48"
+
+    # Security
+    execute "defaults write com.apple.LaunchServices LSQuarantine -bool false"
+
+    if [ "$DRY_RUN" = false ]; then
+        log_info "Restarting Finder and Dock..."
+        killall Finder Dock > /dev/null 2>&1 || true
+    fi
+    log_success "macOS defaults applied."
 }
 
-# --- Verification Suite (The "Tests") ---
+# --- Verification Suite ---
 
 run_smoke_tests() {
-    echo "\n🧪 Running Smoke Tests..."
+    log_info "🧪 Running Smoke Tests..."
     local errors=0
 
     # Test 1: Symlinks
     if [[ -L "$HOME/.zshrc" && "$(readlink "$HOME/.zshrc")" == "$DOTFILES_DIR/zsh/.zshrc" ]]; then
-        echo "   [PASS] .zshrc symlink is correct."
+        log_success "[PASS] .zshrc symlink is correct."
     else
-        echo "   [FAIL] .zshrc symlink is broken or missing."
+        log_warn "[FAIL] .zshrc symlink is broken or missing."
         ((errors++))
     fi
 
     # Test 2: SSH Config Inclusion
     if grep -q "Include $DOTFILES_DIR/ssh/config" "$HOME/.ssh/config"; then
-        echo "   [PASS] SSH config inclusion found."
+        log_success "[PASS] SSH config inclusion found."
     else
-        echo "   [FAIL] SSH config does not include dotfiles source."
+        log_warn "[FAIL] SSH config does not include dotfiles source."
         ((errors++))
     fi
 
     # Test 3: Permissions
-    local ssh_perm=$(stat -f "%Lp" "$HOME/.ssh")
-    if [[ "$ssh_perm" == "700" ]]; then
-        echo "   [PASS] ~/.ssh permissions are secure (700)."
-    else
-        echo "   [FAIL] ~/.ssh permissions are $ssh_perm (expected 700)."
-        ((errors++))
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        local ssh_perm=$(stat -f "%Lp" "$HOME/.ssh")
+        if [[ "$ssh_perm" == "700" ]]; then
+            log_success "[PASS] ~/.ssh permissions are secure (700)."
+        else
+            log_warn "[FAIL] ~/.ssh permissions are $ssh_perm (expected 700)."
+            ((errors++))
+        fi
     fi
 
     if [[ $errors -eq 0 ]]; then
         echo "\n⭐ VERIFICATION SUCCESSFUL: System state matches configuration."
     else
-        echo "\n❌ VERIFICATION FAILED: $errors errors detected."
-        exit 1
+        log_error "VERIFICATION FAILED: $errors errors detected."
     fi
 }
 
 # --- Main Execution ---
 
 main() {
+    check_dependencies
     if [ "$REMOTE_MODE" = true ]; then download_assets; fi
     install_omz
     link_configs
+    install_vim_plug
     setup_ssh
     setup_macos
 
@@ -174,3 +240,4 @@ main() {
 }
 
 main "$@"
+
