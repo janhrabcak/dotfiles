@@ -60,13 +60,13 @@ safe_append() {
 
 check_dependencies() {
     log_info "Step 0: Checking dependencies..."
-    local deps=("git" "curl" "vim" "zsh")
+    local deps=("git" "curl" "vim" "zsh" "gh")
     for dep in "${deps[@]}"; do
         if ! command -v "$dep" >/dev/null 2>&1; then
-            log_error "Missing dependency: $dep. Please install it before proceeding."
+            log_warn "Optional dependency missing: $dep."
         fi
     done
-    log_success "All dependencies present."
+    log_success "Dependency check complete."
 }
 
 download_assets() {
@@ -119,6 +119,32 @@ install_vim_plug() {
 
     log_info "Installing Vim plugins..."
     execute "vim +PlugInstall +qall"
+}
+
+setup_git() {
+    log_info "Step 5: Configuring Git..."
+    local GIT_CONF_SRC="$DOTFILES_DIR/git/.gitconfig"
+    local GIT_CONF_DEST="$HOME/.gitconfig"
+
+    if [ -f "$GIT_CONF_SRC" ]; then
+        # Use includeIf or simple include to keep local settings
+        if ! grep -q "path = $GIT_CONF_SRC" "$GIT_CONF_DEST" 2>/dev/null; then
+            execute "git config --global include.path '$GIT_CONF_SRC'"
+            log_success "Git config linked."
+        else
+            log_success "Git config already linked."
+        fi
+    fi
+
+    # GitHub CLI initialization
+    if command -v gh >/dev/null 2>&1; then
+        log_info "Checking GitHub CLI status..."
+        if ! gh auth status >/dev/null 2>&1; then
+            log_warn "GitHub CLI is not authenticated. Run 'gh auth login' to initialize."
+        else
+            log_success "GitHub CLI is authenticated."
+        fi
+    fi
 }
 
 link_configs() {
@@ -229,6 +255,7 @@ main() {
     install_omz
     link_configs
     install_vim_plug
+    setup_git
     setup_ssh
     setup_macos
 
