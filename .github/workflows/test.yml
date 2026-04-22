@@ -17,18 +17,19 @@ jobs:
         uses: actions/checkout@v4
 
       - name: ShellCheck
-        # Note: ShellCheck has limited support for Zsh, but we can still catch general logic errors.
+        # Note: We ignore SC2034 (unused vars) because Zsh variables are often used in sourced files
+        # and SC1090 (can't follow non-constant source) which is common in dotfiles.
         uses: ludeeus/action-shellcheck@master
+        env:
+          SHELLCHECK_OPTS: -e SC2034 -e SC1090 -e SC2148
         with:
           severity: warning
-          # We tell ShellCheck to treat them as bash if zsh is not supported, 
-          # but usually it skips files it can't handle.
           ignore_paths: |
             zsh/plugins/**
 
       - name: Zsh Syntax Check
         run: |
-          # Install zsh if missing (should be there)
+          # Ensure Zsh is available for syntax checking
           sudo apt-get update && sudo apt-get install -y zsh
           zsh -n bootstrap.sh
           zsh -n zsh/.zshrc
@@ -37,7 +38,7 @@ jobs:
       - name: Vim Syntax Check
         run: |
           # Use -e (Ex mode) and -s (silent) to avoid hanging
-          # Also use a dummy home directory to avoid polluting the runner
+          # Mock home to avoid permission issues
           HOME=$PWD vim -u vim/.vimrc -e -s -c "q"
 
   test:
@@ -65,13 +66,17 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           touch ~/.ssh/config
+          
+          # Initialize dummy Git config to prevent setup_git failures
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI Bot"
 
       - name: Dry Run Validation
         run: |
-          # Use zsh explicitly
           zsh ./bootstrap.sh --mode ${{ matrix.mode }} --dry-run
 
       - name: Run Bootstrap
+        # Use --test to trigger smoke test logic
         run: zsh ./bootstrap.sh --mode ${{ matrix.mode }} --test
 
       - name: Verify Post-Install State

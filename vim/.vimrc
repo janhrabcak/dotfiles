@@ -36,7 +36,12 @@ set modelines=5
 
 " --- Visuals ---
 syntax on
-colorscheme molokai
+try
+  colorscheme molokai
+catch
+  " Fallback if molokai is not installed
+  colorscheme desert
+endtry
 set showmatch
 set matchtime=5
 set laststatus=2
