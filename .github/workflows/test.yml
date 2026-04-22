@@ -43,6 +43,8 @@ jobs:
         exclude:
           - os: ubuntu-latest
             mode: workstation
+          - os: macos-latest
+            mode: server
 
     steps:
       - name: Checkout Code
@@ -50,6 +52,11 @@ jobs:
 
       - name: Prepare Environment
         run: |
+          # Install zsh on Linux runners
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            sudo apt-get update && sudo apt-get install -y zsh
+          fi
+
           # Setup expectations for bootstrap.sh
           mkdir -p ~/.dotfiles
           cp -R . ~/.dotfiles/
