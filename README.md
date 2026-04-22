@@ -15,7 +15,7 @@ Deploy your environment with a single command (no `git clone` required):
 ### Script Flags
 *   `--remote`: Downloads the latest archive directly from GitHub.
 *   `--dry-run`: Preview all execution steps without modifying your system.
-*   `--mode [workstation|server]`: Optimizes the setup for daily macOS use or headless Linux environments.
+*   `--mode [macos|linux-client|linux-server]`: Optimizes the setup based on the target environment (e.g., skips GUI settings on servers, imports Tmux and SSH keys).
 *   `--test`: Runs a post-setup verification suite to ensure symlinks and permissions are correct.
 
 ### Manual Installation (Git Clone)
@@ -40,9 +40,9 @@ cd ~/.dotfiles
 
 ## 🛠️ Feature Breakdown
 
-### Shell & Terminal (Zsh)
-*   **Framework**: Oh My Zsh with `agnoster` theme.
-*   **Plugins**: Automated installation of `zsh-autosuggestions` and `zsh-syntax-highlighting`.
+### Shell & Terminal
+*   **Zsh**: Oh My Zsh with `agnoster` theme, auto-suggestions, and syntax highlighting.
+*   **Multiplexer (Tmux)**: Robust configuration (`tmux/.tmux.conf`) with modern `vi` syntax, directory-aware splits, and automated installation of the Tmux Plugin Manager (`tpm`) and session restore plugins on Linux servers.
 *   **Modular Aliases**: Cleanly organized shortcuts in `zsh/aliases.zsh` with dynamic cross-platform support (e.g., color `ls` flags).
 *   **Native Fonts**: Automatically downloads and installs the **MesloLGS NF** Powerline font directly to `~/Library/Fonts` (macOS only).
 

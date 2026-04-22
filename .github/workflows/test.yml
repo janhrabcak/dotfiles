@@ -39,12 +39,14 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest]
-        mode: [workstation, server]
+        mode: [macos, linux-client, linux-server]
         exclude:
           - os: ubuntu-latest
-            mode: workstation
+            mode: macos
           - os: macos-latest
-            mode: server
+            mode: linux-client
+          - os: macos-latest
+            mode: linux-server
 
     steps:
       - name: Checkout Code

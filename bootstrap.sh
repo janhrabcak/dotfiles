@@ -15,7 +15,7 @@ REPO_NAME="dotfiles"
 DOTFILES_DIR="$HOME/.dotfiles"
 DRY_RUN=false
 REMOTE_MODE=false
-WORK_MODE="workstation"
+WORK_MODE="macos"
 
 # --- Logging Helpers ---
 log_info()  { echo "\033[0;34m[INFO]\033[0m  $1"; }
@@ -156,6 +156,19 @@ install_vim_plug() {
     execute "vim +PlugInstall +qall"
 }
 
+install_tmux_tpm() {
+    if [[ "$WORK_MODE" == "linux-server" ]]; then
+        log_info "Setting up Tmux Plugin Manager (TPM)..."
+        local TPM_DEST="$HOME/.tmux/plugins/tpm"
+        if [ ! -d "$TPM_DEST" ]; then
+            execute "git clone https://github.com/tmux-plugins/tpm '$TPM_DEST'"
+            log_success "TPM installed."
+        else
+            log_success "TPM already installed."
+        fi
+    fi
+}
+
 setup_git() {
     log_info "Step 5: Configuring Git..."
     local GIT_CONF_SRC="$DOTFILES_DIR/git/.gitconfig"
@@ -186,6 +199,11 @@ link_configs() {
     log_info "Step 4: Linking Configurations..."
     safe_link "$DOTFILES_DIR/zsh/.zshrc" "$HOME/.zshrc"
     safe_link "$DOTFILES_DIR/vim/.vimrc" "$HOME/.vimrc"
+    
+    if [[ "$WORK_MODE" == "linux-server" ]]; then
+        [ -f "$DOTFILES_DIR/tmux/.tmux.conf" ] && safe_link "$DOTFILES_DIR/tmux/.tmux.conf" "$HOME/.tmux.conf"
+    fi
+    
     log_success "Symlinks created."
 }
 
@@ -201,7 +219,7 @@ setup_ssh() {
         safe_append "Include $GIT_SSH_CONF" "$LOCAL_SSH_CONF"
     fi
 
-    if [[ "$WORK_MODE" == "server" ]]; then
+    if [[ "$WORK_MODE" == "linux-server" ]]; then
         local GIT_AUTH_KEYS="$DOTFILES_DIR/ssh/authorized_keys"
         local LOCAL_AUTH_KEYS="$HOME/.ssh/authorized_keys"
         if [ -f "$GIT_AUTH_KEYS" ]; then
@@ -210,12 +228,13 @@ setup_ssh() {
                 safe_append "$key" "$LOCAL_AUTH_KEYS"
             done < "$GIT_AUTH_KEYS"
             execute "chmod 600 '$LOCAL_AUTH_KEYS'"
+            log_success "Authorized keys imported."
         fi
     fi
 }
 
 setup_macos() {
-    if [[ "$OSTYPE" != "darwin"* || "$WORK_MODE" == "server" ]]; then return; fi
+    if [[ "$OSTYPE" != "darwin"* || "$WORK_MODE" != "macos" ]]; then return; fi
     log_info "Step 6: Applying macOS System Defaults & Fonts..."
 
     # Fonts
@@ -310,6 +329,7 @@ main() {
     set_default_shell
     link_configs
     install_vim_plug
+    install_tmux_tpm
     setup_git
     setup_ssh
     setup_macos
