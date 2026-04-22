@@ -70,24 +70,57 @@ prompt_dir() {
   prompt_segment blue $CURRENT_FG '%2~'
 }
 
+# Render hostname with rainbow font colors on a black background
+prompt_google_rainbow_font() {
+  local host_str=$(hostname -s)
+  local len=${#host_str}
+  local colored_host=""
+  local colors=(33 160 220 33 34 160)
+  local block_size=$(( len / 6 ))
+  local remainder=$(( len % 6 ))
+  local start=0
+  for (( i=1; i<=6; i++ )); do
+    local count=$block_size
+    [[ $i -le $remainder ]] && (( count++ ))
+    [[ $count -gt 0 ]] && colored_host+="%{%F{${colors[$i]}}%}${host_str:$start:$count}"
+    (( start += count ))
+  done
+  prompt_segment black white "%n@$colored_host"
+}
+
+# Render hostname with rainbow background segments and white font
+prompt_google_rainbow_bg() {
+  local host_str=$(hostname -s)
+  local len=${#host_str}
+  local colors=(33 160 220 33 34 160)
+  local block_size=$(( len / 6 ))
+  local remainder=$(( len % 6 ))
+  local start=0
+  
+  # Start with username in standard black
+  prompt_segment black white "%n@"
+  
+  for (( i=1; i<=6; i++ )); do
+    local count=$block_size
+    [[ $i -le $remainder ]] && (( count++ ))
+    if [[ $count -gt 0 ]]; then
+      local segment="${host_str:$start:$count}"
+      # Each block of the hostname gets its own background color
+      prompt_segment "${colors[$i]}" white "$segment"
+      (( start += count ))
+    fi
+  done
+}
+
 # Context: user@hostname (who am I and where am I)
 prompt_context() {
-  # 1. Google-specific styling (Rainbow Hostname)
-  if [[ "$HOST" == *"google"* || "$(hostname)" == *"google"* || "$GOOGLE_PROMPT" == "true" ]]; then
-     local host_str=$(hostname -s)
-     local len=${#host_str}
-     local colored_host=""
-     local colors=(33 160 220 33 34 160)
-     local block_size=$(( len / 6 ))
-     local remainder=$(( len % 6 ))
-     local start=0
-     for (( i=1; i<=6; i++ )); do
-        local count=$block_size
-        [[ $i -le $remainder ]] && (( count++ ))
-        [[ $count -gt 0 ]] && colored_host+="%{%F{${colors[$i]}}%}${host_str:$start:$count}"
-        (( start += count ))
-     done
-     prompt_segment black white "%n@$colored_host"
+  # 1. Google-specific styling
+  if [[ "$HOST" == *"google"* || "$(hostname)" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
+     if [[ "$GOOGLE_PROMPT" == "bg" ]]; then
+        prompt_google_rainbow_bg
+     else
+        prompt_google_rainbow_font
+     fi
   # 2. General remote server warning (Red background)
   elif [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" || -n "$SSH_CONNECTION" ]]; then
      prompt_segment red white "%(!.%{%F{yellow}%}.)%n@%m"

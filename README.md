@@ -45,7 +45,8 @@ cd ~/.dotfiles
     *   **Local**: Clean, minimal context.
     *   **SSH**: High-visibility **red** hostname segment.
     *   **Google**: Signature **rainbow** hostname band (Blue-Red-Yellow-Blue-Green-Red).
-    *   **Rendered Example (Google)**: ⬛️ `user@`🟦`go`🟥`og`🟨`le`🟦`ho`🟩`st`🟥`01` 🟦 `~/path`  
+        *   **Modes**: Supports two styles: `gprompt-font` (default, colored letters) and `gprompt-bg` (colored background blocks).
+    *   **Rendered Example (Google BG)**: ⬛️ `user@`🟦`go`🟥`og`🟨`le`🟦`ho`🟩`st`🟥`01` 🟦 `~/path`  
 *   **Multiplexer (Tmux)**: Robust configuration (`tmux/.tmux.conf`) with modern `vi` syntax, directory-aware splits, and automated installation of the Tmux Plugin Manager (`tpm`) and session restore plugins on Linux servers.
 *   **Modular Aliases**: Cleanly organized shortcuts in `zsh/aliases.zsh` with dynamic cross-platform support (e.g., color `ls` flags).
 *   **Native Fonts**: Automatically downloads and installs the **MesloLGS NF** Powerline font directly to `~/Library/Fonts` (macOS only).

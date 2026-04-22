@@ -41,5 +41,6 @@ alias objdump="command objdump -M intel"
 alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
 
 # Manual prompt overrides
-alias gprompt="export GOOGLE_PROMPT=true"
+alias gprompt-font="export GOOGLE_PROMPT=font"
+alias gprompt-bg="export GOOGLE_PROMPT=bg"
 alias unprompt="unset GOOGLE_PROMPT"
