@@ -96,20 +96,34 @@ prompt_google_rainbow_bg() {
   local block_size=$(( len / 6 ))
   local remainder=$(( len % 6 ))
   local start=0
+  local last_col=""
   
-  # Start with username in standard black
+  # 1. Render username in standard black segment
   prompt_segment black white "%n@"
   
+  # 2. Render the rainbow hostname without padding between color changes
   for (( i=1; i<=6; i++ )); do
     local count=$block_size
     [[ $i -le $remainder ]] && (( count++ ))
     if [[ $count -gt 0 ]]; then
       local segment="${host_str:$start:$count}"
-      # Each block of the hostname gets its own background color
-      prompt_segment "${colors[$i]}" white "$segment"
+      local current_col="${colors[$i]}"
+      
+      if [[ -z "$last_col" ]]; then
+        # First segment: draw the arrow from black to this first Google color
+        echo -n "%{%K{$current_col}%F{black}%}$SEGMENT_SEPARATOR%{%F{white}%}$segment"
+      else
+        # Subsequent segments: just change background color (no padding/arrows)
+        echo -n "%{%K{$current_col}%}$segment"
+      fi
+      
       (( start += count ))
+      last_col=$current_col
     fi
   done
+  
+  # 3. Update CURRENT_BG so the next Agnoster segment draws its arrow correctly
+  CURRENT_BG=$last_col
 }
 
 # Context: user@hostname (who am I and where am I)
