@@ -56,6 +56,18 @@ safe_append() {
     fi
 }
 
+safe_link() {
+    local src="$1"
+    local dest="$2"
+    if [ -f "$src" ]; then
+        if [ -e "$dest" ] && [ ! -L "$dest" ]; then
+            log_warn "Existing file found at $dest. Backing up to ${dest}.bak"
+            execute "mv '$dest' '${dest}.bak'"
+        fi
+        execute "ln -sfn '$src' '$dest'"
+    fi
+}
+
 # --- Functions ---
 
 check_dependencies() {
@@ -149,8 +161,8 @@ setup_git() {
 
 link_configs() {
     log_info "Step 4: Linking Configurations..."
-    [ -f "$DOTFILES_DIR/zsh/.zshrc" ] && execute "ln -sfn '$DOTFILES_DIR/zsh/.zshrc' '$HOME/.zshrc'"
-    [ -f "$DOTFILES_DIR/vim/.vimrc" ] && execute "ln -sfn '$DOTFILES_DIR/vim/.vimrc' '$HOME/.vimrc'"
+    safe_link "$DOTFILES_DIR/zsh/.zshrc" "$HOME/.zshrc"
+    safe_link "$DOTFILES_DIR/vim/.vimrc" "$HOME/.vimrc"
     log_success "Symlinks created."
 }
 
@@ -181,7 +193,22 @@ setup_ssh() {
 
 setup_macos() {
     if [[ "$OSTYPE" != "darwin"* || "$WORK_MODE" == "server" ]]; then return; fi
-    log_info "Step 6: Applying macOS System Defaults..."
+    log_info "Step 6: Applying macOS System Defaults & Fonts..."
+
+    # Fonts
+    local FONT_DIR="$HOME/Library/Fonts"
+    local FONT_NAME="MesloLGS NF Regular.ttf"
+    local FONT_DEST="$FONT_DIR/$FONT_NAME"
+    local FONT_URL="https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf"
+
+    if [ ! -f "$FONT_DEST" ]; then
+        log_info "Downloading and installing Powerline Nerd Font..."
+        execute "mkdir -p '$FONT_DIR'"
+        execute "curl -fLo '$FONT_DEST' '$FONT_URL'"
+        log_success "Nerd Font installed."
+    else
+        log_success "Nerd Font already installed."
+    fi
     
     # Keyboard & Trackpad
     execute "defaults write NSGlobalDomain KeyRepeat -int 1"

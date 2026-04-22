@@ -36,6 +36,16 @@ fi
 
 # User configuration
 
+# --- Secrets Management (1Password) ---
+# Uncomment and configure this block to securely load secrets into your environment
+# if command -v op >/dev/null 2>&1; then
+#   # Example: Load an API key
+#   # export OPENAI_API_KEY=$(op read "op://Private/OpenAI/credential")
+#   
+#   # Example: Evaluate a template file containing multiple secrets
+#   # eval $(op inject -i ~/.env.tpl)
+# fi
+
 # You may need to manually set your language environment
 export LANG=en_US.UTF-8
 

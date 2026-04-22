@@ -2,36 +2,59 @@
 
 ![CI State](https://github.com/janhrabcak/dotfiles/actions/workflows/test.yml/badge.svg)
 
-An **"Infrastructure as Code"** approach to personal computing environments. This repository provides a zero-dependency, idempotent, and verified method to synchronize terminal configurations (Zsh, Vim, SSH) and macOS system defaults across multiple machines.
+An **"Infrastructure as Code"** approach to personal computing environments. This repository provides a zero-dependency, idempotent, and verified method to synchronize terminal configurations (Zsh, Vim, Git, SSH) and macOS system defaults across multiple machines.
 
 ## ⚡ Quick Start
 
-Deploy your environment with a single command:
+Deploy your environment with a single command (no `git clone` required):
 
 ```zsh
 /bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/janhrabcak/dotfiles/main/bootstrap.sh)" -- --remote
 ```
 
+### Script Flags
+*   `--remote`: Downloads the latest archive directly from GitHub.
+*   `--dry-run`: Preview all execution steps without modifying your system.
+*   `--mode [workstation|server]`: Optimizes the setup for daily macOS use or headless Linux environments.
+*   `--test`: Runs a post-setup verification suite to ensure symlinks and permissions are correct.
+
+---
+
 ## 🏗️ Architecture & Design Principles
 
-*   **Zero Initial Dependency:** Uses `curl` and `tar` instead of `git` for "day zero" setup.
-*   **Idempotency:** Every operation is guarded. Running the script multiple times results in the same stable state.
-*   **Local-First Priority:** Uses `Include` directives in SSH and Zsh so your machine-specific settings always take precedence.
-*   **Context Awareness:** Automatically detects environment to support `--mode workstation` (macOS) and `--mode server` (Linux).
-*   **Automated Verification:** Built-in `--test` flag for post-setup smoke testing of symlinks and permissions.
+*   **Zero Initial Dependency:** Uses only `curl` and `tar` for "day zero" setup.
+*   **Idempotency & Safety:** Every operation is guarded. The script automatically backs up existing configurations (`.zshrc.bak`) before linking, ensuring you never lose local data.
+*   **Local-First Priority:** Uses `Include` directives in SSH and Git so your machine-specific settings always take precedence.
+*   **Automated Verification:** A built-in smoke testing suite verifies system state.
 
-## 🛠️ Implementation Details
+---
 
-### 1. Components
-- **Zsh:** Modernized `.zshrc` with Oh My Zsh, auto-suggestions, and syntax highlighting.
-- **Vim:** Curated `.vimrc` with `vim-plug` automation and Go development support.
-- **SSH:** Secure configuration with `Include` support and automated `authorized_keys` management.
-- **macOS:** System-level optimizations (Dock, Finder, Trackpad, Key Repeat).
+## 🛠️ Feature Breakdown
 
-### 2. Security
-- **Strict Permissions:** Enforces `700` for directories and `600` for sensitive files.
-- **Isolation:** API keys and local secrets stay in `~/.zshrc.local` (Git-ignored).
-- **Secure SSH:** Uses `IdentitiesOnly yes` to prevent accidental key exposure.
+### Shell & Terminal (Zsh)
+*   **Framework**: Oh My Zsh with `agnoster` theme.
+*   **Plugins**: Automated installation of `zsh-autosuggestions` and `zsh-syntax-highlighting`.
+*   **Modular Aliases**: Cleanly organized shortcuts in `zsh/aliases.zsh` with dynamic cross-platform support (e.g., color `ls` flags).
+*   **Native Fonts**: Automatically downloads and installs the **MesloLGS NF** Powerline font directly to `~/Library/Fonts` (macOS only).
 
-## 🧪 CI/CD
-Automated testing is performed via GitHub Actions on `macos-latest` and `ubuntu-latest` to ensure the bootstrap remains robust across platforms.
+### Editor (Vim)
+*   **Plugin Management**: Automated installation of `vim-plug`.
+*   **Curated Plugins**: Includes `vim-go`, `nerdtree`, `vim-fugitive`, and the `molokai` colorscheme.
+*   **Cross-Platform Clipboard**: Intelligently switches between `unnamed` (macOS) and `unnamedplus` (Linux).
+
+### Development & Networking
+*   **Git Automation**: Links a standardized `.gitconfig` while respecting local overrides. Checks for GitHub CLI (`gh`) authentication.
+*   **Secure SSH**: Configures modular `Include` support, automated `authorized_keys` deployment (server mode), and enforces strict `700/600` directory permissions.
+
+### Secrets Management
+*   **1Password Ready**: Includes built-in configuration hooks to load environment variables and API keys dynamically using the 1Password CLI (`op`), preventing secrets from lingering in plaintext files.
+*   **Local Overrides**: Legacy support for Git-ignored `~/.zshrc.local` files.
+
+---
+
+## 🧪 Robust CI/CD
+
+To ensure the bootstrap script remains highly reliable, this repository features an extensive GitHub Actions pipeline:
+1.  **Strict Linting**: Automated syntax validation using `zsh -n` and headless Vim execution.
+2.  **Matrix Testing**: Concurrent testing on `macos-latest` (Workstation) and `ubuntu-latest` (Server).
+3.  **Dry-Run Assertions**: Verifies that safe-execution modes don't unintentionally alter the CI environment.
