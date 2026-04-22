@@ -266,6 +266,18 @@ setup_macos() {
     execute "defaults write com.apple.dock autohide-delay -float 0"
     execute "defaults write com.apple.dock tilesize -int 48"
 
+    # Terminal Profile
+    local TERMINAL_PROFILE="$DOTFILES_DIR/macos-terminal/zsh.terminal"
+    if [ -f "$TERMINAL_PROFILE" ]; then
+        log_info "Importing Terminal profile 'Zsh'..."
+        # 'open' will import the .terminal file into Terminal.app
+        execute "open '$TERMINAL_PROFILE'"
+        # Set it as default and startup profile
+        execute "defaults write com.apple.Terminal 'Default Window Settings' -string 'Zsh'"
+        execute "defaults write com.apple.Terminal 'Startup Window Settings' -string 'Zsh'"
+        log_success "Terminal profile set as default."
+    fi
+
     # Security
     execute "defaults write com.apple.LaunchServices LSQuarantine -bool false"
 
