@@ -17,15 +17,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: ShellCheck
-        # Note: We ignore SC2034 (unused vars) because Zsh variables are often used in sourced files
-        # and SC1090 (can't follow non-constant source) which is common in dotfiles.
+        # We skip ShellCheck for Zsh files because it doesn't support Zsh syntax (SC1071).
+        # We rely on 'zsh -n' for these files instead.
         uses: ludeeus/action-shellcheck@master
-        env:
-          SHELLCHECK_OPTS: -e SC2034 -e SC1090 -e SC2148
         with:
           severity: warning
           ignore_paths: |
             zsh/plugins/**
+            bootstrap.sh
+            zsh/.zshrc
+            zsh/aliases.zsh
 
       - name: Zsh Syntax Check
         run: |
@@ -76,7 +77,6 @@ jobs:
           zsh ./bootstrap.sh --mode ${{ matrix.mode }} --dry-run
 
       - name: Run Bootstrap
-        # Use --test to trigger smoke test logic
         run: zsh ./bootstrap.sh --mode ${{ matrix.mode }} --test
 
       - name: Verify Post-Install State
