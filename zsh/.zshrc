@@ -70,10 +70,13 @@ prompt_dir() {
   prompt_segment blue $CURRENT_FG '%2~'
 }
 
+# Context: user@hostname (who am I and where am I)
 prompt_context() {
-  if [[ "$USER" != "$DEFAULT_USER" || -n "$SSH_CLIENT" ]]; then
-#    Show only username without hostname
-#    prompt_segment black default "%(!.%{%F{yellow}%}.)$USER"
+  if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
+     # DANGER: Red background to warn we are on a remote server
+     prompt_segment red default "%(!.%{%F{yellow}%}.)%n@%m"
+  elif [[ "$USER" != "$DEFAULT_USER" ]]; then
+     # SAFE: Black background for local non-default user (like root)
      prompt_segment black default "%(!.%{%F{yellow}%}.)%n@%m"
   fi
 }
