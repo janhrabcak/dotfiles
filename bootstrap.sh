@@ -14,7 +14,7 @@
 # ==============================================================================
 
 # --- Configuration ---
-GITHUB_USER="your-username"
+GITHUB_USER="janhrabcak"
 REPO_NAME="dotfiles"
 DOTFILES_DIR="$HOME/.dotfiles"
 DRY_RUN=false
