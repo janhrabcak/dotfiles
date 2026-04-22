@@ -5,35 +5,75 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0' # Weekly run on Sundays
 
 jobs:
-  test-macOS:
-    runs-on: macos-latest
+  lint:
+    name: Lint & Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: warning
+          ignore_paths: |
+            zsh/plugins/**
+
+      - name: Zsh Syntax Check
+        run: |
+          zsh -n bootstrap.sh
+          zsh -n zsh/.zshrc
+          zsh -n zsh/aliases.zsh
+
+      - name: Vim Syntax Check
+        run: |
+          vim -u vim/.vimrc -e -c "q"
+
+  test:
+    name: Test on ${{ matrix.os }} (${{ matrix.mode }})
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        mode: [workstation, server]
+        # Skip workstation mode on Linux as it's macOS specific in our script
+        exclude:
+          - os: ubuntu-latest
+            mode: workstation
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Prepare Environment
         run: |
-          # Move the checked-out code to the location the script expects
+          # Setup expectations for bootstrap.sh
           mkdir -p ~/.dotfiles
           cp -R . ~/.dotfiles/
-          
-          # Ensure the SSH directory exists so grep doesn't crash
           mkdir -p ~/.ssh
           touch ~/.ssh/config
 
-      - name: Run Bootstrap (Workstation Mode)
-        # We run with --test to trigger your smoke test logic
-        run: sh ./bootstrap.sh --test
+      - name: Dry Run Validation
+        run: |
+          # Verify that dry-run returns success and logs correctly
+          zsh ./bootstrap.sh --mode ${{ matrix.mode }} --dry-run | grep "DRY RUN MODE ENABLED"
 
-  test-Linux:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Run Bootstrap
+        # We run with --test to trigger smoke test logic
+        run: zsh ./bootstrap.sh --mode ${{ matrix.mode }} --test
 
-      - name: Run Bootstrap (Server Mode)
-        # Linux runners won't have 'defaults', but your script 
-        # already handles this via the --mode server logic.
-        run: sh ./bootstrap.sh --mode server --test
+      - name: Verify Post-Install State
+        run: |
+          # Additional manual checks beyond bootstrap's own tests
+          [ -L ~/.zshrc ] || exit 1
+          [ -L ~/.vimrc ] || exit 1
+          if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            # Verify a macOS default was set
+            defaults read com.apple.finder AppleShowAllExtensions | grep "1"
+          fi
