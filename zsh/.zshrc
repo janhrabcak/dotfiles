@@ -6,6 +6,12 @@ export PATH=$HOME/.bin:/usr/local/bin:$PATH
 export OHMYZSH=$HOME/.oh-my-zsh
 export DOT=$HOME/.dotfiles
 
+# 1. Unset any existing agent to prevent conflicts
+unset SSH_AUTH_SOCK
+
+# 2. Point specifically to the 1Password socket
+export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+
 ZSH_THEME="agnoster"
 
 # Uncomment the following line to automatically update without prompting.
