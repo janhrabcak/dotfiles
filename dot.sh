@@ -260,6 +260,11 @@ setup_iterm2() {
     execute "defaults write com.googlecode.iterm2 PromptOnQuit -bool false"
     execute "defaults write com.googlecode.iterm2 MaxPasteHistoryEntries -int 50"
     
+    # iTerm2 - tmux Control Mode Integration
+    log_info "Optimizing iTerm2 + tmux Control Mode..."
+    execute "defaults write com.googlecode.iterm2 AutohideTmuxClientSession -bool true"
+    execute "defaults write com.googlecode.iterm2 OpenTmuxWindowsAs -int 0" # 0 = Native Tabs
+    
     log_success "iTerm2 setup complete."
 }
 

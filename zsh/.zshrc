@@ -190,8 +190,35 @@ function title_preexec() {
 
 # Register the hooks
 autoload -Uz add-zsh-hook
+
+# --- iTerm2 + Tmux Awareness ---
+function iterm2_tmux_visuals() {
+  # Only run if we are in iTerm2 (detected via session ID or terminal program)
+  [[ "$ITERM_SESSION_ID" == "" && "$TERMINAL_EMULATOR" != "iTerm2" ]] && return
+
+  if [[ -n "$TMUX" ]]; then
+    # 1. Set Large Badge (Session Name)
+    local session_name=$(tmux display-message -p '#S' 2>/dev/null || echo "TMUX")
+    printf "\e]1337;SetBadgeFormat=%s\a" $(echo -n "$session_name" | base64)
+
+    # 2. Shift Background (Slightly darker/distinct tint)
+    printf "\e]11;#0f1419\a"
+
+    # 3. Color the Tab (Amber/Orange for visibility)
+    printf "\e]6;1;bg;red;brightness;255\a"
+    printf "\e]6;1;bg;green;brightness;180\a"
+    printf "\e]6;1;bg;blue;brightness;0\a"
+  else
+    # RESET visuals when not in Tmux
+    printf "\e]1337;SetBadgeFormat=%s\a" $(echo -n "" | base64)
+    printf "\e]11;default\a" 
+    printf "\e]6;1;bg;*;default\a"
+  fi
+}
+
 add-zsh-hook precmd title_precmd
 add-zsh-hook preexec title_preexec
+add-zsh-hook precmd iterm2_tmux_visuals
 
 # Load Aliases
 [[ -f "$DOT/zsh/aliases.zsh" ]] && source "$DOT/zsh/aliases.zsh"

@@ -27,6 +27,8 @@ alias gl="git log --oneline --graph --decorate"
 # --- Tmux ---
 alias tn="tmux new"
 alias ta="tmux attach"
+alias tcc="tmux -CC attach || tmux -CC new" # iTerm2 Control Mode
+alias ssh-cc="ssh -t \"$1\" 'tmux -CC attach || tmux -CC new'" # SSH + Control Mode
 
 # --- SSH & Networking ---
 alias sshp="ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no"
