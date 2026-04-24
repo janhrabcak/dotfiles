@@ -1,26 +1,24 @@
 #!/usr/bin/env zsh
 
 # ==============================================================================
-# BOOTSTRAP SCRIPT (v2.1)
-# ==============================================================================
-# USAGE (One-Liner):
-# /bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/janhrabcak/dotfiles/main/dot.sh)" -- --remote
+# BOOTSTRAP SCRIPT (v2.2)
 # ==============================================================================
 
-set -e # Exit on error
+set -e # Exit on error (though we handle critical errors explicitly too)
 
 # --- Configuration ---
 GITHUB_USER="janhrabcak"
 REPO_NAME="dotfiles"
 DOTFILES_DIR="$HOME/.dotfiles"
+BACKUP_DIR="$HOME/.dotfiles.backup/$(date +%Y%m%d_%H%M%S)"
 DRY_RUN=false
 REMOTE_MODE=false
 WORK_MODE="macos"
 
 # --- Logging Helpers ---
-log_info()  { echo "\033[0;34m[INFO]\033[0m  $1"; }
-log_warn()  { echo "\033[0;33m[WARN]\033[0m  $1"; }
-log_error() { echo "\033[0;31m[ERROR]\033[0m $1"; exit 1; }
+log_info()    { echo "\033[0;34m[INFO]\033[0m  $1"; }
+log_warn()    { echo "\033[0;33m[WARN]\033[0m  $1"; }
+log_error()   { echo "\033[0;31m[ERROR]\033[0m $1"; }
 log_success() { echo "\033[0;32m[OK]\033[0m    $1"; }
 
 # --- CLI Argument Parsing ---
@@ -35,15 +33,35 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # --- Execution Wrapper ---
+# Usage: execute "command" [critical_boolean]
 execute() {
+    local cmd=$1
+    local critical=${2:-false}
+    
     if [ "$DRY_RUN" = true ]; then
-        echo "   [DRY-RUN] Would execute: $@"
+        echo "   [DRY-RUN] Would execute: $cmd"
     else
-        eval "$@"
+        if eval "$cmd"; then
+            return 0
+        else
+            log_error "Command failed: $cmd"
+            if [ "$critical" = true ]; then
+                echo "\033[0;31mFATAL: Critical step failed. Aborting.\033[0m"
+                exit 1
+            fi
+            return 1
+        fi
     fi
 }
 
 # --- Safety/Idempotency Helpers ---
+
+init_backup_dir() {
+    if [ ! -d "$BACKUP_DIR" ]; then
+        execute "mkdir -p '$BACKUP_DIR'"
+    fi
+}
+
 safe_append() {
     local line="$1"
     local file="$2"
@@ -52,7 +70,19 @@ safe_append() {
         log_success "Entry already exists in $(basename $file)"
     else
         execute "echo '$line' >> '$file'"
-        log_success "Updated $(basename $file)"
+        log_success "Updated $(basename $file) (appended)"
+    fi
+}
+
+safe_prepend() {
+    local line="$1"
+    local file="$2"
+    if [ ! -f "$file" ]; then execute "touch '$file'"; fi
+    if grep -qsF "$line" "$file"; then
+        log_success "Entry already exists in $(basename $file)"
+    else
+        execute "echo '$line' | cat - '$file' > '$file.tmp' && mv '$file.tmp' '$file'"
+        log_success "Updated $(basename $file) (prepended)"
     fi
 }
 
@@ -61,10 +91,20 @@ safe_link() {
     local dest="$2"
     if [ -f "$src" ]; then
         if [ -e "$dest" ] && [ ! -L "$dest" ]; then
-            log_warn "Existing file found at $dest. Backing up to ${dest}.bak"
-            execute "mv '$dest' '${dest}.bak'"
+            init_backup_dir
+            log_warn "Existing file found at $dest. Moving to backup."
+            execute "mv '$dest' '$BACKUP_DIR/$(basename $dest)'"
+        elif [ -L "$dest" ] && [ "$(readlink "$dest")" != "$src" ]; then
+            log_warn "Broken or incorrect symlink at $dest. Re-linking."
+            execute "rm '$dest'"
         fi
-        execute "ln -sfn '$src' '$dest'"
+        
+        if [[ ! -L "$dest" ]]; then
+            execute "ln -sfn '$src' '$dest'"
+            log_success "Linked $src to $dest"
+        else
+            log_success "$dest already correctly linked."
+        fi
     fi
 }
 
@@ -84,8 +124,8 @@ check_dependencies() {
 download_assets() {
     log_info "Step 1: Downloading dotfiles archive..."
     local TARBALL_URL="https://github.com/$GITHUB_USER/$REPO_NAME/archive/refs/heads/main.tar.gz"
-    [ ! -d "$DOTFILES_DIR" ] && execute "mkdir -p '$DOTFILES_DIR'"
-    execute "curl -fsSL '$TARBALL_URL' | tar -xzp -C '$DOTFILES_DIR' --strip-components=1"
+    [ ! -d "$DOTFILES_DIR" ] && execute "mkdir -p '$DOTFILES_DIR'" true
+    execute "curl -fsSL '$TARBALL_URL' | tar -xzp -C '$DOTFILES_DIR' --strip-components=1" true
     log_success "Assets synced to $DOTFILES_DIR"
 }
 
@@ -148,7 +188,7 @@ install_vim_plug() {
     local PLUG_DEST="$HOME/.vim/autoload/plug.vim"
     
     if [ ! -f "$PLUG_DEST" ]; then
-        execute "curl -fLo '$PLUG_DEST' --create-dirs '$PLUG_URL'"
+        execute "curl -fLo '$PLUG_DEST' --create-dirs '$PLUG_URL'" true
         log_success "Vim-Plug installed."
     fi
 
@@ -158,24 +198,22 @@ install_vim_plug() {
 
 install_tmux_tpm() {
     if [[ "$WORK_MODE" == "linux-server" ]]; then
-        log_info "Setting up Tmux Plugin Manager (TPM)..."
-        local TPM_DEST="$HOME/.tmux/plugins/tpm"
-        if [ ! -d "$TPM_DEST" ]; then
-            execute "git clone https://github.com/tmux-plugins/tpm '$TPM_DEST'"
+        log_info "Step 3.5: Setting up Tmux Plugin Manager..."
+        local TPM_DIR="$HOME/.tmux/plugins/tpm"
+        if [ ! -d "$TPM_DIR" ]; then
+            execute "mkdir -p '$(dirname "$TPM_DIR")'"
+            execute "git clone https://github.com/tmux-plugins/tpm '$TPM_DIR'"
             log_success "TPM installed."
-        else
-            log_success "TPM already installed."
         fi
     fi
 }
 
 setup_git() {
-    log_info "Step 5: Configuring Git..."
+    log_info "Step 4: Configuring Git..."
     local GIT_CONF_SRC="$DOTFILES_DIR/git/.gitconfig"
     local GIT_CONF_DEST="$HOME/.gitconfig"
 
     if [ -f "$GIT_CONF_SRC" ]; then
-        # Use includeIf or simple include to keep local settings
         if ! grep -q "path = $GIT_CONF_SRC" "$GIT_CONF_DEST" 2>/dev/null; then
             execute "git config --global include.path '$GIT_CONF_SRC'"
             log_success "Git config linked."
@@ -196,7 +234,7 @@ setup_git() {
 }
 
 link_configs() {
-    log_info "Step 4: Linking Configurations..."
+    log_info "Step 5: Linking Configurations..."
     safe_link "$DOTFILES_DIR/zsh/.zshrc" "$HOME/.zshrc"
     safe_link "$DOTFILES_DIR/zsh/aliases.zsh" "$HOME/.aliases.zsh"
     safe_link "$DOTFILES_DIR/vim/.vimrc" "$HOME/.vimrc"
@@ -209,7 +247,7 @@ link_configs() {
 }
 
 setup_ssh() {
-    log_info "Step 5: Configuring SSH (Mode: $WORK_MODE)..."
+    log_info "Step 6: Configuring SSH (Mode: $WORK_MODE)..."
     execute "mkdir -p '$HOME/.ssh' && chmod 700 '$HOME/.ssh'"
     
     local GIT_SSH_CONF="$DOTFILES_DIR/ssh/config"
@@ -217,7 +255,8 @@ setup_ssh() {
     
     if [ -f "$GIT_SSH_CONF" ]; then
         execute "chmod 600 '$GIT_SSH_CONF'"
-        safe_append "Include $GIT_SSH_CONF" "$LOCAL_SSH_CONF"
+        # Prepend Include so it takes priority over Host * in local config
+        safe_prepend "Include $GIT_SSH_CONF" "$LOCAL_SSH_CONF"
     fi
 
     if [[ "$WORK_MODE" == "linux-server" ]]; then
@@ -236,7 +275,7 @@ setup_ssh() {
 
 setup_iterm2() {
     if [[ "$OSTYPE" != "darwin"* || "$WORK_MODE" != "macos" ]]; then return; fi
-    log_info "Step 6: Configuring iTerm2..."
+    log_info "Step 7: Configuring iTerm2..."
 
     # iTerm2 - Load preferences from our dotfiles directory
     local ITERM_DIR="$DOTFILES_DIR/iterm2"
@@ -271,7 +310,7 @@ setup_iterm2() {
 
 setup_macos() {
     if [[ "$OSTYPE" != "darwin"* || "$WORK_MODE" != "macos" ]]; then return; fi
-    log_info "Step 6: Applying macOS System Defaults & Fonts..."
+    log_info "Step 8: Applying macOS System Defaults & Fonts..."
 
     # Fonts
     local FONT_DIR="$HOME/Library/Fonts"
@@ -282,7 +321,7 @@ setup_macos() {
     if [ ! -f "$FONT_DEST" ]; then
         log_info "Downloading and installing Powerline Nerd Font..."
         execute "mkdir -p '$FONT_DIR'"
-        execute "curl -fLo '$FONT_DEST' '$FONT_URL'"
+        execute "curl -fLo '$FONT_DEST' '$FONT_URL'" true
         log_success "Nerd Font installed."
     else
         log_success "Nerd Font already installed."
@@ -391,4 +430,3 @@ main() {
 }
 
 main "$@"
-
