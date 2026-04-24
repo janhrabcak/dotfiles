@@ -102,9 +102,11 @@ add-zsh-hook preexec () { set_terminal_title "${1[(w)1]} | %~" }
 [[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
 
 # iTerm2 + Tmux Startup Visuals (Safe One-Time Execution)
-if [[ -n "$TMUX" && -n "$ITERM_SESSION_ID" && -z "$ITERM_TAB_DONE" ]]; then
-    # Orange Tab & TMUX Badge
-    printf "\e]6;1;bg;red;brightness;255\a\e]6;1;bg;green;brightness;180\a\e]6;1;bg;blue;brightness;0\a"
-    printf "\e]1337;SetBadgeFormat=%s\a" $(echo -n "TMUX" | base64)
-    export ITERM_TAB_DONE=1
+if [[ -n "$TMUX" && -z "$ITERM_TAB_DONE" ]]; then
+    if [[ -n "$ITERM_SESSION_ID" || "$LC_TERMINAL" == "iTerm2" || "$TERMINAL_EMULATOR" == "iTerm2" ]]; then
+        # Orange Tab & TMUX Badge
+        printf "\e]6;1;bg;red;brightness;255\a\e]6;1;bg;green;brightness;180\a\e]6;1;bg;blue;brightness;0\a"
+        printf "\e]1337;SetBadgeFormat=%s\a" $(echo -n "TMUX" | base64)
+        export ITERM_TAB_DONE=1
+    fi
 fi
