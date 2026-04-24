@@ -318,8 +318,8 @@ setup_macos() {
     execute "defaults write com.apple.LaunchServices LSQuarantine -bool false"
 
     if [ "$DRY_RUN" = false ]; then
-        log_info "Restarting Finder and Dock..."
-        killall Finder Dock > /dev/null 2>&1 || true
+        log_info "Restarting Finder, Dock, and Terminal..."
+        killall Finder Dock Terminal > /dev/null 2>&1 || true
     fi
     log_success "macOS defaults applied."
 }
