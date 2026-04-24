@@ -113,11 +113,24 @@ safe_link() {
 check_dependencies() {
     log_info "Step 0: Checking dependencies..."
     local deps=("git" "curl" "vim" "zsh" "gh")
+    local missing=()
+    
+    # Check CLI dependencies
     for dep in "${deps[@]}"; do
         if ! command -v "$dep" >/dev/null 2>&1; then
-            log_warn "Optional dependency missing: $dep."
+            missing+=("$dep")
         fi
     done
+
+    # Check for iTerm2 on macOS
+    if [[ "$OSTYPE" == "darwin"* && ! -d "/Applications/iTerm.app" ]]; then
+        missing+=("iTerm2 (App)")
+    fi
+
+    if [ ${#missing[@]} -ne 0 ]; then
+        log_error "Missing required dependencies: ${missing[*]}"
+    fi
+    
     log_success "Dependency check complete."
 }
 
