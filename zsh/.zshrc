@@ -12,9 +12,10 @@ export LANG=en_US.UTF-8
 export PATH="$HOME/.bin:/usr/local/bin:$PATH"
 [[ -d "$HOME/.bin/google-cloud-sdk/bin" ]] && export PATH="$HOME/.bin/google-cloud-sdk/bin:$PATH"
 
-# 1Password SSH Agent
-unset SSH_AUTH_SOCK
-export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+# SSH Agent (1Password on macOS only)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+fi
 
 # --- 2. Oh My Zsh Settings ---
 ZSH_THEME="agnoster"
