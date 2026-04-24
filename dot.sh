@@ -292,11 +292,13 @@ setup_iterm2() {
 
     # iTerm2 - Load preferences from our dotfiles directory
     local ITERM_DIR="$DOTFILES_DIR/iterm2"
-    if [ -d "$ITERM_DIR" ]; then
+    if [ -f "$ITERM_DIR/com.googlecode.iterm2.plist" ]; then
         log_info "Linking iTerm2 preferences to $ITERM_DIR..."
         execute "defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true"
         execute "defaults write com.googlecode.iterm2 PrefsCustomFolder -string '$ITERM_DIR'"
         execute "defaults write com.googlecode.iterm2 NoSyncNeverRemindPrefsChangesLostForFile -bool true"
+    else
+        log_warn "No iTerm2 plist found in $ITERM_DIR. Skipping preference sync."
     fi
 
     # iTerm2 - Shell Integration
@@ -317,6 +319,7 @@ setup_iterm2() {
     log_info "Optimizing iTerm2 + tmux Control Mode..."
     execute "defaults write com.googlecode.iterm2 AutohideTmuxClientSession -bool true"
     execute "defaults write com.googlecode.iterm2 OpenTmuxWindowsAs -int 0" # 0 = Native Tabs
+    execute "defaults write com.googlecode.iterm2 OpenTmuxDashboardIfMoreThanXWindows -int 999" # Suppress dashboard
     
     log_success "iTerm2 setup complete."
 }
