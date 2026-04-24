@@ -4,7 +4,7 @@
 # BOOTSTRAP SCRIPT (v2.1)
 # ==============================================================================
 # USAGE (One-Liner):
-# /bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/janhrabcak/dotfiles/main/bootstrap.sh)" -- --remote
+# /bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/janhrabcak/dotfiles/main/dot.sh)" -- --remote
 # ==============================================================================
 
 set -e # Exit on error
@@ -233,6 +233,36 @@ setup_ssh() {
     fi
 }
 
+setup_iterm2() {
+    if [[ "$OSTYPE" != "darwin"* || "$WORK_MODE" != "macos" ]]; then return; fi
+    log_info "Step 6: Configuring iTerm2..."
+
+    # iTerm2 - Load preferences from our dotfiles directory
+    local ITERM_DIR="$DOTFILES_DIR/iterm2"
+    if [ -d "$ITERM_DIR" ]; then
+        log_info "Linking iTerm2 preferences to $ITERM_DIR..."
+        execute "defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true"
+        execute "defaults write com.googlecode.iterm2 PrefsCustomFolder -string '$ITERM_DIR'"
+        execute "defaults write com.googlecode.iterm2 NoSyncNeverRemindPrefsChangesLostForFile -bool true"
+    fi
+
+    # iTerm2 - Shell Integration
+    local ITERM_SHELL_INT="$HOME/.iterm2_shell_integration.zsh"
+    if [ ! -f "$ITERM_SHELL_INT" ]; then
+        log_info "Downloading iTerm2 Shell Integration..."
+        execute "curl -L https://iterm2.com/shell_integration/zsh -o '$ITERM_SHELL_INT'"
+    fi
+
+    # iTerm2 - Performance & UX Boosts
+    log_info "Applying iTerm2 performance tweaks..."
+    execute "defaults write com.googlecode.iterm2 GPU -bool true"
+    execute "defaults write com.googlecode.iterm2 CopySelection -bool true"
+    execute "defaults write com.googlecode.iterm2 PromptOnQuit -bool false"
+    execute "defaults write com.googlecode.iterm2 MaxPasteHistoryEntries -int 50"
+    
+    log_success "iTerm2 setup complete."
+}
+
 setup_macos() {
     if [[ "$OSTYPE" != "darwin"* || "$WORK_MODE" != "macos" ]]; then return; fi
     log_info "Step 6: Applying macOS System Defaults & Fonts..."
@@ -344,6 +374,7 @@ main() {
     install_tmux_tpm
     setup_git
     setup_ssh
+    setup_iterm2
     setup_macos
 
     if [ "$RUN_TESTS" = true ]; then

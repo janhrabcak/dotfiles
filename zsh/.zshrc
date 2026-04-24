@@ -33,6 +33,9 @@ plugins=(git colorize golang macos zsh-syntax-highlighting zsh-autosuggestions)
 
 source $OHMYZSH/oh-my-zsh.sh
 
+# iTerm2 Shell Integration
+[[ -e "$HOME/.iterm2_shell_integration.zsh" ]] && source "$HOME/.iterm2_shell_integration.zsh"
+
 # Font Check for Agnoster Theme
 if [[ "$ZSH_THEME" == "agnoster" ]]; then
   if ! (echo $TERMINAL_EMULATOR | grep -q "iTerm" || echo $TERM_PROGRAM | grep -q "Apple_Terminal"); then

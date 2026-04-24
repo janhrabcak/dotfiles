@@ -9,7 +9,7 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 Deploy your environment with a single command (no `git clone` required):
 
 ```zsh
-/bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/janhrabcak/dotfiles/main/bootstrap.sh)" -- --remote
+/bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/janhrabcak/dotfiles/main/dot.sh)" -- --remote
 ```
 
 ### Script Flags
@@ -24,7 +24,7 @@ If you prefer to clone the repository manually rather than using the curl one-li
 ```zsh
 git clone https://github.com/janhrabcak/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
-./bootstrap.sh
+./dot.sh
 ```
 
 ---
@@ -51,6 +51,7 @@ cd ~/.dotfiles
 *   **Modular Aliases**: Cleanly organized shortcuts in `zsh/aliases.zsh` with dynamic cross-platform support (e.g., color `ls` flags).
 *   **Native Fonts**: Automatically downloads and installs the **MesloLGS NF** Powerline font directly to `~/Library/Fonts` (macOS only).
 *   **Terminal Profile**: Automatically imports and sets the custom **Zsh** terminal theme (`macos-terminal/zsh.terminal`) as the default macOS Terminal profile.
+*   **iTerm2 Integration**: Automatically points iTerm2 to `iterm2/` for its settings, ensuring your profiles, hotkeys, and color schemes are synchronized across machines.
 
 ### Editor (Vim)
 *   **Plugin Management**: Automated installation of `vim-plug`.

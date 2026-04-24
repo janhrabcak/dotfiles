@@ -21,7 +21,7 @@ jobs:
         run: |
           # Ensure Zsh is available for syntax checking
           sudo apt-get update && sudo apt-get install -y zsh
-          zsh -n bootstrap.sh
+          zsh -n dot.sh
           zsh -n zsh/.zshrc
           zsh -n zsh/aliases.zsh
 
@@ -59,7 +59,7 @@ jobs:
             sudo apt-get update && sudo apt-get install -y zsh
           fi
 
-          # Setup expectations for bootstrap.sh
+          # Setup expectations for dot.sh
           mkdir -p ~/.dotfiles
           cp -R . ~/.dotfiles/
           mkdir -p ~/.ssh
@@ -72,10 +72,10 @@ jobs:
 
       - name: Dry Run Validation
         run: |
-          zsh ./bootstrap.sh --mode ${{ matrix.mode }} --dry-run
+          zsh ./dot.sh --mode ${{ matrix.mode }} --dry-run
 
       - name: Run Bootstrap
-        run: zsh ./bootstrap.sh --mode ${{ matrix.mode }} --test
+        run: zsh ./dot.sh --mode ${{ matrix.mode }} --test
 
       - name: Verify Post-Install State
         run: |
