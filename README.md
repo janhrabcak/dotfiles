@@ -14,7 +14,7 @@ Deploy your environment with a single command:
 
 ### Script Flags
 *   `--remote`: Downloads the latest archive directly from GitHub.
-*   `--dry-run`: Preview all execution steps without modifying your system.
+*   `--dry-run`: Preview execution steps without modifying the system.
 *   `--test`: Runs a post-setup verification suite (Symlinks, Permissions, SSH).
 
 ---
@@ -22,9 +22,8 @@ Deploy your environment with a single command:
 ## 🏗️ Architecture & Design Principles
 
 *   **Zero Initial Dependency:** Uses only `curl` and `tar` for "day zero" setup.
-*   **Enforced Step 0:** Strictly verifies all dependencies (CLI tools and iTerm2 on macOS) before proceeding.
-*   **Fail-Fast Reliability**: Critical operations (downloads, symlinking) are guarded; the script halts immediately on fatal errors to prevent half-configured states.
-*   **Centralized Backups**: Displaced configurations are moved to a timestamped `~/.dotfiles.backup/` folder, keeping your `$HOME` directory clean.
+*   **Fail-Fast Reliability**: Critical operations halt execution on failure to prevent broken states.
+*   **Centralized Backups**: Displaced files are moved to a timestamped `~/.dotfiles.backup/` folder.
 *   **Protocol Hardening**: Optimized for high-stability iTerm2 + Tmux Control Mode.
 
 ---
@@ -32,37 +31,44 @@ Deploy your environment with a single command:
 ## 🛠️ Feature Breakdown
 
 ### 💻 iTerm2 + Tmux Control Mode (`-CC`)
-A hardened, visually distinct **Control Mode** integration.
-
 *   **Native Windows**: Run tmux sessions as native iTerm2 windows/tabs.
-*   **One-Click Attach**: `tcc` (local) or `ssh-cc <host>` (remote).
-*   **Visual Awareness System**:
+*   **Visual Awareness**:
     *   **Tab Coloring**: iTerm2 tabs automatically turn **Amber/Orange** when inside tmux.
     *   **Dynamic Badges**: Displays the session name as a badge in the corner.
-*   **Stability**: Handshake protected via silenced TPM output, disabled focus-events, and strict resize-management.
+*   **Stability**: Silenced TPM output and strict resize-management for handshake safety.
 
 ### 🐚 Shell & Terminal (Zsh)
-*   **Theme**: Environment-aware `agnoster` theme with clean local context, red SSH warnings, and signature **Google rainbow** bands.
-*   **History**: Shared history across sessions with intelligent search and duplicate suppression.
-*   **1Password SSH Agent**: Automated handoff to the 1Password SSH agent for secure key management.
-
-### 🔀 Multiplexer (Tmux)
-*   **Hardened Config**: Optimized `.tmux.conf` with `vi` syntax, directory-aware splits, and mouse support.
-*   **Plugin Manager**: Automated TPM installation with silenced initialization for protocol safety.
+*   **Theme**: Environment-aware `agnoster` theme.
+    *   **Google Rainbow**: Automatic banding for Google hosts. Switch styles via `gprompt-font` or `gprompt-bg`.
+*   **Identity**: Integrated **1Password SSH Agent** for seamless, secure key management.
+*   **Shortcuts**:
+    *   **Git**: `gs` (status), `ga` (add), `gc` (commit), `gp` (push), `gl` (graph log).
+    *   **Tmux**: `tcc` (Control Mode), `tn` (new), `ta` (attach), `ssh-cc` (remote control mode).
 
 ### 📝 Editor (Vim)
 *   **Plugin Management**: Automated installation of `vim-plug`.
-*   **Curated Plugins**: Includes `vim-go`, `nerdtree`, `vim-fugitive`, and `molokai`.
+*   **Go Development**: Pre-configured `vim-go` with leader shortcuts:
+    *   `,r` (Run), `,b` (Build), `,t` (Test), `,c` (Coverage).
+*   **UI**: `molokai` colorscheme, `nerdtree`, and `vim-fugitive`.
+*   **Toggles**: `F12` to show/hide hidden characters.
+
+### 🍎 macOS System Optimizations
+The script applies professional defaults for high-performance workflows:
+*   **Input**: Ultra-fast key repeat rates (Delay: 15, Repeat: 1).
+*   **Trackpad**: Enables tap-to-click by default.
+*   **Finder**: Shows all file extensions; disables extension change warnings.
+*   **Dock**: Auto-hide enabled with zero delay and optimized icon sizes.
+*   **Security**: Disables quarantine for downloaded applications.
 
 ### 🔐 Secure SSH & Git
-*   **Priority Configuration**: Prepends `Include` directives to ensure dotfiles settings take precedence over local host matches.
+*   **Priority Configuration**: Prepends `Include` directives to ensure dotfiles take precedence.
 *   **Permissions**: Automatically enforces strict `700/600` permissions on all SSH components.
 
 ---
 
 ## 🧪 Robust CI/CD
 
-To ensure the bootstrap script remains highly reliable, this repository features an extensive GitHub Actions pipeline:
-1.  **Strict Linting**: Automated syntax validation using `zsh -n` and headless Vim execution.
-2.  **Matrix Testing**: Concurrent testing on `macos-latest` (Workstation) and `ubuntu-latest` (Server).
-3.  **Dry-Run Assertions**: Verifies that safe-execution modes don't unintentionally alter the CI environment.
+To ensure reliability, this repository features an extensive GitHub Actions pipeline:
+1.  **Strict Linting**: Automated syntax validation for `dot.sh` and `zsh` components.
+2.  **Matrix Testing**: Concurrent testing on `macos-latest` and `ubuntu-latest`.
+3.  **Dry-Run Assertions**: Verifies that safe-execution modes function correctly.
