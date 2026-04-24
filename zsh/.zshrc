@@ -33,8 +33,8 @@ plugins=(git colorize golang macos zsh-syntax-highlighting zsh-autosuggestions)
 
 source $OHMYZSH/oh-my-zsh.sh
 
-# iTerm2 Shell Integration
-[[ -e "$HOME/.iterm2_shell_integration.zsh" ]] && source "$HOME/.iterm2_shell_integration.zsh"
+# iTerm2 Shell Integration (Skip inside tmux to prevent Control Mode crashes)
+[[ -z "$TMUX" && -e "$HOME/.iterm2_shell_integration.zsh" ]] && source "$HOME/.iterm2_shell_integration.zsh"
 
 # Font Check for Agnoster Theme
 if [[ "$ZSH_THEME" == "agnoster" ]]; then
@@ -193,23 +193,27 @@ autoload -Uz add-zsh-hook
 
 # --- iTerm2 + Tmux Awareness ---
 function iterm2_tmux_visuals() {
-  # Only run if we are in iTerm2 (detected via session ID or terminal program)
+  # Only run if we are in iTerm2
   [[ "$ITERM_SESSION_ID" == "" && "$TERMINAL_EMULATOR" != "iTerm2" ]] && return
 
   if [[ -n "$TMUX" ]]; then
+    # Skip these sequences if we are likely in Control Mode (-CC)
+    # Control Mode sessions often set TERM=screen or tmux but are managed by iTerm2
+    [[ -n "$ITERM_SESSION_ID" && "$TERM" == "screen"* ]] && return
+
     # 1. Set Large Badge (Session Name)
     local session_name=$(tmux display-message -p '#S' 2>/dev/null || echo "TMUX")
     printf "\e]1337;SetBadgeFormat=%s\a" $(echo -n "$session_name" | base64)
 
-    # 2. Shift Background (Slightly darker/distinct tint)
+    # 2. Shift Background
     printf "\e]11;#0f1419\a"
 
-    # 3. Color the Tab (Amber/Orange for visibility)
+    # 3. Color the Tab
     printf "\e]6;1;bg;red;brightness;255\a"
     printf "\e]6;1;bg;green;brightness;180\a"
     printf "\e]6;1;bg;blue;brightness;0\a"
   else
-    # RESET visuals when not in Tmux
+    # RESET visuals
     printf "\e]1337;SetBadgeFormat=%s\a" $(echo -n "" | base64)
     printf "\e]11;default\a" 
     printf "\e]6;1;bg;*;default\a"
@@ -221,5 +225,8 @@ add-zsh-hook preexec title_preexec
 add-zsh-hook precmd iterm2_tmux_visuals
 
 # Load Aliases
-[[ -f "$DOT/zsh/aliases.zsh" ]] && source "$DOT/zsh/aliases.zsh"
+[[ -f "$HOME/.aliases.zsh" ]] && source "$HOME/.aliases.zsh"
+
+# Load Local Overrides
+[[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
 

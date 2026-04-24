@@ -198,6 +198,7 @@ setup_git() {
 link_configs() {
     log_info "Step 4: Linking Configurations..."
     safe_link "$DOTFILES_DIR/zsh/.zshrc" "$HOME/.zshrc"
+    safe_link "$DOTFILES_DIR/zsh/aliases.zsh" "$HOME/.aliases.zsh"
     safe_link "$DOTFILES_DIR/vim/.vimrc" "$HOME/.vimrc"
     
     if [[ "$WORK_MODE" == "linux-server" ]]; then
