@@ -196,11 +196,6 @@ function iterm2_tmux_visuals() {
   # Only run if we are in iTerm2
   [[ "$ITERM_SESSION_ID" == "" && "$TERMINAL_EMULATOR" != "iTerm2" ]] && return
 
-  # SAFETY: Disable these visuals inside tmux when using iTerm2. 
-  # iTerm2's tmux Control Mode (-CC) is extremely sensitive to escape sequences
-  # and will detach if it receives unexpected output from the shell.
-  [[ -n "$TMUX" ]] && return
-
   if [[ -n "$TMUX" ]]; then
     # 1. Set Large Badge (Session Name)
     local session_name=$(tmux display-message -p '#S' 2>/dev/null || echo "TMUX")
