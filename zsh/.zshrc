@@ -194,8 +194,6 @@ autoload -Uz add-zsh-hook
 # --- iTerm2 + Tmux Awareness ---
 function iterm2_tmux_visuals() {
   # Only run if we are in iTerm2
-  [[ "$ITERM_SESSION_ID" == "" && "$TERMINAL_EMULATOR" != "iTerm2" ]] && return
-
   if [[ -n "$TMUX" ]]; then
     # 1. Set Large Badge (Session Name)
     local session_name=$(tmux display-message -p '#S' 2>/dev/null || echo "TMUX")
