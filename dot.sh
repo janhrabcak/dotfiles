@@ -319,15 +319,9 @@ setup_macos() {
 }
 
 run_smoke_tests() {
-    log_info "🧪 Running Smoke Tests..."
-    local errors=0
-    [[ -L "$HOME/.zshrc" ]] || ((errors++))
-    grep -q "Include $DOTFILES_DIR/ssh/config" "$HOME/.ssh/config" || ((errors++))
-    if [[ $errors -eq 0 ]]; then
-        echo "\n⭐ VERIFICATION SUCCESSFUL."
-    else
-        log_error "VERIFICATION FAILED: $errors errors detected."
-    fi
+    log_info "🧪 Running Post-Install Verification..."
+    # Call doctor but capture its success
+    run_doctor
 }
 
 run_doctor() {
@@ -338,7 +332,6 @@ run_doctor() {
     local links=(
         "zsh/.zshrc:$HOME/.zshrc"
         "vim/.vimrc:$HOME/.vimrc"
-        "ssh/config:$HOME/.ssh/config"
     )
     for pair in "${links[@]}"; do
         local src="$DOTFILES_DIR/${pair%%:*}"
@@ -351,6 +344,15 @@ run_doctor() {
             ((errors++))
         fi
     done
+
+    # 1.5 SSH Inclusion Check
+    local ssh_conf="$HOME/.ssh/config"
+    if [[ -f "$ssh_conf" ]] && grep -q "Include $DOTFILES_DIR/ssh/config" "$ssh_conf"; then
+        log_success "SSH: Include directive present in $ssh_conf"
+    else
+        log_error "SSH: Include directive MISSING in $ssh_conf"
+        ((errors++))
+    fi
 
     # 2. SSH Agent Check
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -428,7 +430,7 @@ main() {
     if [ "$RUN_TESTS" = true ]; then
         run_smoke_tests
     else
-        echo "\n✨ Setup complete! Run with --test to verify integrity."
+        echo "\n✨ Setup complete! Run with --doctor or --test to verify integrity."
     fi
 }
 
