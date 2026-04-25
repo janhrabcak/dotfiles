@@ -343,7 +343,8 @@ run_doctor() {
     for pair in "${links[@]}"; do
         local src="$DOTFILES_DIR/${pair%%:*}"
         local dest="${pair#*:}"
-        if [[ -L "$dest" && "$(readlink "$dest")" == "$src" ]]; then
+        # Resolve both to absolute physical paths before comparing
+        if [[ -L "$dest" && "${dest:A}" == "${src:A}" ]]; then
             log_success "Link OK: $(basename "$dest")"
         else
             log_error "Link BROKEN: $(basename "$dest") -> expected $src"
