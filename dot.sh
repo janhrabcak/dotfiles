@@ -336,7 +336,7 @@ run_doctor() {
 
     # 1. Symlink Checks
     local links=(
-        ".zshrc:$HOME/.zshrc"
+        "zsh/.zshrc:$HOME/.zshrc"
         "vim/.vimrc:$HOME/.vimrc"
         "ssh/config:$HOME/.ssh/config"
     )
