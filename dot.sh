@@ -14,6 +14,7 @@ BACKUP_DIR="$HOME/.dotfiles.backup/$(date +%Y%m%d_%H%M%S)"
 DRY_RUN=false
 REMOTE_MODE=false
 WORK_MODE="macos"
+ONLY_STEP=""
 
 # --- Logging Helpers ---
 log_info()    { echo "\033[0;34m[INFO]\033[0m  $1"; }
@@ -27,6 +28,7 @@ while [[ "$#" -gt 0 ]]; do
         --dry-run|-d) DRY_RUN=true; log_warn "DRY RUN MODE ENABLED."; shift ;;
         --remote)    REMOTE_MODE=true; shift ;;
         --mode)      WORK_MODE="$2"; shift 2 ;;
+        --only)      ONLY_STEP="$2"; shift 2 ;;
         --test)      RUN_TESTS=true; shift ;;
         *) echo "Unknown parameter: $1"; shift ;;
     esac
@@ -180,7 +182,7 @@ setup_zsh() {
     log_success "Zsh environment ready."
 }
 
-install_vim_plug() {
+setup_vim() {
     log_info "Step 3: Setting up Vim..."
     local PLUG_URL="https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim"
     local PLUG_DEST="$HOME/.vim/autoload/plug.vim"
@@ -196,7 +198,7 @@ install_vim_plug() {
     log_success "Vim ready."
 }
 
-install_tmux_tpm() {
+setup_tmux() {
     if [[ "$WORK_MODE" == "linux-server" ]]; then
         log_info "Step 4: Setting up Tmux..."
         local TPM_DIR="$HOME/.tmux/plugins/tpm"
@@ -331,9 +333,21 @@ run_smoke_tests() {
 main() {
     check_dependencies
     if [ "$REMOTE_MODE" = true ]; then download_assets; fi
+
+    if [ -n "$ONLY_STEP" ]; then
+        if declare -f "$ONLY_STEP" > /dev/null; then
+            log_info "Running targeted step: $ONLY_STEP..."
+            eval "$ONLY_STEP"
+            exit 0
+        else
+            log_error "Function '$ONLY_STEP' does not exist."
+            exit 1
+        fi
+    fi
+
     setup_zsh
-    install_vim_plug
-    install_tmux_tpm
+    setup_vim
+    setup_tmux
     setup_git
     setup_ssh
     setup_iterm2
