@@ -40,8 +40,8 @@ Deploy your environment with a single command:
 *   **Stability**: Silenced TPM output and "Silent Terminators" (`\e\\`) for bell-free handshake safety.
 
 ### 🐚 Shell & Terminal (Zsh)
-*   **Theme**: Environment-aware `agnoster` theme.
-    *   **Google Rainbow**: Automatic banding for Google hosts.
+*   **Unified Theme**: **Solarized Dark** across Zsh, Vim, and iTerm2 for a seamless, high-performance aesthetic.
+*   **Shell**: Environment-aware `agnoster` prompt.
 *   **Identity**: Integrated **1Password SSH Agent** (macOS) and stable symlinks (Linux) for seamless key management.
 *   **Shortcuts**:
     *   **Git**: `gs` (status), `ga` (add), `gc` (commit), `gp` (push), `gl` (graph log).

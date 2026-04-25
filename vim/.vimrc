@@ -12,6 +12,7 @@ else
   Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
   Plug 'tpope/vim-fugitive'
   Plug 'preservim/nerdtree'
+  Plug 'altercation/vim-colors-solarized'
   call plug#end()
 endif
 
@@ -36,10 +37,11 @@ set modelines=5
 
 " --- Visuals ---
 syntax on
+set background=dark
 try
-  colorscheme molokai
+  colorscheme solarized
 catch
-  " Fallback if molokai is not installed
+  " Fallback if solarized is not installed
   colorscheme desert
 endtry
 set showmatch
