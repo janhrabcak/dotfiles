@@ -122,8 +122,9 @@ check_dependencies() {
         fi
     done
 
-    if [[ "$OSTYPE" == "darwin"* && ! -d "/Applications/iTerm.app" ]]; then
-        missing+=("iTerm2 (App)")
+    # Check for iTerm2 on macOS (skip in CI)
+    if [[ "$OSTYPE" == "darwin"* && "$GITHUB_ACTIONS" != "true" ]]; then
+        [[ -d "/Applications/iTerm.app" ]] || missing+=("iTerm2 (App)")
     fi
 
     if [ ${#missing[@]} -ne 0 ]; then
