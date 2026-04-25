@@ -1,4 +1,4 @@
-# 🚀 Dotfiles Bootstrapper (v2.3)
+# 🚀 Dotfiles Bootstrapper (v3.0)
 
 ![CI State](https://github.com/janhrabcak/dotfiles/actions/workflows/test.yml/badge.svg)
 
@@ -14,6 +14,8 @@ Deploy your environment with a single command:
 
 ### Script Flags
 *   `--remote`: Downloads the latest archive directly from GitHub.
+*   `--doctor`: Runs a deep diagnostic of the system health and symlinks.
+*   `--only <step>`: Runs a specific setup function only (e.g., `setup_vim`).
 *   `--dry-run`: Preview execution steps without modifying the system.
 *   `--test`: Runs a post-setup verification suite (Symlinks, Permissions, SSH).
 
@@ -23,7 +25,7 @@ Deploy your environment with a single command:
 
 *   **Zero Initial Dependency:** Uses only `curl` and `tar` for "day zero" setup.
 *   **Fail-Fast Reliability**: Critical operations halt execution on failure to prevent broken states.
-*   **Centralized Backups**: Displaced files are moved to a timestamped `~/.dotfiles.backup/` folder.
+*   **Diagnostic-First**: Built-in `--doctor` mode for proactive environment health checks.
 *   **Protocol Hardening**: Optimized for high-stability iTerm2 + Tmux Control Mode.
 
 ---
@@ -33,29 +35,27 @@ Deploy your environment with a single command:
 ### 💻 iTerm2 + Tmux Control Mode (`-CC`)
 *   **Native Windows**: Run tmux sessions as native iTerm2 windows/tabs.
 *   **Visual Awareness**:
-    *   **Tab Coloring**: iTerm2 tabs automatically turn **Amber/Orange** when inside tmux.
-    *   **Dynamic Badges**: Displays the session name as a badge in the corner.
-*   **Stability**: Silenced TPM output and strict resize-management for handshake safety.
+    *   **Contextual Tab Coloring**: Tabs turn **Google Blue** on corporate hosts and **Tmux Orange** elsewhere.
+    *   **Power Context Badge**: Displays `user@host (session)` in the corner for 100% situational awareness.
+*   **Stability**: Silenced TPM output and "Silent Terminators" (`\e\\`) for bell-free handshake safety.
 
 ### 🐚 Shell & Terminal (Zsh)
 *   **Theme**: Environment-aware `agnoster` theme.
-    *   **Google Rainbow**: Automatic banding for Google hosts. Switch styles via `gprompt-font` or `gprompt-bg`.
+    *   **Google Rainbow**: Automatic banding for Google hosts.
 *   **Identity**: Integrated **1Password SSH Agent** (macOS) and stable symlinks (Linux) for seamless key management.
 *   **Shortcuts**:
     *   **Git**: `gs` (status), `ga` (add), `gc` (commit), `gp` (push), `gl` (graph log).
-    *   **Tmux**: `tcc` (Control Mode), `tn` (new), `ta` (attach), `ssh-cc` (remote control mode).
+    *   **Tmux**: `tcc` (Control Mode), `tn` (new), `ta` (attach).
 
 ### 📝 Editor (Vim)
 *   **Plugin Management**: Automated installation of `vim-plug`.
 *   **Go Development**: Pre-configured `vim-go` with leader shortcuts:
     *   `,r` (Run), `,b` (Build), `,t` (Test), `,c` (Coverage).
-*   **Toggles**: `F12` to show/hide hidden characters.
 
 ### 🍎 macOS System Optimizations
 The script applies professional defaults for high-performance workflows:
 *   **Input**: Ultra-fast key repeat rates (Delay: 15, Repeat: 1).
 *   **Trackpad**: Enables tap-to-click by default.
-*   **Finder**: Shows all file extensions; disables extension change warnings.
 *   **Dock**: Auto-hide enabled with zero delay.
 
 ---
@@ -75,20 +75,17 @@ This section documents deep engineering decisions and established patterns for m
 
 ### 1. The Bootstrap Engine (`dot.sh`)
 *   **Execute Wrapper**: Uses `execute "cmd" true` for critical steps. Halts on failure.
-*   **Modular Tool Phases**: Each tool (Zsh, Vim, Tmux) has a dedicated `setup_` or `install_` function that handles its own dependencies, linking, and post-installation tasks in an isolated lifecycle.
-*   **Backup Logic**: NEVER use `.bak` suffixes. All displaced files move to `~/.dotfiles.backup/`.
-*   **Dependency Check**: Step 0 enforces CLI tools and `iTerm2.app` (on macOS).
+*   **Modular Tool Phases**: Each tool (Zsh, Vim, Tmux) has a dedicated `setup_` function that handles its own dependencies, linking, and post-installation tasks.
+*   **Doctor Logic**: The `--doctor` flag performs non-destructive health checks (Symlink integrity, SSH socket reachability, iTerm2 preference sync status).
 
 ### 2. SSH Agent Strategy
 *   **macOS**: Uses 1Password SSH agent directly.
 *   **Linux**: Uses a **Stable Symlink** at `~/.ssh/ssh_auth_sock`. This ensures remote tmux sessions stay connected to forwarded agents after re-attachment.
-*   **Priority Configuration**: The script **prepends** `Include` directives in `~/.ssh/config`.
 
 ### 3. iTerm2 Control Mode Hardening
-*   **Handshake Protection**: Protects the protocol by silencing TPM (`> /dev/null 2>&1`), disabling `focus-events`, and overriding `aggressive-resize` at the end of `tmux.conf`.
+*   **Handshake Protection**: Protects the protocol by silencing TPM and using **String Terminators (`\e\\`)** instead of **Bells (`\a`)** for visual hooks.
 *   **Window Management**: Suppresses the Tmux Dashboard and opens all windows as native tabs (`OpenTmuxWindowsAs -int 0`).
 
 ### 4. Known Gotchas
-*   **iTerm2 Plist**: Preference sync ONLY works if `com.googlecode.iterm2.plist` (binary/xml) exists in `iterm2/`. JSON is not supported for direct loading.
+*   **iTerm2 Plist**: Preference sync ONLY works if `com.googlecode.iterm2.plist` exists in `iterm2/`. JSON is not supported for direct loading.
 *   **Tmux Environment**: `SSH_AUTH_SOCK` must be in the `update-environment` list in `tmux.conf`.
-*   **Zsh Hooks**: Visual escape sequences must be guarded with `[[ -n "$TMUX" && -z "$ITERM_TAB_DONE" ]]` to prevent protocol corruption.

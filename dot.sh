@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
 # ==============================================================================
-# BOOTSTRAP SCRIPT (v2.3)
+# BOOTSTRAP SCRIPT (v3.0)
 # ==============================================================================
 
 set -e 
@@ -29,6 +29,7 @@ while [[ "$#" -gt 0 ]]; do
         --remote)    REMOTE_MODE=true; shift ;;
         --mode)      WORK_MODE="$2"; shift 2 ;;
         --only)      ONLY_STEP="$2"; shift 2 ;;
+        --doctor)    RUN_DOCTOR=true; shift ;;
         --test)      RUN_TESTS=true; shift ;;
         *) echo "Unknown parameter: $1"; shift ;;
     esac
@@ -329,9 +330,78 @@ run_smoke_tests() {
     fi
 }
 
+run_doctor() {
+    log_info "🩺 Starting Dotfiles Diagnostic..."
+    local errors=0
+
+    # 1. Symlink Checks
+    local links=(
+        ".zshrc:$HOME/.zshrc"
+        "vim/.vimrc:$HOME/.vimrc"
+        "ssh/config:$HOME/.ssh/config"
+    )
+    for pair in "${links[@]}"; do
+        local src="$DOTFILES_DIR/${pair%%:*}"
+        local dest="${pair#*:}"
+        if [[ -L "$dest" && "$(readlink "$dest")" == "$src" ]]; then
+            log_success "Link OK: $(basename "$dest")"
+        else
+            log_error "Link BROKEN: $(basename "$dest") -> expected $src"
+            ((errors++))
+        fi
+    done
+
+    # 2. SSH Agent Check
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        local socket="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+        if [[ -S "$socket" ]]; then
+            log_success "SSH Agent: 1Password socket found."
+        else
+            log_error "SSH Agent: 1Password socket MISSING."
+            ((errors++))
+        fi
+    else
+        if [[ -L "$HOME/.ssh/ssh_auth_sock" ]]; then
+            log_success "SSH Agent: Stable symlink OK."
+        else
+            log_error "SSH Agent: Stable symlink MISSING."
+            ((errors++))
+        fi
+    fi
+
+    # 3. iTerm2 Sync Check
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        local pref_folder=$(defaults read com.googlecode.iterm2 PrefsCustomFolder 2>/dev/null)
+        if [[ "$pref_folder" == "$DOTFILES_DIR/iterm2" ]]; then
+            log_success "iTerm2: Preferences correctly linked."
+        else
+            log_warn "iTerm2: Preferences pointing to $pref_folder (not $DOTFILES_DIR/iterm2)"
+        fi
+    fi
+
+    # 4. Repo Health
+    if git -C "$DOTFILES_DIR" diff-index --quiet HEAD --; then
+        log_success "Repo: Workspace is clean."
+    else
+        log_warn "Repo: You have uncommitted changes in $DOTFILES_DIR"
+    fi
+
+    echo "\n--- Diagnostic Summary ---"
+    if [[ $errors -eq 0 ]]; then
+        log_success "All systems operational. Your environment is healthy!"
+    else
+        log_error "Detected $errors issues. Run dot.sh to repair."
+    fi
+}
+
 # --- Main Execution ---
 
 main() {
+    if [ "$RUN_DOCTOR" = true ]; then
+        run_doctor
+        exit 0
+    fi
+
     check_dependencies
     if [ "$REMOTE_MODE" = true ]; then download_assets; fi
 
