@@ -113,10 +113,10 @@ add-zsh-hook preexec () { set_terminal_title "${1[(w)1]} | %~" }
 if [[ -n "$TMUX" && -z "$ITERM_TAB_DONE" ]]; then
     if [[ -n "$ITERM_SESSION_ID" || "$LC_TERMINAL" == "iTerm2" || "$TERMINAL_EMULATOR" == "iTerm2" ]]; then
         # Orange Tab & Power Context Badge (user@host | session)
-        printf "\e]6;1;bg;red;brightness;255\a\e]6;1;bg;green;brightness;180\a\e]6;1;bg;blue;brightness;0\a"
+        printf "\e]6;1;bg;red;brightness;255\e\\\e]6;1;bg;green;brightness;180\e\\\e]6;1;bg;blue;brightness;0\e\\"
         local session_name=$(tmux display-message -p '#S' 2>/dev/null || echo "tmux")
         local badge_text=$(print -Pn "%n@%m ($session_name)")
-        printf "\e]1337;SetBadgeFormat=%s\a" $(echo -n "$badge_text" | base64)
+        printf "\e]1337;SetBadgeFormat=%s\e\\" $(echo -n "$badge_text" | base64)
         export ITERM_TAB_DONE=1
     fi
 fi
