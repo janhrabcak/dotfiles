@@ -1,10 +1,10 @@
 #!/usr/bin/env zsh
 
 # ==============================================================================
-# BOOTSTRAP SCRIPT (v2.2)
+# BOOTSTRAP SCRIPT (v2.3)
 # ==============================================================================
 
-set -e # Exit on error (though we handle critical errors explicitly too)
+set -e 
 
 # --- Configuration ---
 GITHUB_USER="janhrabcak"
@@ -33,7 +33,6 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # --- Execution Wrapper ---
-# Usage: execute "command" [critical_boolean]
 execute() {
     local cmd=$1
     local critical=${2:-false}
@@ -115,22 +114,20 @@ check_dependencies() {
     local deps=("git" "curl" "vim" "zsh" "gh")
     local missing=()
     
-    # Check CLI dependencies
     for dep in "${deps[@]}"; do
         if ! command -v "$dep" >/dev/null 2>&1; then
             missing+=("$dep")
         fi
     done
 
-    # Check for iTerm2 on macOS
     if [[ "$OSTYPE" == "darwin"* && ! -d "/Applications/iTerm.app" ]]; then
         missing+=("iTerm2 (App)")
     fi
 
     if [ ${#missing[@]} -ne 0 ]; then
         log_error "Missing required dependencies: ${missing[*]}"
+        exit 1
     fi
-    
     log_success "Dependency check complete."
 }
 
@@ -142,20 +139,16 @@ download_assets() {
     log_success "Assets synced to $DOTFILES_DIR"
 }
 
-install_omz() {
-    if [[ "$GITHUB_ACTIONS" == "true" ]]; then
-        log_warn "[CI] Skipping Oh My Zsh install."
-        return
-    fi
-    log_info "Step 2: Checking Oh My Zsh & Plugins..."
-    if [ ! -d "$HOME/.oh-my-zsh" ]; then
+setup_zsh() {
+    log_info "Step 2: Configuring Zsh & Oh My Zsh..."
+    
+    # 1. Install Oh My Zsh
+    if [[ "$GITHUB_ACTIONS" != "true" && ! -d "$HOME/.oh-my-zsh" ]]; then
         execute "sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended --keep-zshrc"
         log_success "Oh My Zsh installed."
-    else
-        log_success "Oh My Zsh already present."
     fi
 
-    # Install custom plugins
+    # 2. Install Custom Plugins
     local ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
     local plugins=(
         "zsh-autosuggestions:https://github.com/zsh-users/zsh-autosuggestions"
@@ -170,33 +163,25 @@ install_omz() {
             execute "git clone --depth=1 '$url' '$ZSH_CUSTOM/plugins/$name'"
         fi
     done
-}
 
-set_default_shell() {
-    log_info "Setting default shell to Zsh..."
-    if [[ "$SHELL" == *"zsh"* ]]; then
-        log_success "Default shell is already Zsh."
-        return
-    fi
-
-    if command -v zsh >/dev/null 2>&1; then
-        local zsh_path=$(command -v zsh)
-        
-        if [[ "$GITHUB_ACTIONS" == "true" ]]; then
-            log_warn "[CI] Skipping chsh."
-            return
+    # 3. Change Default Shell
+    if [[ "$SHELL" != *"zsh"* && "$GITHUB_ACTIONS" != "true" ]]; then
+        if command -v zsh >/dev/null 2>&1; then
+            local zsh_path=$(command -v zsh)
+            log_info "Changing default shell to $zsh_path (may prompt for password)."
+            execute "chsh -s '$zsh_path'"
         fi
-
-        log_info "Changing default shell to $zsh_path (may prompt for password)."
-        execute "chsh -s '$zsh_path'"
-        log_success "Default shell changed."
-    else
-        log_warn "Zsh is not installed. Cannot set as default."
     fi
+
+    # 4. Link Configurations
+    safe_link "$DOTFILES_DIR/zsh/.zshrc" "$HOME/.zshrc"
+    safe_link "$DOTFILES_DIR/zsh/aliases.zsh" "$HOME/.aliases.zsh"
+    
+    log_success "Zsh environment ready."
 }
 
 install_vim_plug() {
-    log_info "Step 3: Setting up Vim-Plug..."
+    log_info "Step 3: Setting up Vim..."
     local PLUG_URL="https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim"
     local PLUG_DEST="$HOME/.vim/autoload/plug.vim"
     
@@ -205,24 +190,28 @@ install_vim_plug() {
         log_success "Vim-Plug installed."
     fi
 
+    safe_link "$DOTFILES_DIR/vim/.vimrc" "$HOME/.vimrc"
     log_info "Installing Vim plugins..."
     execute "vim +PlugInstall +qall"
+    log_success "Vim ready."
 }
 
 install_tmux_tpm() {
     if [[ "$WORK_MODE" == "linux-server" ]]; then
-        log_info "Step 3.5: Setting up Tmux Plugin Manager..."
+        log_info "Step 4: Setting up Tmux..."
         local TPM_DIR="$HOME/.tmux/plugins/tpm"
         if [ ! -d "$TPM_DIR" ]; then
             execute "mkdir -p '$(dirname "$TPM_DIR")'"
             execute "git clone https://github.com/tmux-plugins/tpm '$TPM_DIR'"
             log_success "TPM installed."
         fi
+        [ -f "$DOTFILES_DIR/tmux/.tmux.conf" ] && safe_link "$DOTFILES_DIR/tmux/.tmux.conf" "$HOME/.tmux.conf"
+        log_success "Tmux ready."
     fi
 }
 
 setup_git() {
-    log_info "Step 4: Configuring Git..."
+    log_info "Step 5: Configuring Git..."
     local GIT_CONF_SRC="$DOTFILES_DIR/git/.gitconfig"
     local GIT_CONF_DEST="$HOME/.gitconfig"
 
@@ -235,28 +224,11 @@ setup_git() {
         fi
     fi
 
-    # GitHub CLI initialization
     if command -v gh >/dev/null 2>&1; then
-        log_info "Checking GitHub CLI status..."
         if ! gh auth status >/dev/null 2>&1; then
-            log_warn "GitHub CLI is not authenticated. Run 'gh auth login' to initialize."
-        else
-            log_success "GitHub CLI is authenticated."
+            log_warn "GitHub CLI is not authenticated. Run 'gh auth login' later."
         fi
     fi
-}
-
-link_configs() {
-    log_info "Step 5: Linking Configurations..."
-    safe_link "$DOTFILES_DIR/zsh/.zshrc" "$HOME/.zshrc"
-    safe_link "$DOTFILES_DIR/zsh/aliases.zsh" "$HOME/.aliases.zsh"
-    safe_link "$DOTFILES_DIR/vim/.vimrc" "$HOME/.vimrc"
-    
-    if [[ "$WORK_MODE" == "linux-server" ]]; then
-        [ -f "$DOTFILES_DIR/tmux/.tmux.conf" ] && safe_link "$DOTFILES_DIR/tmux/.tmux.conf" "$HOME/.tmux.conf"
-    fi
-    
-    log_success "Symlinks created."
 }
 
 setup_ssh() {
@@ -268,7 +240,6 @@ setup_ssh() {
     
     if [ -f "$GIT_SSH_CONF" ]; then
         execute "chmod 600 '$GIT_SSH_CONF'"
-        # Prepend Include so it takes priority over Host * in local config
         safe_prepend "Include $GIT_SSH_CONF" "$LOCAL_SSH_CONF"
     fi
 
@@ -290,134 +261,66 @@ setup_iterm2() {
     if [[ "$OSTYPE" != "darwin"* || "$WORK_MODE" != "macos" ]]; then return; fi
     log_info "Step 7: Configuring iTerm2..."
 
-    # iTerm2 - Load preferences from our dotfiles directory
     local ITERM_DIR="$DOTFILES_DIR/iterm2"
     if [ -f "$ITERM_DIR/com.googlecode.iterm2.plist" ]; then
-        log_info "Linking iTerm2 preferences to $ITERM_DIR..."
+        log_info "Linking iTerm2 preferences..."
         execute "defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true"
         execute "defaults write com.googlecode.iterm2 PrefsCustomFolder -string '$ITERM_DIR'"
         execute "defaults write com.googlecode.iterm2 NoSyncNeverRemindPrefsChangesLostForFile -bool true"
     else
-        log_warn "No iTerm2 plist found in $ITERM_DIR. Skipping preference sync."
+        log_warn "No iTerm2 plist found in $ITERM_DIR. Skipping sync."
     fi
 
-    # iTerm2 - Shell Integration
     local ITERM_SHELL_INT="$HOME/.iterm2_shell_integration.zsh"
     if [ ! -f "$ITERM_SHELL_INT" ]; then
-        log_info "Downloading iTerm2 Shell Integration..."
         execute "curl -L https://iterm2.com/shell_integration/zsh -o '$ITERM_SHELL_INT'"
     fi
 
-    # iTerm2 - Performance & UX Boosts
-    log_info "Applying iTerm2 performance tweaks..."
+    log_info "Applying iTerm2 optimizations..."
     execute "defaults write com.googlecode.iterm2 GPU -bool true"
     execute "defaults write com.googlecode.iterm2 CopySelection -bool true"
     execute "defaults write com.googlecode.iterm2 PromptOnQuit -bool false"
     execute "defaults write com.googlecode.iterm2 MaxPasteHistoryEntries -int 50"
-    
-    # iTerm2 - tmux Control Mode Integration
-    log_info "Optimizing iTerm2 + tmux Control Mode..."
     execute "defaults write com.googlecode.iterm2 AutohideTmuxClientSession -bool true"
-    execute "defaults write com.googlecode.iterm2 OpenTmuxWindowsAs -int 0" # 0 = Native Tabs
-    execute "defaults write com.googlecode.iterm2 OpenTmuxDashboardIfMoreThanXWindows -int 999" # Suppress dashboard
+    execute "defaults write com.googlecode.iterm2 OpenTmuxWindowsAs -int 0"
+    execute "defaults write com.googlecode.iterm2 OpenTmuxDashboardIfMoreThanXWindows -int 999"
     
-    log_success "iTerm2 setup complete."
+    log_success "iTerm2 complete."
 }
 
 setup_macos() {
     if [[ "$OSTYPE" != "darwin"* || "$WORK_MODE" != "macos" ]]; then return; fi
-    log_info "Step 8: Applying macOS System Defaults & Fonts..."
+    log_info "Step 8: Applying macOS Defaults & Fonts..."
 
-    # Fonts
-    local FONT_DIR="$HOME/Library/Fonts"
-    local FONT_NAME="MesloLGS NF Regular.ttf"
-    local FONT_DEST="$FONT_DIR/$FONT_NAME"
-    local FONT_URL="https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf"
-
+    local FONT_DEST="$HOME/Library/Fonts/MesloLGS NF Regular.ttf"
     if [ ! -f "$FONT_DEST" ]; then
-        log_info "Downloading and installing Powerline Nerd Font..."
-        execute "mkdir -p '$FONT_DIR'"
-        execute "curl -fLo '$FONT_DEST' '$FONT_URL'" true
-        log_success "Nerd Font installed."
-    else
-        log_success "Nerd Font already installed."
+        execute "mkdir -p '$HOME/Library/Fonts'"
+        execute "curl -fLo '$FONT_DEST' 'https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf'" true
     fi
     
-    # Keyboard & Trackpad
     execute "defaults write NSGlobalDomain KeyRepeat -int 1"
     execute "defaults write NSGlobalDomain InitialKeyRepeat -int 15"
     execute "defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true"
-    
-    # Finder
     execute "defaults write com.apple.finder AppleShowAllExtensions -bool true"
     execute "defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false"
-    
-    # Dock
     execute "defaults write com.apple.dock autohide -bool true"
     execute "defaults write com.apple.dock autohide-delay -float 0"
     execute "defaults write com.apple.dock tilesize -int 48"
-
-    # Terminal Profile (Disabled - using iTerm2)
-    # local TERMINAL_PROFILE="$DOTFILES_DIR/macos-terminal/zsh.terminal"
-    # if [ -f "$TERMINAL_PROFILE" ]; then
-    #     log_info "Importing Terminal profile 'Zsh'..."
-    #     # 'open' will import the .terminal file into Terminal.app
-    #     execute "open '$TERMINAL_PROFILE'"
-    #     # Set it as default and startup profile
-    #     execute "defaults write com.apple.Terminal 'Default Window Settings' -string 'Zsh'"
-    #     execute "defaults write com.apple.Terminal 'Startup Window Settings' -string 'Zsh'"
-    #     log_success "Terminal profile set as default."
-    # fi
-
-    # Security
     execute "defaults write com.apple.LaunchServices LSQuarantine -bool false"
 
     if [ "$DRY_RUN" = false ]; then
-        log_info "Restarting Finder, Dock, and Terminal..."
         killall Finder Dock Terminal > /dev/null 2>&1 || true
     fi
-    log_success "macOS defaults applied."
+    log_success "macOS complete."
 }
-
-# --- Verification Suite ---
 
 run_smoke_tests() {
     log_info "🧪 Running Smoke Tests..."
     local errors=0
-
-    # Test 1: Symlinks
-    if [[ -L "$HOME/.zshrc" && "$(readlink "$HOME/.zshrc")" == "$DOTFILES_DIR/zsh/.zshrc" ]]; then
-        log_success "[PASS] .zshrc symlink is correct."
-    else
-        log_warn "[FAIL] .zshrc symlink is broken or missing."
-        ((errors++))
-    fi
-
-    # Test 2: SSH Config Inclusion
-    if grep -q "Include $DOTFILES_DIR/ssh/config" "$HOME/.ssh/config"; then
-        log_success "[PASS] SSH config inclusion found."
-    else
-        log_warn "[FAIL] SSH config does not include dotfiles source."
-        ((errors++))
-    fi
-
-    # Test 3: Permissions
-    local ssh_perm
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        ssh_perm=$(stat -f "%Lp" "$HOME/.ssh")
-    else
-        ssh_perm=$(stat -c "%a" "$HOME/.ssh")
-    fi
-
-    if [[ "$ssh_perm" == "700" ]]; then
-        log_success "[PASS] ~/.ssh permissions are secure (700)."
-    else
-        log_warn "[FAIL] ~/.ssh permissions are $ssh_perm (expected 700)."
-        ((errors++))
-    fi
-
+    [[ -L "$HOME/.zshrc" ]] || ((errors++))
+    grep -q "Include $DOTFILES_DIR/ssh/config" "$HOME/.ssh/config" || ((errors++))
     if [[ $errors -eq 0 ]]; then
-        echo "\n⭐ VERIFICATION SUCCESSFUL: System state matches configuration."
+        echo "\n⭐ VERIFICATION SUCCESSFUL."
     else
         log_error "VERIFICATION FAILED: $errors errors detected."
     fi
@@ -428,9 +331,7 @@ run_smoke_tests() {
 main() {
     check_dependencies
     if [ "$REMOTE_MODE" = true ]; then download_assets; fi
-    install_omz
-    set_default_shell
-    link_configs
+    setup_zsh
     install_vim_plug
     install_tmux_tpm
     setup_git

@@ -75,6 +75,7 @@ This section documents deep engineering decisions and established patterns for m
 
 ### 1. The Bootstrap Engine (`dot.sh`)
 *   **Execute Wrapper**: Uses `execute "cmd" true` for critical steps. Halts on failure.
+*   **Modular Tool Phases**: Each tool (Zsh, Vim, Tmux) has a dedicated `setup_` or `install_` function that handles its own dependencies, linking, and post-installation tasks in an isolated lifecycle.
 *   **Backup Logic**: NEVER use `.bak` suffixes. All displaced files move to `~/.dotfiles.backup/`.
 *   **Dependency Check**: Step 0 enforces CLI tools and `iTerm2.app` (on macOS).
 
