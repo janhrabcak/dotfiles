@@ -112,19 +112,19 @@ add-zsh-hook preexec () { set_terminal_title "${1[(w)1]} | %~" }
 # iTerm2 + Tmux Startup Visuals (Safe One-Time Execution)
 if [[ -n "$TMUX" && -z "$ITERM_TAB_DONE" ]]; then
     if [[ -n "$ITERM_SESSION_ID" || "$LC_TERMINAL" == "iTerm2" || "$TERMINAL_EMULATOR" == "iTerm2" ]]; then
-        # iTerm2 Tab Coloring: Blue for Google, Orange for others
+        # iTerm2 Tab Coloring: Blue for Google, Orange for others (Robust Syntax)
         if [[ "$HOST" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
             # Google Blue
-            printf "\e]6;1;bg;red;brightness;66\e\\\e]6;1;bg;green;brightness;133\e\\\e]6;1;bg;blue;brightness;244\e\\"
+            print -rn $'\e]6;1;bg;red;brightness;66\e\\\e]6;1;bg;green;brightness;133\e\\\e]6;1;bg;blue;brightness;244\e\\'
         else
             # Tmux Orange
-            printf "\e]6;1;bg;red;brightness;255\e\\\e]6;1;bg;green;brightness;180\e\\\e]6;1;bg;blue;brightness;0\e\\"
+            print -rn $'\e]6;1;bg;red;brightness;255\e\\\e]6;1;bg;green;brightness;180\e\\\e]6;1;bg;blue;brightness;0\e\\'
         fi
 
         # Power Context Badge (user@host | session)
         local session_name=$(tmux display-message -p '#S' 2>/dev/null || echo "tmux")
         local badge_text=$(print -Pn "%n@%m ($session_name)")
-        printf "\e]1337;SetBadgeFormat=%s\e\\" $(echo -n "$badge_text" | base64)
+        print -rn $'\e]1337;SetBadgeFormat='$(echo -n "$badge_text" | base64)$'\e\\'
         export ITERM_TAB_DONE=1
     fi
 fi
