@@ -109,22 +109,40 @@ add-zsh-hook preexec () { set_terminal_title "${1[(w)1]} | %~" }
 [[ -f "$HOME/.aliases.zsh" ]] && source "$HOME/.aliases.zsh"
 [[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
 
-# iTerm2 + Tmux Startup Visuals (Safe One-Time Execution)
-if [[ -n "$TMUX" && -z "$ITERM_TAB_DONE" ]]; then
-    if [[ -n "$ITERM_SESSION_ID" || "$LC_TERMINAL" == "iTerm2" || "$TERMINAL_EMULATOR" == "iTerm2" ]]; then
-        # iTerm2 Tab Coloring: Blue for Google, Orange for others (Robust Syntax)
-        if [[ "$HOST" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
-            # Google Blue
-            print -rn $'\e]6;1;bg;red;brightness;66\e\\\e]6;1;bg;green;brightness;133\e\\\e]6;1;bg;blue;brightness;244\e\\'
-        else
-            # Tmux Orange
-            print -rn $'\e]6;1;bg;red;brightness;255\e\\\e]6;1;bg;green;brightness;180\e\\\e]6;1;bg;blue;brightness;0\e\\'
-        fi
+# --- 6. iTerm2 + Tmux Visual Persistence ---
 
-        # Power Context Badge (user@host | session)
-        local session_name=$(tmux display-message -p '#S' 2>/dev/null || echo "tmux")
-        local badge_text=$(print -Pn "%n@%m ($session_name)")
-        print -rn $'\e]1337;SetBadgeFormat='$(echo -n "$badge_text" | base64)$'\e\\'
-        export ITERM_TAB_DONE=1
+typeset -g _ITERM_LAST_STATE=""
+typeset -g _ITERM_CMD_COUNT=0
+
+function refresh_iterm_visuals() {
+    # 1. Ultra-fast early exit
+    [[ -z "$TMUX" ]] && return
+    [[ -n "$ITERM_SESSION_ID" || "$LC_TERMINAL" == "iTerm2" || "$TERMINAL_EMULATOR" == "iTerm2" ]] || return
+
+    # 2. Throttling: Only run every 10th command OR if state might have changed
+    # We include SSH_CONNECTION to detect re-attaches from new locations
+    local current_state="${HOST}:${USER}:${SSH_CONNECTION:-local}:${TMUX_PANE}"
+    (( _ITERM_CMD_COUNT++ ))
+
+    if [[ "$current_state" == "$_ITERM_LAST_STATE" && $(( _ITERM_CMD_COUNT % 10 )) -ne 0 ]]; then
+        return
     fi
-fi
+    _ITERM_LAST_STATE="$current_state"
+
+    # 3. Get session name (The only "expensive" call, now throttled)
+    local session_name=$(tmux display-message -p '#S' 2>/dev/null || echo "tmux")
+    local badge_text=$(print -Pn "%n@%m ($session_name)")
+
+    # 4. Apply Visuals
+    if [[ "$HOST" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
+        # Google Blue
+        print -rn $'\e]6;1;bg;red;brightness;66\e\\\e]6;1;bg;green;brightness;133\e\\\e]6;1;bg;blue;brightness;244\e\\'
+    else
+        # Tmux Orange
+        print -rn $'\e]6;1;bg;red;brightness;255\e\\\e]6;1;bg;green;brightness;180\e\\\e]6;1;bg;blue;brightness;0\e\\'
+    fi
+    print -rn $'\e]1337;SetBadgeFormat='$(echo -n "$badge_text" | base64)$'\e\\'
+}
+
+# Refresh visuals via precmd hook
+add-zsh-hook precmd refresh_iterm_visuals
