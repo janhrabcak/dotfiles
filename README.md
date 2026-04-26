@@ -21,12 +21,23 @@ Deploy your environment with a single command:
 
 ---
 
-## 🏗️ Architecture & Design Principles
+## 🎨 iTerm2 Native Visuals (Setup Guide)
 
-*   **Zero Initial Dependency:** Uses only `curl` and `tar` for "day zero" setup.
-*   **Fail-Fast Reliability**: Critical operations halt execution on failure to prevent broken states.
-*   **Diagnostic-First**: Built-in `--doctor` mode for proactive environment health checks.
-*   **Protocol Hardening**: Optimized for high-stability iTerm2 + Tmux Control Mode.
+To keep the shell configs lean and high-performance, visual context (tab colors) is managed natively by iTerm2 using **Automatic Profile Switching (APS)**.
+
+### 1. Create Your Profiles
+1.  Open iTerm2 Preferences (`Cmd + ,`) > **Profiles**.
+2.  Duplicate your default profile twice:
+    *   Name one **"Tmux"**.
+    *   Name one **"Google"**.
+3.  Set the **Tab Color** for each:
+    *   "Tmux" Profile: Set Tab Color to **Orange**.
+    *   "Google" Profile: Set Tab Color to **Blue**.
+
+### 2. Configure Automatic Rules
+In each profile, go to the **Advanced** tab and look for **Automatic Profile Switching**:
+*   **Google Rules**: Add `*google.com*` (switches by hostname).
+*   **Tmux Rules**: Add `tmux` (switches by running job).
 
 ---
 
@@ -34,21 +45,19 @@ Deploy your environment with a single command:
 
 ### 💻 iTerm2 + Tmux Control Mode (`-CC`)
 *   **Native Windows**: Run tmux sessions as native iTerm2 windows/tabs.
-*   **Visual Awareness**:
-    *   **Contextual Tab Coloring**: Tabs turn **Google Blue** on corporate hosts and **Tmux Orange** elsewhere.
-    *   **Power Context Badge**: Displays `user@host (session)` in the corner for 100% situational awareness.
-*   **Stability**: Silenced TPM output and "Silent Terminators" (`\e\\`) for bell-free handshake safety.
+*   **Stability**: Silenced TPM output and strict resize-management for handshake safety.
 
 ### 🐚 Shell & Terminal (Zsh)
 *   **Unified Theme**: **Solarized Dark** across Zsh, Vim, and iTerm2 for a seamless, high-performance aesthetic.
-*   **Shell**: Environment-aware `agnoster` prompt.
 *   **Identity**: Integrated **1Password SSH Agent** (macOS) and stable symlinks (Linux) for seamless key management.
 *   **Shortcuts**:
     *   **Git**: `gs` (status), `ga` (add), `gc` (commit), `gp` (push), `gl` (graph log).
     *   **Tmux**: `tcc` (Control Mode), `tn` (new), `ta` (attach).
 
-### 📝 Editor (Vim)
-*   **Plugin Management**: Automated installation of `vim-plug`.
+### 📝 Editor (Vim - Power Pack)
+*   **Visuals**: **Lightline** for a premium, themed status bar.
+*   **Productivity**: **FZF** integration for ultra-fast file finding (`Ctrl + p`).
+*   **UX**: Persistent undo history, relative line numbers, and smart-case search.
 *   **Go Development**: Pre-configured `vim-go` with leader shortcuts:
     *   `,r` (Run), `,b` (Build), `,t` (Test), `,c` (Coverage).
 
@@ -60,32 +69,14 @@ The script applies professional defaults for high-performance workflows:
 
 ---
 
-## 🧪 Robust CI/CD
-
-To ensure reliability, this repository features an extensive GitHub Actions pipeline:
-1.  **Strict Linting**: Automated syntax validation for `dot.sh` and `zsh` components.
-2.  **Matrix Testing**: Concurrent testing on `macos-latest` and `ubuntu-latest`.
-3.  **Dry-Run Assertions**: Verifies that safe-execution modes function correctly.
-
----
-
 ## 🧠 Technical Appendix (Project Memory)
 
-This section documents deep engineering decisions and established patterns for maintainers and AI agents.
-
 ### 1. The Bootstrap Engine (`dot.sh`)
-*   **Execute Wrapper**: Uses `execute "cmd" true` for critical steps. Halts on failure.
-*   **Modular Tool Phases**: Each tool (Zsh, Vim, Tmux) has a dedicated `setup_` function that handles its own dependencies, linking, and post-installation tasks.
-*   **Doctor Logic**: The `--doctor` flag performs non-destructive health checks (Symlink integrity, SSH socket reachability, iTerm2 preference sync status).
+*   **Modular Tool Phases**: Each tool (Zsh, Vim, Tmux) has a dedicated `setup_` function.
+*   **Doctor Logic**: The `--doctor` flag performs deep physical path resolution (`:A`) to verify integrity even across symlinked directories.
 
 ### 2. SSH Agent Strategy
-*   **macOS**: Uses 1Password SSH agent directly.
-*   **Linux**: Uses a **Stable Symlink** at `~/.ssh/ssh_auth_sock`. This ensures remote tmux sessions stay connected to forwarded agents after re-attachment.
+*   **Linux/Remote**: Uses a **Stable Symlink** at `~/.ssh/ssh_auth_sock`. The `.zshrc` updates this symlink on every fresh login and forces all sub-shells (including those inside tmux) to reference it. This prevents "Dead Agent" syndrome when re-attaching to old sessions.
 
 ### 3. iTerm2 Control Mode Hardening
-*   **Handshake Protection**: Protects the protocol by silencing TPM and using **String Terminators (`\e\\`)** instead of **Bells (`\a`)** for visual hooks.
-*   **Window Management**: Suppresses the Tmux Dashboard and opens all windows as native tabs (`OpenTmuxWindowsAs -int 0`).
-
-### 4. Known Gotchas
-*   **iTerm2 Plist**: Preference sync ONLY works if `com.googlecode.iterm2.plist` exists in `iterm2/`. JSON is not supported for direct loading.
-*   **Tmux Environment**: `SSH_AUTH_SOCK` must be in the `update-environment` list in `tmux.conf`.
+*   **Protocol Protection**: All background output (like TPM initialization) is redirected to `/dev/null` to prevent corrupting the `-CC` handshake.

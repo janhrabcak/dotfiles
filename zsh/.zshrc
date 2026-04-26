@@ -40,7 +40,6 @@ setopt APPEND_HISTORY INC_APPEND_HISTORY SHARE_HISTORY
 setopt HIST_IGNORE_ALL_DUPS HIST_REDUCE_BLANKS EXTENDED_HISTORY
 
 # Better history searching with arrow keys
-autoload -Uz add-zsh-hook
 autoload -U up-line-or-beginning-search down-line-or-beginning-search
 zle -N up-line-or-beginning-search
 zle -N down-line-or-beginning-search
@@ -110,43 +109,45 @@ add-zsh-hook preexec () { set_terminal_title "${1[(w)1]} | %~" }
 [[ -f "$HOME/.aliases.zsh" ]] && source "$HOME/.aliases.zsh"
 [[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
 
-# --- 6. iTerm2 + Tmux Visual Persistence ---
+# --- 6. Custom Agnoster Prompt Segments ---
 
-typeset -g _ITERM_LAST_STATE=""
-typeset -g _ITERM_CMD_COUNT=0
-
-function refresh_iterm_visuals() {
-    # 1. Ultra-fast early exit
-    [[ -z "$TMUX" ]] && return
-    [[ -n "$ITERM_SESSION_ID" || "$LC_TERMINAL" == "iTerm2" || "$TERMINAL_EMULATOR" == "iTerm2" ]] || return
-
-    # 2. Throttling: Only run every 10th command OR if state might have changed
-    # We include SSH_CONNECTION to detect re-attaches from new locations
-    local current_state="${HOST}:${USER}:${SSH_CONNECTION:-local}:${TMUX_PANE}"
-    (( _ITERM_CMD_COUNT++ ))
-
-    if [[ "$current_state" == "$_ITERM_LAST_STATE" && $(( _ITERM_CMD_COUNT % 10 )) -ne 0 ]]; then
-        return
-    fi
-    _ITERM_LAST_STATE="$current_state"
-
-    # 3. Get session name (The only "expensive" call, now throttled)
-    local session_name=$(tmux display-message -p '#S' 2>/dev/null || echo "tmux")
-    local badge_text=$(print -Pn "%n@%m ($session_name)")
-
-    # 4. Apply Visuals
-    if [[ "$HOST" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
-        # Google Blue
-        print -rn $'\e]6;1;bg;red;brightness;66\e\\\e]6;1;bg;green;brightness;133\e\\\e]6;1;bg;blue;brightness;244\e\\'
-    else
-        # Tmux Orange
-        print -rn $'\e]6;1;bg;red;brightness;255\e\\\e]6;1;bg;green;brightness;180\e\\\e]6;1;bg;blue;brightness;0\e\\'
-    fi
-    print -rn $'\e]1337;SetBadgeFormat='$(echo -n "$badge_text" | base64)$'\e\\'
+# Google Rainbow Hostname (Colored Font)
+prompt_google_rainbow_font() {
+  local host_str=$(hostname -s)
+  local len=${#host_str}
+  local rainbow_colors=(196 208 226 40 21 93) # Red, Orange, Yellow, Green, Blue, Purple
+  local i
+  local output=""
+  
+  for (( i=0; i<len; i++ )); do
+    local char="${host_str:$i:1}"
+    local color=${rainbow_colors[$(( (i % ${#rainbow_colors[@]}) + 1 ))]}
+    output+="%F{$color}$char%f"
+  done
+  
+  if [[ "$HOST" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
+    prompt_segment black default "$output"
+  else
+    prompt_context
+  fi
 }
 
-# Refresh visuals via precmd hook
-add-zsh-hook precmd refresh_iterm_visuals
+# Override the default context segment
+prompt_context() {
+  if [[ "$USER" != "$DEFAULT_USER" || -n "$SSH_CLIENT" ]]; then
+    prompt_segment black default "%(!.%{%F{yellow}%}.)$USER@%m"
+  fi
+}
 
-# Trigger immediately on startup
-refresh_iterm_visuals
+# Re-define the prompt build order
+build_prompt() {
+  RETVAL=$?
+  prompt_status
+  prompt_virtualenv
+  prompt_google_rainbow_font
+  prompt_dir
+  prompt_git
+  prompt_bzr
+  prompt_hg
+  prompt_end
+}
