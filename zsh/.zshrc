@@ -111,43 +111,31 @@ add-zsh-hook preexec () { set_terminal_title "${1[(w)1]} | %~" }
 
 # --- 6. Custom Agnoster Prompt Segments ---
 
-# Google Rainbow Hostname (Colored Font)
-prompt_google_rainbow_font() {
-  local host_str=$(hostname -s)
-  local len=${#host_str}
-  local rainbow_colors=(196 208 226 40 21 93) # Red, Orange, Yellow, Green, Blue, Purple
-  local i
-  local output=""
-  
-  for (( i=0; i<len; i++ )); do
-    local char="${host_str:$i:1}"
-    local color=${rainbow_colors[$(( (i % ${#rainbow_colors[@]}) + 1 ))]}
-    output+="%F{$color}$char%f"
-  done
-  
-  if [[ "$HOST" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
-    prompt_segment black default "$output"
-  else
-    prompt_context
-  fi
-}
-
-# Override the default context segment
+# Context / Identity Segment (Unified Google & SSH Logic)
 prompt_context() {
-  if [[ "$USER" != "$DEFAULT_USER" || -n "$SSH_CLIENT" ]]; then
-    prompt_segment black default "%(!.%{%F{yellow}%}.)$USER@%m"
+  # 1. Google Identity (Official Brand Colors)
+  if [[ "$HOST" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
+    local h=$(hostname -s)
+    local c=(33 160 220 33 64 160) # Google Blue, Red, Yellow, Blue, Green, Red
+    local rb=""
+    for (( i=0; i<${#h}; i++ )); do rb+="%F{${c[i % 6 + 1]}}${h:i:1}%f"; done
+    prompt_segment black default "$rb"
+    return
+  fi
+
+  # 2. Standard SSH / Non-Default User (Red)
+  if [[ "$USER" != "$DEFAULT_USER" || -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
+    prompt_segment red black "%(!.%{%F{yellow}%}.)$USER@%m"
   fi
 }
 
-# Re-define the prompt build order
+# Clean Build Order
 build_prompt() {
   RETVAL=$?
   prompt_status
   prompt_virtualenv
-  prompt_google_rainbow_font
+  prompt_context
   prompt_dir
   prompt_git
-  prompt_bzr
-  prompt_hg
   prompt_end
 }
