@@ -6,10 +6,20 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 
 ## ⚡ Quick Start
 
-Deploy your environment with a single command:
+### Method 1: Remote Install (One-Liner)
+Deploy your environment directly from GitHub without cloning first:
 
 ```zsh
 /bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/janhrabcak/dotfiles/main/dot.sh)" -- --remote
+```
+
+### Method 2: Git Clone (Local Install)
+If you want to manage the repository locally or contribute:
+
+```zsh
+git clone https://github.com/janhrabcak/dotfiles.git ~/.dotfiles
+cd ~/.dotfiles
+./dot.sh
 ```
 
 ### Script Flags

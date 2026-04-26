@@ -404,7 +404,15 @@ main() {
     fi
 
     check_dependencies
-    if [ "$REMOTE_MODE" = true ]; then download_assets; fi
+    if [ "$REMOTE_MODE" = true ]; then 
+        download_assets
+    else
+        if [ ! -d "$DOTFILES_DIR" ]; then
+            log_error "Dotfiles directory ($DOTFILES_DIR) not found."
+            log_error "Please clone the repository there or run the script with --remote."
+            exit 1
+        fi
+    fi
 
     if [ -n "$ONLY_STEP" ]; then
         if declare -f "$ONLY_STEP" > /dev/null; then
