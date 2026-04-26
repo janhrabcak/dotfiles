@@ -48,44 +48,7 @@ bindkey "^[[B" down-line-or-beginning-search
 
 # --- 4. Custom Agnoster Prompt Segments ---
 
-# Google Rainbow Hostname (Colored Font)
-prompt_google_rainbow_font() {
-  local host_str=$(hostname -s)
-  local len=${#host_str}
-  local colors=(33 160 220 33 34 160)
-  local colored_host=""
-  for (( i=0; i<len; i++ )); do
-    local color=${colors[$(( (i % 6) + 1 ))]}
-    colored_host+="%{%F{$color}%}${host_str:$i:1}"
-  done
-  prompt_segment black white "%B%n@$colored_host%b"
-}
 
-# Google Rainbow Hostname (Banded Backgrounds)
-prompt_google_rainbow_bg() {
-  local host_str=$(hostname -s)
-  local colors=(33 160 220 33 34 160)
-  prompt_segment black white "%B%n@%b"
-  echo -n "%{%B%}"
-  for i in {1..6}; do
-    local segment="${host_str:$(( (i-1)*(${#host_str}/6) )):$(( ${#host_str}/6 + (${#host_str}%6 >= i ? 1 : 0) ))}"
-    [[ -z "$segment" ]] && continue
-    echo -n "%{%K{${colors[$i]}}%F{white}%}$segment"
-    CURRENT_BG=${colors[$i]}
-  done
-  echo -n "%{%b%}"
-}
-
-# Main Context Segment
-prompt_context() {
-  if [[ "$HOST" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
-    [[ "$GOOGLE_PROMPT" == "bg" ]] && prompt_google_rainbow_bg || prompt_google_rainbow_font
-  elif [[ -n "$SSH_CLIENT" ]]; then
-    prompt_segment red white "%n@%m"
-  elif [[ "$USER" != "$DEFAULT_USER" ]]; then
-    prompt_segment black white "%n@%m"
-  fi
-}
 
 # --- 5. Terminal Title & Hooks ---
 autoload -Uz add-zsh-hook
@@ -114,7 +77,7 @@ add-zsh-hook preexec () { set_terminal_title "${1[(w)1]} | %~" }
 # Context / Identity Segment (Unified Google & SSH Logic)
 prompt_context() {
   # 1. Google Identity (Official Brand Colors)
-  if [[ "$HOST" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
+  if [[ "$(hostname -s)" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
     local h=$(hostname -s)
     local c=(33 160 220 33 64 160) # Google Blue, Red, Yellow, Blue, Green, Red
     local rb=""

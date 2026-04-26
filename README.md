@@ -6,21 +6,13 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 
 ## ⚡ Quick Start
 
-### Method 1: Remote Install (One-Liner)
-Deploy your environment directly from GitHub without cloning first:
-
-```zsh
-/bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/janhrabcak/dotfiles/main/dot.sh)" -- --remote
-```
-
-### Method 2: Git Clone (Local Install)
-If you want to manage the repository locally or contribute:
-
-```zsh
-git clone https://github.com/janhrabcak/dotfiles.git ~/.dotfiles
-cd ~/.dotfiles
-./dot.sh
-```
+| Goal | Command |
+| :--- | :--- |
+| **Remote Install** (No clone) | `/bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/janhrabcak/dotfiles/main/dot.sh)" -- --remote` |
+| **Local Install** (Clone first) | `git clone https://github.com/janhrabcak/dotfiles.git ~/.dotfiles && cd ~/.dotfiles && ./dot.sh` |
+| **Self-Update** | `./dot.sh --update` |
+| **Check Health** | `./dot.sh --doctor` |
+| **Run Specific Step** | `./dot.sh --only setup_vim` |
 
 ### Script Flags
 *   `--remote`: Downloads the latest archive directly from GitHub.
@@ -45,19 +37,15 @@ To keep the shell configs lean and high-performance, visual context (tab colors)
     *   "Google" Profile: Set Tab Color to **Blue**.
 
 ### 2. Configure Automatic Rules
-In each profile, go to the **Advanced** tab and look for **Automatic Profile Switching**:
-*   **Google Rules**: Add `*google.com*` (switches by hostname).
-*   **Tmux Rules**: Add `tmux` (switches by running job).
+In each profile, go to the **Advanced** tab. At the very bottom, look for the **Automatic Profile Switching** section:
+*   **Google Rules**: Click the `+` button and add `*google*` (This matches your Google hostnames).
+*   **Tmux Rules**: Click the `+` button and add `tmux` (This matches the running job name).
 
 ---
 
 ## 🛠️ Feature Breakdown
 
-### 💻 iTerm2 + Tmux Control Mode (`-CC`)
-*   **Native Windows**: Run tmux sessions as native iTerm2 windows/tabs.
-*   **Stability**: Silenced TPM output and strict resize-management for handshake safety.
-
-### 🐚 Shell & Terminal (Zsh)
+### 🐚 Shell Environment (Zsh)
 *   **Unified Theme**: **Solarized Dark** across Zsh, Vim, and iTerm2 for a seamless, high-performance aesthetic.
 *   **Identity**: Integrated **1Password SSH Agent** (macOS) and stable symlinks (Linux) for seamless key management.
 *   **Shortcuts**:
@@ -68,10 +56,13 @@ In each profile, go to the **Advanced** tab and look for **Automatic Profile Swi
 *   **Visuals**: **Lightline** for a premium, themed status bar.
 *   **Productivity**: **FZF** integration for ultra-fast file finding (`Ctrl + p`).
 *   **UX**: Persistent undo history, relative line numbers, and smart-case search.
-*   **Go Development**: Pre-configured `vim-go` with leader shortcuts:
-    *   `,r` (Run), `,b` (Build), `,t` (Test), `,c` (Coverage).
+*   **Go Development**: Pre-configured `vim-go` with leader shortcuts.
 
-### 🍎 macOS System Optimizations
+### 💻 Terminal (iTerm2 & Tmux)
+*   **Native Windows**: Run tmux sessions as native iTerm2 windows/tabs via Control Mode (`-CC`).
+*   **Stability**: Strict resize-management and background redirection for handshake safety.
+
+### 🍎 macOS System Tweaks
 The script applies professional defaults for high-performance workflows:
 *   **Input**: Ultra-fast key repeat rates (Delay: 15, Repeat: 1).
 *   **Trackpad**: Enables tap-to-click by default.

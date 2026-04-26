@@ -3,7 +3,7 @@
 " ==============================================================================
 
 " --- 1. Plugin Management (Vim-Plug) ---
-if empty(glob('~/.vim/autoload/plug.vim'))
+if !filereadable(expand('~/.vim/autoload/plug.vim'))
   if !has('batch') | echohl WarningMsg | echo "Vim-Plug not found. Run bootstrap.sh to install." | echohl None | endif
 else
   call plug#begin('~/.vim/plugged')
@@ -31,7 +31,6 @@ set timeoutlen=250
 set hidden             " Allow buffer switching without saving
 set encoding=utf-8
 set nobackup           " No clunky backup files
-set nowritebackup
 set updatetime=300     " Faster completion/updates
 
 " Persistence: Remember undo history across sessions

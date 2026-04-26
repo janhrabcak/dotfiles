@@ -27,6 +27,7 @@ while [[ "$#" -gt 0 ]]; do
     case $1 in
         --dry-run|-d) DRY_RUN=true; log_warn "DRY RUN MODE ENABLED."; shift ;;
         --remote)    REMOTE_MODE=true; shift ;;
+        --update)    UPDATE_MODE=true; shift ;;
         --mode)      WORK_MODE="$2"; shift 2 ;;
         --only)      ONLY_STEP="$2"; shift 2 ;;
         --doctor)    RUN_DOCTOR=true; shift ;;
@@ -80,7 +81,7 @@ safe_prepend() {
     local line="$1"
     local file="$2"
     if [ ! -f "$file" ]; then execute "touch '$file'"; fi
-    if grep -qsF "$line" "$file"; then
+    if grep -qxF "$line" "$file"; then
         log_success "Entry already exists in $(basename $file)"
     else
         execute "echo '$line' | cat - '$file' > '$file.tmp' && mv '$file.tmp' '$file'"
@@ -137,22 +138,18 @@ check_dependencies() {
 
 download_assets() {
     log_info "Step 1: Downloading dotfiles archive..."
-    local TARBALL_URL="https://github.com/$GITHUB_USER/$REPO_NAME/archive/refs/heads/main.tar.gz"
-    [ ! -d "$DOTFILES_DIR" ] && execute "mkdir -p '$DOTFILES_DIR'" true
-    execute "curl -fsSL '$TARBALL_URL' | tar -xzp -C '$DOTFILES_DIR' --strip-components=1" true
+    if [ -d "$DOTFILES_DIR/.git" ]; then
+        log_info "Git repository found. Pulling latest changes..."
+        execute "git -C '$DOTFILES_DIR' pull --rebase" true
+    else
+        local TARBALL_URL="https://github.com/$GITHUB_USER/$REPO_NAME/archive/refs/heads/main.tar.gz"
+        [ ! -d "$DOTFILES_DIR" ] && execute "mkdir -p '$DOTFILES_DIR'" true
+        execute "curl -fsSL '$TARBALL_URL' | tar -xzp -C '$DOTFILES_DIR' --strip-components=1" true
+    fi
     log_success "Assets synced to $DOTFILES_DIR"
 }
 
-setup_zsh() {
-    log_info "Step 2: Configuring Zsh & Oh My Zsh..."
-    
-    # 1. Install Oh My Zsh
-    if [[ "$GITHUB_ACTIONS" != "true" && ! -d "$HOME/.oh-my-zsh" ]]; then
-        execute "sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended --keep-zshrc"
-        log_success "Oh My Zsh installed."
-    fi
-
-    # 2. Install Custom Plugins
+install_zsh_plugins() {
     local ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
     local plugins=(
         "zsh-autosuggestions:https://github.com/zsh-users/zsh-autosuggestions"
@@ -167,6 +164,19 @@ setup_zsh() {
             execute "git clone --depth=1 '$url' '$ZSH_CUSTOM/plugins/$name'"
         fi
     done
+}
+
+setup_zsh() {
+    log_info "Step 2: Configuring Zsh & Oh My Zsh..."
+    
+    # 1. Install Oh My Zsh
+    if [[ "$GITHUB_ACTIONS" != "true" && ! -d "$HOME/.oh-my-zsh" ]]; then
+        execute "sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended --keep-zshrc"
+        log_success "Oh My Zsh installed."
+    fi
+
+    # 2. Install Custom Plugins
+    install_zsh_plugins
 
     # 3. Change Default Shell
     if [[ "$SHELL" != *"zsh"* && "$GITHUB_ACTIONS" != "true" ]]; then
@@ -332,6 +342,8 @@ run_doctor() {
     local links=(
         "zsh/.zshrc:$HOME/.zshrc"
         "vim/.vimrc:$HOME/.vimrc"
+        "tmux/.tmux.conf:$HOME/.tmux.conf"
+        "git/.gitconfig:$HOME/.gitconfig"
     )
     for pair in "${links[@]}"; do
         local src="$DOTFILES_DIR/${pair%%:*}"
@@ -401,6 +413,18 @@ main() {
     if [ "$RUN_DOCTOR" = true ]; then
         run_doctor
         exit 0
+    fi
+
+    if [ "$UPDATE_MODE" = true ]; then
+        log_info "🔄 Running self-update..."
+        if [ -d "$DOTFILES_DIR/.git" ]; then
+            execute "git -C '$DOTFILES_DIR' pull --rebase"
+            log_success "Update complete. Restarting script..."
+            exec "$DOTFILES_DIR/dot.sh" "$@"
+        else
+            log_error "Cannot update: $DOTFILES_DIR is not a git repository."
+            exit 1
+        fi
     fi
 
     check_dependencies
