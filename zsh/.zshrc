@@ -40,6 +40,7 @@ setopt APPEND_HISTORY INC_APPEND_HISTORY SHARE_HISTORY
 setopt HIST_IGNORE_ALL_DUPS HIST_REDUCE_BLANKS EXTENDED_HISTORY
 
 # Better history searching with arrow keys
+autoload -Uz add-zsh-hook
 autoload -U up-line-or-beginning-search down-line-or-beginning-search
 zle -N up-line-or-beginning-search
 zle -N down-line-or-beginning-search
@@ -146,3 +147,6 @@ function refresh_iterm_visuals() {
 
 # Refresh visuals via precmd hook
 add-zsh-hook precmd refresh_iterm_visuals
+
+# Trigger immediately on startup
+refresh_iterm_visuals
