@@ -356,12 +356,10 @@ run_doctor() {
 
     # 2. SSH Agent Check
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        local socket="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
-        if [[ -S "$socket" ]]; then
-            log_success "SSH Agent: 1Password socket found."
+        if [[ -S "$SSH_AUTH_SOCK" ]]; then
+            log_success "SSH Agent: Active agent found ($SSH_AUTH_SOCK)"
         else
-            log_error "SSH Agent: 1Password socket MISSING."
-            ((errors++))
+            log_warn "SSH Agent: No active agent found in environment."
         fi
     else
         if [[ -L "$HOME/.ssh/ssh_auth_sock" ]]; then

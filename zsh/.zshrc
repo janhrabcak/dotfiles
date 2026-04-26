@@ -12,14 +12,14 @@ export LANG=en_US.UTF-8
 export PATH="$HOME/.bin:/usr/local/bin:$PATH"
 [[ -d "$HOME/.bin/google-cloud-sdk/bin" ]] && export PATH="$HOME/.bin/google-cloud-sdk/bin:$PATH"
 
-# SSH Agent Setup
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  # Direct 1Password on Mac (no tmux used locally)
-  export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
-else
-  # Stable symlink on Linux for Tmux persistence
+# SSH Agent Persistence (Linux/Remote only)
+if [[ "$OSTYPE" != "darwin"* ]]; then
+  # 1. If we have a fresh agent, update the stable symlink
   if [[ -S "$SSH_AUTH_SOCK" && "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" ]]; then
     ln -sf "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
+  fi
+  # 2. Always prefer the stable symlink if it exists (ensures tmux persistence)
+  if [[ -S "$HOME/.ssh/ssh_auth_sock" ]]; then
     export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
   fi
 fi
