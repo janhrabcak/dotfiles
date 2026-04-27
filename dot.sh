@@ -409,7 +409,7 @@ run_doctor() {
     fi
 
     # 4. Repo Health
-    if git -C "$DOTFILES_DIR" diff-index --quiet HEAD --; then
+    if [ -z "$(git -C "$DOTFILES_DIR" status --porcelain)" ]; then
         log_success "Repo: Workspace is clean."
     else
         log_warn "Repo: You have uncommitted changes in $DOTFILES_DIR"
