@@ -178,7 +178,14 @@ setup_zsh() {
     # 2. Install Custom Plugins
     install_zsh_plugins
 
-    # 3. Change Default Shell
+    # 3. iTerm2 Shell Integration
+    local ITERM_SHELL_INT="$HOME/.iterm2_shell_integration.zsh"
+    if [ ! -f "$ITERM_SHELL_INT" ]; then
+        log_info "Downloading iTerm2 shell integration..."
+        execute "curl -fsSL https://iterm2.com/shell_integration/zsh -o '$ITERM_SHELL_INT'"
+    fi
+
+    # 4. Change Default Shell
     if [[ "$SHELL" != *"zsh"* && "$GITHUB_ACTIONS" != "true" ]]; then
         if command -v zsh >/dev/null 2>&1; then
             local zsh_path=$(command -v zsh)
@@ -283,11 +290,6 @@ setup_iterm2() {
         execute "defaults write com.googlecode.iterm2 NoSyncNeverRemindPrefsChangesLostForFile -bool true"
     else
         log_warn "No iTerm2 plist found in $ITERM_DIR. Skipping sync."
-    fi
-
-    local ITERM_SHELL_INT="$HOME/.iterm2_shell_integration.zsh"
-    if [ ! -f "$ITERM_SHELL_INT" ]; then
-        execute "curl -L https://iterm2.com/shell_integration/zsh -o '$ITERM_SHELL_INT'"
     fi
 
     log_info "Applying iTerm2 optimizations..."

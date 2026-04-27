@@ -32,8 +32,8 @@ plugins=(git colorize golang macos zsh-syntax-highlighting zsh-autosuggestions)
 
 source "$OHMYZSH/oh-my-zsh.sh"
 
-# iTerm2 Shell Integration (Skip inside tmux to prevent Control Mode crashes)
-[[ -z "$TMUX" && -e "$HOME/.iterm2_shell_integration.zsh" ]] && source "$HOME/.iterm2_shell_integration.zsh"
+# iTerm2 Shell Integration (Required for Automatic Profile Switching)
+[[ -e "$HOME/.iterm2_shell_integration.zsh" ]] && source "$HOME/.iterm2_shell_integration.zsh"
 
 # --- 3. Shell Options & Behavior ---
 setopt APPEND_HISTORY INC_APPEND_HISTORY SHARE_HISTORY

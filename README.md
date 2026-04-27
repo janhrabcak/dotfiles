@@ -41,6 +41,11 @@ In each profile, go to the **Advanced** tab. At the very bottom, look for the **
 *   **Google Rules**: Click the `+` button and add `*google*` (This matches your Google hostnames).
 *   **Tmux Rules**: Click the `+` button and add `tmux` (This matches the running job name).
 
+### 3. Remote Host Integration
+Automatic Profile Switching relies on iTerm2 Shell Integration to report the current hostname and job. 
+*   **Seamless Integration**: The bootstrap script automatically installs this integration on all environments (macOS, Linux servers, Linux clients).
+*   **Tmux Control Mode**: This ensures your "Google" profile will automatically activate even when you are attached to a remote machine via Tmux Control Mode (`-CC`).
+
 ---
 
 ## 🛠️ Feature Breakdown
