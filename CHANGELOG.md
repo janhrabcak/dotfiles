@@ -2,8 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased / Latest]
+## [v3.1.0] - 2026-04-26
 ### Added
+- **Local CI Sandbox**: Created `dot-local-ci-test.sh` to allow developers to simulate the GitHub Actions pipeline locally using Docker.
+- **CI Robustness**: Upgraded the GitHub Actions pipeline with Tmux configuration syntax checking, double-run idempotency validation, and runtime Zsh environment checks.
 - **Self-Update**: Added `--update` flag to `dot.sh` to allow the script to easily pull the latest remote changes when managing the repository locally.
 - **Local Clone Installation**: Added local clone installation method and directory existence validation in `dot.sh`.
 - **Google Theming**: Added subtle Google-themed background images for iTerm2 and documented native profile switching.

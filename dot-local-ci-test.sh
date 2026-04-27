@@ -8,6 +8,23 @@
 # executes. This ensures changes can be validated locally without polluting the
 # host environment.
 
+# Auto-start Docker Desktop on macOS if it's not running
+if ! docker info >/dev/null 2>&1; then
+  echo "⚠️  Docker daemon is not responding."
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "🚀 Launching Docker Desktop in the background..."
+    open -a Docker
+    echo "⏳ Waiting for Docker engine to initialize (this may take a few seconds)..."
+    while ! docker info >/dev/null 2>&1; do
+      sleep 2
+    done
+    echo "✅ Docker engine is ready!"
+  else
+    echo "❌ ERROR: Docker daemon is not running. Please start it manually."
+    exit 1
+  fi
+fi
+
 for MODE in "linux-server" "linux-client"; do
   echo ""
   echo "======================================================================="
