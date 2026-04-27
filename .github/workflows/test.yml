@@ -12,6 +12,7 @@ jobs:
   lint:
     name: Lint & Syntax Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -40,6 +41,7 @@ jobs:
     name: Test on ${{ matrix.os }} (${{ matrix.mode }})
     needs: lint
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
