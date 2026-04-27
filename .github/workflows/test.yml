@@ -25,6 +25,11 @@ jobs:
           zsh -n zsh/.zshrc
           zsh -n zsh/aliases.zsh
 
+      - name: Tmux Syntax Check
+        run: |
+          sudo apt-get update && sudo apt-get install -y tmux
+          tmux -f tmux/.tmux.conf start-server \; kill-server
+
       - name: Vim Syntax Check
         run: |
           # Use -e (Ex mode) and -s (silent) to avoid hanging
@@ -74,8 +79,14 @@ jobs:
         run: |
           zsh ./dot.sh --mode ${{ matrix.mode }} --dry-run
 
-      - name: Run Bootstrap
+      - name: Run Bootstrap (Initial Run)
         run: zsh ./dot.sh --mode ${{ matrix.mode }} --test
+
+      - name: Run Bootstrap (Idempotency Check)
+        run: zsh ./dot.sh --mode ${{ matrix.mode }} --test
+
+      - name: Zsh Runtime Check
+        run: zsh -c "source ~/.zshrc"
 
       - name: Verify Post-Install State
         run: |
