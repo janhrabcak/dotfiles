@@ -1,0 +1,8 @@
+# git/.gitconfig.local — personal identity (this file is gitignored)
+# Copy this file to git/.gitconfig.local and fill in your details:
+#
+#   cp git/.gitconfig.local.example git/.gitconfig.local
+
+[user]
+	name = Your Name
+	email = you@example.com

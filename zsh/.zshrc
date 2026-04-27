@@ -46,9 +46,6 @@ zle -N down-line-or-beginning-search
 bindkey "^[[A" up-line-or-beginning-search
 bindkey "^[[B" down-line-or-beginning-search
 
-# --- 4. Custom Agnoster Prompt Segments ---
-
-
 
 # --- 5. Terminal Title & Hooks ---
 autoload -Uz add-zsh-hook

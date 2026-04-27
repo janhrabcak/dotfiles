@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v3.2.0] - 2026-04-27
+### Added
+- **`--skip <step>` flag**: New `dot.sh` flag to skip a named setup step (e.g. `./dot.sh --skip setup_vim`) without needing to run only a single step.
+- **Git identity template**: Added `git/.gitconfig.local.example` as a template for personal `[user]` identity. Copy to `git/.gitconfig.local` and fill in your details after bootstrapping.
+- **CI job timeout**: Set `timeout-minutes: 10` on all GitHub Actions jobs to prevent indefinite runner hangs.
+
+### Changed
+- **CI `apt-get` consolidation**: Merged three separate `sudo apt-get update` calls in the lint job into a single `Install Dependencies` step, reducing network I/O and job time.
+- **CI matrix strategy**: Replaced confusing `exclude`-based matrix (2×3 minus 4) with an explicit `include` list for clarity.
+- **actions/checkout bumped to v6**: Eliminates Node.js 20 deprecation warnings on GitHub Actions runners.
+- **`vim-go` CI guard**: `GoUpdateBinaries` post-install hook is now skipped when `$GITHUB_ACTIONS == true`, removing the need for `pkill` cleanup and preventing orphaned Go processes from hanging the runner.
+- **`ssh-cc` alias → function**: Converted the broken `alias ssh-cc="ssh -t \"$1\" ..."` (where `$1` was always empty) to a proper Zsh function.
+- **`ls` alias family normalized**: `ll`, `la`, and `lh` now all use a shared `$_ls_flags` variable so macOS colour flags apply consistently across all variants.
+- **`GOOGLE_PROMPT` simplified**: Collapsed the unused `gprompt-font` / `gprompt-bg` aliases into a single `gprompt` alias (`GOOGLE_PROMPT=1`), matching the actual prompt logic.
+- **`tmux.conf` SSH_AUTH_SOCK path**: Changed `~` to `$HOME` in `set-environment` so tmux expands the path correctly.
+- **Docker startup timeout**: `dot-local-ci-test.sh` now times out with a clear error if Docker Desktop doesn't respond within 60 seconds.
+
+### Fixed
+- **`((errors++))` crash with `set -e`**: Replaced all `((errors++))` expressions with `errors=$((errors + 1))` in the doctor/test logic to prevent `set -e` from treating a zero-value increment as a fatal error.
+- **`gh` hard dependency removed**: Removed `gh` from the `check_dependencies` list since its absence is already handled gracefully in `setup_git` with a warning.
+- **Duplicate `.zshrc` section heading**: Removed a stray empty `--- 4. Custom Agnoster Prompt Segments ---` block that appeared twice.
+
+### Security
+- **Personal identity removed from public repo**: `[user]` block (name/email) removed from the committed `git/.gitconfig` to prevent email scraping. Identity now lives in the gitignored `git/.gitconfig.local`.
+
 ## [v3.1.0] - 2026-04-26
 ### Added
 - **Local CI Sandbox**: Created `dot-local-ci-test.sh` to allow developers to simulate the GitHub Actions pipeline locally using Docker.

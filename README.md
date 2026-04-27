@@ -1,4 +1,4 @@
-# 🚀 Dotfiles Bootstrapper (v3.1)
+# 🚀 Dotfiles Bootstrapper (v3.2)
 
 ![CI State](https://github.com/janhrabcak/dotfiles/actions/workflows/test.yml/badge.svg)
 
@@ -19,6 +19,7 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 *   `--remote`: Downloads the latest archive directly from GitHub.
 *   `--doctor`: Runs a deep diagnostic of the system health and symlinks.
 *   `--only <step>`: Runs a specific setup function only (e.g., `setup_vim`).
+*   `--skip <step>`: Skips a specific setup function (e.g., `--skip setup_vim`).
 *   `--dry-run`: Preview execution steps without modifying the system.
 *   `--test`: Runs a post-setup verification suite (Symlinks, Permissions, SSH).
 

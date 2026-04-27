@@ -15,8 +15,14 @@ if ! docker info >/dev/null 2>&1; then
     echo "🚀 Launching Docker Desktop in the background..."
     open -a Docker
     echo "⏳ Waiting for Docker engine to initialize (this may take a few seconds)..."
-    while ! docker info >/dev/null 2>&1; do
+    attempts=0
+    while ! docker info > /dev/null 2>&1; do
       sleep 2
+      (( attempts++ ))
+      if (( attempts > 30 )); then
+        echo "❌ ERROR: Docker Desktop failed to start after 60 seconds. Aborting."
+        exit 1
+      fi
     done
     echo "✅ Docker engine is ready!"
   else

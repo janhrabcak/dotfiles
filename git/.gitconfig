@@ -1,6 +1,8 @@
-[user]
-	name = Jan Hrabcak
-	email = jan@hrabcak.com
+# Personal identity lives in git/.gitconfig.local (gitignored).
+# Copy git/.gitconfig.local.example → git/.gitconfig.local and fill in your details.
+[include]
+	path = ~/.dotfiles/git/.gitconfig.local
+
 [core]
 	editor = vim
 	autocrlf = input

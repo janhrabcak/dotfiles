@@ -17,19 +17,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
 
+      - name: Install Dependencies
+        run: sudo apt-get update && sudo apt-get install -y zsh vim tmux
 
       - name: Zsh Syntax Check
         run: |
-          # Ensure Zsh is available for syntax checking
-          sudo apt-get update && sudo apt-get install -y zsh
           zsh -n dot.sh
           zsh -n zsh/.zshrc
           zsh -n zsh/aliases.zsh
 
       - name: Tmux Syntax Check
-        run: |
-          sudo apt-get update && sudo apt-get install -y tmux
-          tmux -f tmux/.tmux.conf start-server \; kill-server
+        run: tmux -f tmux/.tmux.conf start-server \; kill-server
 
       - name: Vim Syntax Check
         run: |
@@ -45,15 +43,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest]
-        mode: [macos, linux-client, linux-server]
-        exclude:
+        include:
           - os: ubuntu-latest
-            mode: macos
-          - os: macos-latest
+            mode: linux-server
+          - os: ubuntu-latest
             mode: linux-client
           - os: macos-latest
-            mode: linux-server
+            mode: macos
 
     steps:
       - name: Checkout Code

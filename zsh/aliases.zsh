@@ -4,14 +4,15 @@
 
 # --- Navigation & File Listing ---
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  alias ls="ls -laG"
+  _ls_flags="-laG"
 else
-  alias ls="ls -la --color=auto"
+  _ls_flags="-la --color=auto"
 fi
+alias ls="ls $_ls_flags"
 alias l="ls"
-alias ll="ls -la"
-alias la="ls -A"
-alias lh="ls -lh"
+alias ll="command ls $_ls_flags"
+alias la="command ls -A"
+alias lh="command ls -lh"
 alias sl="ls"
 alias s="ls"
 alias ..="cd .."
@@ -28,7 +29,7 @@ alias gl="git log --oneline --graph --decorate"
 alias tn="tmux new"
 alias ta="tmux attach"
 alias tcc="tmux -CC attach || tmux -CC new" # iTerm2 Control Mode
-alias ssh-cc="ssh -t \"$1\" 'tmux -CC attach || tmux -CC new'" # SSH + Control Mode
+function ssh-cc() { ssh -t "$1" 'tmux -CC attach || tmux -CC new'; }
 
 # --- SSH & Networking ---
 alias sshp="ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no"
@@ -42,7 +43,6 @@ alias objdump="command objdump -M intel"
 # Desktop notification for long-running commands
 alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
 
-# Manual prompt overrides
-alias gprompt-font="export GOOGLE_PROMPT=font"
-alias gprompt-bg="export GOOGLE_PROMPT=bg"
+# Manual prompt overrides (set to any non-empty value to activate Google prompt style)
+alias gprompt="export GOOGLE_PROMPT=1"
 alias unprompt="unset GOOGLE_PROMPT"

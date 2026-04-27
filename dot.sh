@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
 # ==============================================================================
-# BOOTSTRAP SCRIPT (v3.1)
+# BOOTSTRAP SCRIPT (v3.2)
 # ==============================================================================
 
 set -e 
@@ -30,6 +30,7 @@ while [[ "$#" -gt 0 ]]; do
         --update)    UPDATE_MODE=true; shift ;;
         --mode)      WORK_MODE="$2"; shift 2 ;;
         --only)      ONLY_STEP="$2"; shift 2 ;;
+        --skip)      SKIP_STEP="$2"; shift 2 ;;
         --doctor)    RUN_DOCTOR=true; shift ;;
         --test)      RUN_TESTS=true; shift ;;
         *) echo "Unknown parameter: $1"; shift ;;
@@ -115,7 +116,8 @@ safe_link() {
 
 check_dependencies() {
     log_info "Step 0: Checking dependencies..."
-    local deps=("git" "curl" "vim" "zsh" "gh")
+    local deps=("git" "curl" "vim" "zsh")
+    # Note: gh is not listed here — its absence is handled gracefully in setup_git.
     local missing=()
     
     for dep in "${deps[@]}"; do
@@ -214,14 +216,6 @@ setup_vim() {
     safe_link "$DOTFILES_DIR/vim/.vimrc" "$HOME/.vimrc"
     log_info "Installing Vim plugins..."
     execute "vim +PlugInstall +qall!"
-    
-    if [[ "$GITHUB_ACTIONS" == "true" ]]; then
-        # Force kill any orphaned background jobs (e.g. vim-go's GoUpdateBinaries) 
-        # that keep the GitHub Actions runner process tree alive indefinitely.
-        pkill -9 -f "go " || true
-        pkill -9 -f "git " || true
-    fi
-    
     log_success "Vim ready."
 }
 
@@ -365,7 +359,7 @@ run_doctor() {
             log_success "Link OK: $(basename "$dest")"
         else
             log_error "Link BROKEN: $(basename "$dest") -> expected $src"
-            ((errors++))
+            errors=$((errors + 1))
         fi
     done
 
@@ -375,7 +369,7 @@ run_doctor() {
         log_success "Git: Include directive present in $git_conf"
     else
         log_error "Git: Include directive MISSING in $git_conf"
-        ((errors++))
+        errors=$((errors + 1))
     fi
 
     # 1.5 SSH Inclusion Check
@@ -384,7 +378,7 @@ run_doctor() {
         log_success "SSH: Include directive present in $ssh_conf"
     else
         log_error "SSH: Include directive MISSING in $ssh_conf"
-        ((errors++))
+        errors=$((errors + 1))
     fi
 
     # 2. SSH Agent Check
@@ -471,13 +465,13 @@ main() {
         fi
     fi
 
-    setup_zsh
-    setup_vim
-    setup_tmux
-    setup_git
-    setup_ssh
-    setup_iterm2
-    setup_macos
+    [[ "$SKIP_STEP" == "setup_zsh"    ]] && log_warn "Skipping setup_zsh"    || setup_zsh
+    [[ "$SKIP_STEP" == "setup_vim"    ]] && log_warn "Skipping setup_vim"    || setup_vim
+    [[ "$SKIP_STEP" == "setup_tmux"   ]] && log_warn "Skipping setup_tmux"   || setup_tmux
+    [[ "$SKIP_STEP" == "setup_git"    ]] && log_warn "Skipping setup_git"    || setup_git
+    [[ "$SKIP_STEP" == "setup_ssh"    ]] && log_warn "Skipping setup_ssh"    || setup_ssh
+    [[ "$SKIP_STEP" == "setup_iterm2" ]] && log_warn "Skipping setup_iterm2" || setup_iterm2
+    [[ "$SKIP_STEP" == "setup_macos"  ]] && log_warn "Skipping setup_macos"  || setup_macos
 
     if [ "$RUN_TESTS" = true ]; then
         run_smoke_tests

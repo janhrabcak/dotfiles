@@ -14,7 +14,11 @@ else
   
   " Git & Languages
   Plug 'tpope/vim-fugitive'
-  Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+  if $GITHUB_ACTIONS ==# 'true'
+    Plug 'fatih/vim-go'                       " skip GoUpdateBinaries in CI
+  else
+    Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+  endif
   
   " Appearance
   Plug 'altercation/vim-colors-solarized'
