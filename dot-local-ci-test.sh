@@ -33,7 +33,9 @@ for MODE in "linux-server" "linux-client"; do
 
   docker run --rm -it -v "$PWD:/root/.dotfiles" -w /root/.dotfiles ubuntu:latest bash -c "
     echo '📦 Installing necessary system dependencies...'
+    export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq && apt-get install -y -qq sudo zsh curl git vim tmux > /dev/null
+    touch /usr/local/bin/gh && chmod +x /usr/local/bin/gh
 
     echo '----------------------------------------'
     echo '🧪 PASS 1: Initial Bootstrap'
