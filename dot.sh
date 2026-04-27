@@ -213,7 +213,7 @@ setup_vim() {
 
     safe_link "$DOTFILES_DIR/vim/.vimrc" "$HOME/.vimrc"
     log_info "Installing Vim plugins..."
-    execute "vim +PlugInstall +qall"
+    execute "vim +PlugInstall +qall!"
     log_success "Vim ready."
 }
 
