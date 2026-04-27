@@ -214,6 +214,14 @@ setup_vim() {
     safe_link "$DOTFILES_DIR/vim/.vimrc" "$HOME/.vimrc"
     log_info "Installing Vim plugins..."
     execute "vim +PlugInstall +qall!"
+    
+    if [[ "$GITHUB_ACTIONS" == "true" ]]; then
+        # Force kill any orphaned background jobs (e.g. vim-go's GoUpdateBinaries) 
+        # that keep the GitHub Actions runner process tree alive indefinitely.
+        pkill -9 -f "go " || true
+        pkill -9 -f "git " || true
+    fi
+    
     log_success "Vim ready."
 }
 
