@@ -1,4 +1,4 @@
-# 🚀 Dotfiles Bootstrapper (v3.3)
+# 🚀 Dotfiles Bootstrapper (v3.4)
 
 ![CI State](https://github.com/janhrabcak/dotfiles/actions/workflows/test.yml/badge.svg)
 

@@ -3,5 +3,5 @@
 *.swo
 *.backup
 test-vim.sh
-git/.gitconfig.local
+config/git/.gitconfig.local
 .viminfo

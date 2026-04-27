@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v3.4.0] - 2026-04-27
+### Changed
+- **Unified Configuration Directory**: Migrated all tool-specific configuration directories (`git`, `iterm2`, `macos-terminal`, `ssh`, `tmux`, `vim`, `zsh`) into a central `config/` directory to further declutter the repository root.
+- **Bootstrapper Update**: Refactored `dot.sh` and CI workflows to support the new `config/` based directory structure.
+
 ## [v3.3.0] - 2026-04-27
 ### Changed
 - **Directory Structure Reorganization**: Moved internal test scripts (`dot-local-ci-test.sh` and `test-vim.sh`) into a dedicated `tests/` directory to declutter the root.

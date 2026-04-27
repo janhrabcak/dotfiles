@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
 # ==============================================================================
-# BOOTSTRAP SCRIPT (v3.3)
+# BOOTSTRAP SCRIPT (v3.4)
 # ==============================================================================
 
 set -e 
@@ -197,8 +197,8 @@ setup_zsh() {
     fi
 
     # 4. Link Configurations
-    safe_link "$DOTFILES_DIR/zsh/.zshrc" "$HOME/.zshrc"
-    safe_link "$DOTFILES_DIR/zsh/aliases.zsh" "$HOME/.aliases.zsh"
+    safe_link "$DOTFILES_DIR/config/zsh/.zshrc" "$HOME/.zshrc"
+    safe_link "$DOTFILES_DIR/config/zsh/aliases.zsh" "$HOME/.aliases.zsh"
     
     log_success "Zsh environment ready."
 }
@@ -213,7 +213,7 @@ setup_vim() {
         log_success "Vim-Plug installed."
     fi
 
-    safe_link "$DOTFILES_DIR/vim/.vimrc" "$HOME/.vimrc"
+    safe_link "$DOTFILES_DIR/config/vim/.vimrc" "$HOME/.vimrc"
     log_info "Installing Vim plugins..."
     execute "vim +PlugInstall +qall!"
     log_success "Vim ready."
@@ -228,14 +228,14 @@ setup_tmux() {
             execute "git clone https://github.com/tmux-plugins/tpm '$TPM_DIR'"
             log_success "TPM installed."
         fi
-        [ -f "$DOTFILES_DIR/tmux/.tmux.conf" ] && safe_link "$DOTFILES_DIR/tmux/.tmux.conf" "$HOME/.tmux.conf"
+        [ -f "$DOTFILES_DIR/config/tmux/.tmux.conf" ] && safe_link "$DOTFILES_DIR/config/tmux/.tmux.conf" "$HOME/.tmux.conf"
         log_success "Tmux ready."
     fi
 }
 
 setup_git() {
     log_info "Step 5: Configuring Git..."
-    local GIT_CONF_SRC="$DOTFILES_DIR/git/.gitconfig"
+    local GIT_CONF_SRC="$DOTFILES_DIR/config/git/.gitconfig"
     local GIT_CONF_DEST="$HOME/.gitconfig"
 
     if [ -f "$GIT_CONF_SRC" ]; then
@@ -258,7 +258,7 @@ setup_ssh() {
     log_info "Step 6: Configuring SSH (Mode: $WORK_MODE)..."
     execute "mkdir -p '$HOME/.ssh' && chmod 700 '$HOME/.ssh'"
     
-    local GIT_SSH_CONF="$DOTFILES_DIR/ssh/config"
+    local GIT_SSH_CONF="$DOTFILES_DIR/config/ssh/config"
     local LOCAL_SSH_CONF="$HOME/.ssh/config"
     
     if [ -f "$GIT_SSH_CONF" ]; then
@@ -267,7 +267,7 @@ setup_ssh() {
     fi
 
     if [[ "$WORK_MODE" == "linux-server" ]]; then
-        local GIT_AUTH_KEYS="$DOTFILES_DIR/ssh/authorized_keys"
+        local GIT_AUTH_KEYS="$DOTFILES_DIR/config/ssh/authorized_keys"
         local LOCAL_AUTH_KEYS="$HOME/.ssh/authorized_keys"
         if [ -f "$GIT_AUTH_KEYS" ]; then
             while IFS= read -r key; do
@@ -284,7 +284,7 @@ setup_iterm2() {
     if [[ "$OSTYPE" != "darwin"* || "$WORK_MODE" != "macos" ]]; then return; fi
     log_info "Step 7: Configuring iTerm2..."
 
-    local ITERM_DIR="$DOTFILES_DIR/iterm2"
+    local ITERM_DIR="$DOTFILES_DIR/config/iterm2"
     if [ -f "$ITERM_DIR/com.googlecode.iterm2.plist" ]; then
         log_info "Linking iTerm2 preferences..."
         execute "defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true"
@@ -344,11 +344,11 @@ run_doctor() {
 
     # 1. Symlink Checks
     local links=(
-        "zsh/.zshrc:$HOME/.zshrc"
-        "vim/.vimrc:$HOME/.vimrc"
+        "config/zsh/.zshrc:$HOME/.zshrc"
+        "config/vim/.vimrc:$HOME/.vimrc"
     )
     if [[ "$WORK_MODE" == "linux-server" ]]; then
-        links+=("tmux/.tmux.conf:$HOME/.tmux.conf")
+        links+=("config/tmux/.tmux.conf:$HOME/.tmux.conf")
     fi
 
     for pair in "${links[@]}"; do
@@ -365,7 +365,7 @@ run_doctor() {
 
     # 1.3 Git Config Check
     local git_conf="$HOME/.gitconfig"
-    if grep -q "path = $DOTFILES_DIR/git/.gitconfig" "$git_conf" 2>/dev/null; then
+    if grep -q "path = $DOTFILES_DIR/config/git/.gitconfig" "$git_conf" 2>/dev/null; then
         log_success "Git: Include directive present in $git_conf"
     else
         log_error "Git: Include directive MISSING in $git_conf"
@@ -374,7 +374,7 @@ run_doctor() {
 
     # 1.5 SSH Inclusion Check
     local ssh_conf="$HOME/.ssh/config"
-    if [[ -f "$ssh_conf" ]] && grep -q "Include $DOTFILES_DIR/ssh/config" "$ssh_conf"; then
+    if [[ -f "$ssh_conf" ]] && grep -q "Include $DOTFILES_DIR/config/ssh/config" "$ssh_conf"; then
         log_success "SSH: Include directive present in $ssh_conf"
     else
         log_error "SSH: Include directive MISSING in $ssh_conf"
@@ -401,7 +401,7 @@ run_doctor() {
     # 3. iTerm2 Sync Check
     if [[ "$OSTYPE" == "darwin"* ]]; then
         local pref_folder=$(defaults read com.googlecode.iterm2 PrefsCustomFolder 2>/dev/null)
-        if [[ "$pref_folder" == "$DOTFILES_DIR/iterm2" ]]; then
+        if [[ "$pref_folder" == "$DOTFILES_DIR/config/iterm2" ]]; then
             log_success "iTerm2: Preferences correctly linked."
         else
             log_warn "iTerm2: Preferences pointing to $pref_folder (not $DOTFILES_DIR/iterm2)"

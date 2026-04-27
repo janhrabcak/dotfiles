@@ -23,17 +23,17 @@ jobs:
       - name: Zsh Syntax Check
         run: |
           zsh -n dot.sh
-          zsh -n zsh/.zshrc
-          zsh -n zsh/aliases.zsh
+          zsh -n config/zsh/.zshrc
+          zsh -n config/zsh/aliases.zsh
 
       - name: Tmux Syntax Check
-        run: tmux -f tmux/.tmux.conf start-server \; kill-server
+        run: tmux -f config/tmux/.tmux.conf start-server \; kill-server
 
       - name: Vim Syntax Check
         run: |
           # Use -e (Ex mode) and -s (silent) to avoid hanging
           # Mock home to avoid permission issues
-          HOME=$PWD vim -u vim/.vimrc -e -s -c "q"
+          HOME=$PWD vim -u config/vim/.vimrc -e -s -c "q"
 
   test:
     name: Test on ${{ matrix.os }} (${{ matrix.mode }})
