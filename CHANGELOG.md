@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v3.3.0] - 2026-04-27
+### Changed
+- **Directory Structure Reorganization**: Moved internal test scripts (`dot-local-ci-test.sh` and `test-vim.sh`) into a dedicated `tests/` directory to declutter the root.
+- **Bin Topic Creation**: Established a `bin/` directory to support a bin topic for executable scripts that should be globally available.
+- **Gitignore Cleanup**: Removed dynamically generated `.viminfo` from git tracking and added it to `.gitignore` to prevent repository noise.
+
 ## [v3.2.0] - 2026-04-27
 ### Added
 - **`--skip <step>` flag**: New `dot.sh` flag to skip a named setup step (e.g. `./dot.sh --skip setup_vim`) without needing to run only a single step.

@@ -4,3 +4,4 @@
 *.backup
 test-vim.sh
 git/.gitconfig.local
+.viminfo
