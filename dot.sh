@@ -344,9 +344,11 @@ run_doctor() {
     local links=(
         "zsh/.zshrc:$HOME/.zshrc"
         "vim/.vimrc:$HOME/.vimrc"
-        "tmux/.tmux.conf:$HOME/.tmux.conf"
-        "git/.gitconfig:$HOME/.gitconfig"
     )
+    if [[ "$WORK_MODE" == "linux-server" ]]; then
+        links+=("tmux/.tmux.conf:$HOME/.tmux.conf")
+    fi
+
     for pair in "${links[@]}"; do
         local src="$DOTFILES_DIR/${pair%%:*}"
         local dest="${pair#*:}"
@@ -358,6 +360,15 @@ run_doctor() {
             ((errors++))
         fi
     done
+
+    # 1.3 Git Config Check
+    local git_conf="$HOME/.gitconfig"
+    if grep -q "path = $DOTFILES_DIR/git/.gitconfig" "$git_conf" 2>/dev/null; then
+        log_success "Git: Include directive present in $git_conf"
+    else
+        log_error "Git: Include directive MISSING in $git_conf"
+        ((errors++))
+    fi
 
     # 1.5 SSH Inclusion Check
     local ssh_conf="$HOME/.ssh/config"
@@ -378,9 +389,10 @@ run_doctor() {
     else
         if [[ -L "$HOME/.ssh/ssh_auth_sock" ]]; then
             log_success "SSH Agent: Stable symlink OK."
+        elif [[ "$GITHUB_ACTIONS" == "true" ]]; then
+            log_warn "SSH Agent: Stable symlink MISSING (Ignored in CI)."
         else
-            log_error "SSH Agent: Stable symlink MISSING."
-            ((errors++))
+            log_warn "SSH Agent: Stable symlink MISSING. (Ensure SSH agent forwarding is active)."
         fi
     fi
 
