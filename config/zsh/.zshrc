@@ -85,7 +85,7 @@ prompt_context() {
 
   # 2. Standard SSH / Non-Default User (Red)
   if [[ "$USER" != "$DEFAULT_USER" || -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
-    prompt_segment red black "%(!.%{%F{yellow}%}.)$USER@%m"
+    prompt_segment red black "%(!.%{%F{yellow}%}.)$USER@%M"
   fi
 }
 
