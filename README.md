@@ -25,31 +25,6 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 
 ---
 
-## 🎨 iTerm2 Native Visuals (Setup Guide)
-
-To keep the shell configs lean and high-performance, visual context (tab colors) is managed natively by iTerm2 using **Automatic Profile Switching (APS)**.
-
-### 1. Create Your Profiles
-1.  Open iTerm2 Preferences (`Cmd + ,`) > **Profiles**.
-2.  Duplicate your default profile twice:
-    *   Name one **"Tmux"**.
-    *   Name one **"Google"**.
-3.  Set the **Tab Color** for each:
-    *   "Tmux" Profile: Set Tab Color to **Orange**.
-    *   "Google" Profile: Set Tab Color to **Blue**.
-
-### 2. Configure Automatic Rules
-In each profile, go to the **Advanced** tab. At the very bottom, look for the **Automatic Profile Switching** section:
-*   **Google Rules**: Click the `+` button and add `*google*` (This matches your Google hostnames).
-*   **Tmux Rules**: Click the `+` button and add `tmux` (This matches the running job name).
-
-### 3. Remote Host Integration
-Automatic Profile Switching relies on iTerm2 Shell Integration to report the current hostname and job. 
-*   **Seamless Integration**: The bootstrap script automatically installs this integration on all environments (macOS, Linux servers, Linux clients).
-*   **Tmux Control Mode**: This ensures your "Google" profile will automatically activate even when you are attached to a remote machine via Tmux Control Mode (`-CC`).
-
----
-
 ## 🛠️ Feature Breakdown
 
 ### 🐚 Shell Environment (Zsh)
