@@ -77,7 +77,7 @@ prompt_context() {
   if [[ "$(hostname)" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
     local h=$(hostname)
     local c=(33 160 220 33 64 160) # Google Blue, Red, Yellow, Blue, Green, Red
-    local rb=""
+    local rb="%(!.%{%F{yellow}%}.)$USER@"
     for (( i=1; i<=${#h}; i++ )); do rb+="%F{${c[(i-1) % 6 + 1]}}${h[$i]}%f"; done
     prompt_segment black default "$rb"
     return
