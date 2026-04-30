@@ -74,8 +74,8 @@ add-zsh-hook preexec () { set_terminal_title "${1[(w)1]} | %~" }
 # Context / Identity Segment (Unified Google & SSH Logic)
 prompt_context() {
   # 1. Google Identity (Official Brand Colors)
-  if [[ "$(hostname -s)" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
-    local h=$(hostname -s)
+  if [[ "$(hostname)" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
+    local h=$(hostname)
     local c=(33 160 220 33 64 160) # Google Blue, Red, Yellow, Blue, Green, Red
     local rb=""
     for (( i=1; i<=${#h}; i++ )); do rb+="%F{${c[(i-1) % 6 + 1]}}${h[$i]}%f"; done
