@@ -78,7 +78,7 @@ prompt_context() {
     local h=$(hostname)
     local c=(33 160 220 33 64 160) # Google Blue, Red, Yellow, Blue, Green, Red
     local rb="%(!.%{%F{yellow}%}.)$USER@"
-    for (( i=1; i<=${#h}; i++ )); do rb+="%F{${c[(i-1) % 6 + 1]}}${h[$i]}%f"; done
+    for (( i=1; i<=${#h}; i++ )); do rb+="%F{${c[((i-1)*6/${#h})+1]}}${h[$i]}%f"; done
     prompt_segment black default "$rb"
     return
   fi
