@@ -9,7 +9,7 @@ set -e
 # --- Configuration ---
 GITHUB_USER="janhrabcak"
 REPO_NAME="dotfiles"
-DOTFILES_DIR="$HOME/.dotfiles"
+DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
 BACKUP_DIR="$HOME/.dotfiles.backup/$(date +%Y%m%d_%H%M%S)"
 DRY_RUN=false
 REMOTE_MODE=false
@@ -93,7 +93,7 @@ safe_prepend() {
 safe_link() {
     local src="$1"
     local dest="$2"
-    if [ -f "$src" ]; then
+    if [ -e "$src" ]; then
         if [ -e "$dest" ] && [ ! -L "$dest" ]; then
             init_backup_dir
             log_warn "Existing file found at $dest. Moving to backup."
@@ -251,7 +251,9 @@ setup_ssh() {
     log_info "Step 6: Configuring SSH (Mode: $WORK_MODE)..."
     execute "mkdir -p '$HOME/.ssh' && chmod 700 '$HOME/.ssh'"
     
-    local GIT_SSH_CONF="$DOTFILES_DIR/config/ssh/config"
+    local SSH_FILENAME="macos.config"
+    [[ "$WORK_MODE" == "linux-server" ]] && SSH_FILENAME="linux.config"
+    local GIT_SSH_CONF="$DOTFILES_DIR/config/ssh/$SSH_FILENAME"
     local LOCAL_SSH_CONF="$HOME/.ssh/config"
     
     if [ -f "$GIT_SSH_CONF" ]; then
@@ -367,7 +369,9 @@ run_doctor() {
 
     # 1.5 SSH Inclusion Check
     local ssh_conf="$HOME/.ssh/config"
-    if [[ -f "$ssh_conf" ]] && grep -q "Include $DOTFILES_DIR/config/ssh/config" "$ssh_conf"; then
+    local SSH_FILENAME="macos.config"
+    [[ "$WORK_MODE" == "linux-server" ]] && SSH_FILENAME="linux.config"
+    if [[ -f "$ssh_conf" ]] && grep -q "Include $DOTFILES_DIR/config/ssh/$SSH_FILENAME" "$ssh_conf"; then
         log_success "SSH: Include directive present in $ssh_conf"
     else
         log_error "SSH: Include directive MISSING in $ssh_conf"
@@ -382,12 +386,12 @@ run_doctor() {
             log_warn "SSH Agent: No active agent found in environment."
         fi
     else
-        if [[ -L "$HOME/.ssh/ssh_auth_sock" ]]; then
-            log_success "SSH Agent: Stable symlink OK."
+        if [[ -S "$SSH_AUTH_SOCK" ]]; then
+            log_success "SSH Agent: Forwarded agent found."
         elif [[ "$GITHUB_ACTIONS" == "true" ]]; then
-            log_warn "SSH Agent: Stable symlink MISSING (Ignored in CI)."
+            log_success "SSH Agent: Skipping check in CI."
         else
-            log_warn "SSH Agent: Stable symlink MISSING. (Ensure SSH agent forwarding is active)."
+            log_warn "SSH Agent: No active agent found (Ensure SSH agent forwarding is active)."
         fi
     fi
 
