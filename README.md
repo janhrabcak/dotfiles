@@ -1,4 +1,4 @@
-# 🚀 Dotfiles Bootstrapper (v3.4)
+# 🚀 Dotfiles Bootstrapper (v3.5)
 
 ![CI State](https://github.com/janhrabcak/dotfiles/actions/workflows/test.yml/badge.svg)
 
@@ -29,7 +29,7 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 
 ### 🐚 Shell Environment (Zsh)
 *   **Unified Theme**: **Solarized Dark** across Zsh, Vim, and iTerm2 for a seamless, high-performance aesthetic.
-*   **Identity**: Integrated **1Password SSH Agent** (macOS) and stable symlinks (Linux) for seamless key management.
+*   **Identity**: Integrated **1Password SSH Agent** (macOS) and stable symlinks (Linux) via platform-specific SSH configurations (`macos.config`/`linux.config`).
 *   **Shortcuts**:
     *   **Git**: `gs` (status), `ga` (add), `gc` (commit), `gp` (push), `gl` (graph log).
     *   **Tmux**: `tcc` (Control Mode), `tn` (new), `ta` (attach).
@@ -68,7 +68,7 @@ The `dot.sh` script is a robust, idempotent bootstrapper designed to configure a
     *   **Zsh**: Installs Oh My Zsh, custom plugins (autosuggestions, syntax highlighting), and links `.zshrc`.
     *   **Vim**: Bootstraps `vim-plug`, links `.vimrc`, and triggers plugin installation.
     *   **Git**: Links global configurations via the `include.path` directive to keep local config separate.
-    *   **SSH**: Injects an `Include` directive into `~/.ssh/config` and manages authorized keys for server environments.
+    *   **SSH**: Injects a platform-aware `Include` directive into `~/.ssh/config` and manages authorized keys for server environments.
     *   **macOS Defaults**: Applies system-level performance tweaks (key repeat, dock speed) and installs required fonts.
 4.  **Verification**: The `--doctor` flag performs deep physical path resolution to ensure all symlinks are pointing to the correct files in the repository.
 

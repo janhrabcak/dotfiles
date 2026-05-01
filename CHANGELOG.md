@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v3.5.0] - 2026-04-30
+### Added
+- **Zsh Prompt User Prefix**: Added user prefix to the custom Google-themed hostname prompt in `.zshrc`.
+
+### Changed
+- **SSH Config Split**: Refactored SSH configuration into platform-specific files (`macos.config` and `linux.config`) to improve maintainability and environment detection.
+- **Improved SSH Agent Detection**: Refined detection logic for 1Password (macOS) and stable symlinks (Linux) in `dot.sh`.
+- **FQDN Prompt Hostname**: Updated Zsh prompt to use the fully qualified domain name (FQDN) instead of the short hostname.
+- **Dynamic Hostname Colors**: Implemented a scaling color mapping logic for the Zsh prompt hostname that applies across the entire string length.
+- **Internal SSH Network**: Updated SSH host configuration to use a wildcard subnet for the internal network.
+
+### Fixed
+- **GitHub Agent Stability**: Fixed issues with GitHub SSH agent detection and connectivity.
+
+### Removed
+- **`gh` Dependency**: Removed the hard dependency check for GitHub CLI from the bootstrapper's validation logic.
+
 ## [v3.4.0] - 2026-04-27
 ### Changed
 - **Unified Configuration Directory**: Migrated all tool-specific configuration directories (`git`, `iterm2`, `macos-terminal`, `ssh`, `tmux`, `vim`, `zsh`) into a central `config/` directory to further declutter the repository root.
