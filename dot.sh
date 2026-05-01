@@ -117,7 +117,6 @@ safe_link() {
 check_dependencies() {
     log_info "Step 0: Checking dependencies..."
     local deps=("git" "curl" "vim" "zsh")
-    # Note: gh is not listed here — its absence is handled gracefully in setup_git.
     local missing=()
     
     for dep in "${deps[@]}"; do
@@ -244,12 +243,6 @@ setup_git() {
             log_success "Git config linked."
         else
             log_success "Git config already linked."
-        fi
-    fi
-
-    if command -v gh >/dev/null 2>&1; then
-        if ! gh auth status >/dev/null 2>&1; then
-            log_warn "GitHub CLI is not authenticated. Run 'gh auth login' later."
         fi
     fi
 }
