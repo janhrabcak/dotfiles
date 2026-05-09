@@ -89,6 +89,11 @@ prompt_context() {
   fi
 }
 
+# Dir: current working directory (Limited to 3 levels)
+prompt_dir() {
+  prompt_segment blue black '%3~'
+}
+
 # Clean Build Order
 build_prompt() {
   RETVAL=$?
