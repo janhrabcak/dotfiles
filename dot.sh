@@ -13,7 +13,12 @@ DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
 BACKUP_DIR="$HOME/.dotfiles.backup/$(date +%Y%m%d_%H%M%S)"
 DRY_RUN=false
 REMOTE_MODE=false
-WORK_MODE="macos"
+# Detect OS and set default mode
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    WORK_MODE="macos"
+else
+    WORK_MODE="linux-server"
+fi
 ONLY_STEP=""
 
 # --- Logging Helpers ---
@@ -258,6 +263,19 @@ setup_ssh() {
     
     if [ -f "$GIT_SSH_CONF" ]; then
         execute "chmod 600 '$GIT_SSH_CONF'"
+        
+        # 1. Remove the other platform's include if it exists (avoids "vice versa" confusion)
+        local OTHER_FILENAME="linux.config"
+        [[ "$SSH_FILENAME" == "linux.config" ]] && OTHER_FILENAME="macos.config"
+        local OTHER_GIT_SSH_CONF="$DOTFILES_DIR/config/ssh/$OTHER_FILENAME"
+        
+        if [ -f "$LOCAL_SSH_CONF" ] && grep -qF "Include $OTHER_GIT_SSH_CONF" "$LOCAL_SSH_CONF"; then
+            log_info "Cleaning up old $OTHER_FILENAME include from $LOCAL_SSH_CONF..."
+            # Use a temporary file for cross-platform compatibility
+            execute "grep -vF \"Include $OTHER_GIT_SSH_CONF\" \"$LOCAL_SSH_CONF\" > \"$LOCAL_SSH_CONF.tmp\" && mv \"$LOCAL_SSH_CONF.tmp\" \"$LOCAL_SSH_CONF\""
+        fi
+
+        # 2. Add the correct include
         safe_prepend "Include $GIT_SSH_CONF" "$LOCAL_SSH_CONF"
     fi
 
