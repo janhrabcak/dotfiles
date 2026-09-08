@@ -1,0 +1,20 @@
+# ==============================================================================
+# HOMEBREW BUNDLE (Brewfile)
+# ==============================================================================
+# Usage:
+#   brew bundle --file=~/.dotfiles/config/brew/Brewfile
+#   brew bundle check --file=~/.dotfiles/config/brew/Brewfile
+
+# --- Essential CLI Tools ---
+brew "git"
+brew "zsh"
+brew "vim"
+brew "neovim"
+brew "tmux"
+brew "curl"
+brew "ripgrep"
+brew "fzf"
+brew "gh"
+
+# --- macOS Applications ---
+cask "iterm2"

@@ -20,26 +20,33 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 *   `--remote`: Downloads the latest archive directly from GitHub.
 *   `--doctor`: Runs a deep diagnostic of the system health and symlinks.
 *   `--only <step>`: Runs a specific setup function only (e.g., `setup_vim`).
-*   `--skip <step>`: Skips a specific setup function (e.g., `--skip setup_vim`).
+*   `--skip <step>`: Skips a specific setup function (can be specified multiple times, e.g., `--skip setup_vim --skip setup_tmux`).
 *   `--dry-run`: Preview execution steps without modifying the system.
 *   `--test`: Runs a post-setup verification suite (Symlinks, Permissions, SSH).
+*   `--install-deps`: Automatically installs missing required system packages via `apt-get` on Debian/Ubuntu.
 
 ---
 
 ## 🛠️ Feature Breakdown
 
 ### 🐚 Shell Environment (Zsh)
+*   **Fast-Path Startup**: Lightweight user identity detection, cached hostname lookups, and Zsh completion caching.
 *   **Unified Theme**: **Solarized Dark** across Zsh, Vim, and iTerm2 for a seamless, high-performance aesthetic.
 *   **Identity**: Integrated **1Password SSH Agent** (macOS) and stable symlinks (Linux) via platform-specific SSH configurations (`macos.config`/`linux.config`).
 *   **Shortcuts**:
     *   **Git**: `gs` (status), `ga` (add), `gc` (commit), `gp` (push), `gl` (graph log).
     *   **Tmux**: `tcc` (Control Mode), `tn` (new), `ta` (attach).
+    *   **Editor**: `v` / `vim` auto-detecting Neovim when installed.
 
-### 📝 Editor (Vim - Power Pack)
+### 📝 Editor (Vim & Neovim - Power Pack)
+*   **Unified Config**: Shared `.vimrc` seamlessly linked to both `~/.vimrc` and `~/.config/nvim/init.vim`.
 *   **Visuals**: **Lightline** for a premium, themed status bar.
 *   **Productivity**: **FZF** integration for ultra-fast file finding (`Ctrl + p`).
 *   **UX**: Persistent undo history, relative line numbers, and smart-case search.
 *   **Go Development**: Pre-configured `vim-go` with leader shortcuts.
+
+### 📦 Package Management (Homebrew & Linux)
+*   **Homebrew Bundle**: Declares essential CLI tools (`ripgrep`, `fzf`, `tmux`, `gh`, `neovim`) and casks in `config/brew/Brewfile`. Automatically verified during bootstrap.
 
 ### 💻 Terminal (iTerm2 & Tmux)
 *   **Native Windows**: Run tmux sessions as native iTerm2 windows/tabs via Control Mode (`-CC`).

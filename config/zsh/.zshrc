@@ -5,8 +5,12 @@
 # --- 1. Environment & Identity ---
 export DOT="$HOME/.dotfiles"
 export OHMYZSH="$HOME/.oh-my-zsh"
-export DEFAULT_USER=$(whoami)
+export DEFAULT_USER="${USER:-$(whoami)}"
 export LANG=en_US.UTF-8
+
+# Completion Caching
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompcache"
 
 # Path management
 export PATH="$HOME/.local/bin:$HOME/.bin:/usr/local/bin:$PATH"
@@ -74,9 +78,11 @@ add-zsh-hook preexec () { set_terminal_title "${1[(w)1]} | %~" }
 
 # Context / Identity Segment (Unified Google & SSH Logic)
 prompt_context() {
+  local h="${HOST:-$HOSTNAME}"
+  [[ -z "$h" ]] && h=$(hostname)
+
   # 1. Google Identity (Official Brand Colors)
-  if [[ "$(hostname)" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
-    local h=$(hostname)
+  if [[ "$h" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
     local c=(33 160 220 33 64 160) # Google Blue, Red, Yellow, Blue, Green, Red
     local rb="%(!.%{%F{yellow}%}.)$USER@"
     for (( i=1; i<=${#h}; i++ )); do rb+="%F{${c[((i-1)*6/${#h})+1]}}${h[$i]}%f"; done

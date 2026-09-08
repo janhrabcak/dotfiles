@@ -13,6 +13,7 @@ DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
 BACKUP_DIR="$HOME/.dotfiles.backup/$(date +%Y%m%d_%H%M%S)"
 DRY_RUN=false
 REMOTE_MODE=false
+AUTO_INSTALL_DEPS=false
 # Detect OS and set default mode
 if [[ "$OSTYPE" == "darwin"* ]]; then
     WORK_MODE="macos"
@@ -41,6 +42,7 @@ while [[ "$#" -gt 0 ]]; do
         --skip)      SKIP_STEPS+=("$2"); shift 2 ;;
         --doctor)    RUN_DOCTOR=true; shift ;;
         --test)      RUN_TESTS=true; shift ;;
+        --install-deps) AUTO_INSTALL_DEPS=true; shift ;;
         *) log_error "Unknown parameter: $1"; exit 1 ;;
     esac
 done
@@ -171,10 +173,36 @@ check_dependencies() {
     fi
 
     if [ ${#missing[@]} -ne 0 ]; then
-        log_error "Missing required dependencies: ${missing[*]}"
-        exit 1
+        if [ "$AUTO_INSTALL_DEPS" = true ] && command -v apt-get >/dev/null 2>&1; then
+            log_info "Attempting to auto-install missing packages: ${missing[*]}..."
+            execute "sudo apt-get update && sudo apt-get install -y ${missing[*]}" true
+            missing=()
+            for dep in "${deps[@]}"; do
+                command -v "$dep" >/dev/null 2>&1 || missing+=("$dep")
+            done
+        fi
+        if [ ${#missing[@]} -ne 0 ]; then
+            log_error "Missing required dependencies: ${missing[*]}"
+            exit 1
+        fi
     fi
     log_success "Dependency check complete."
+}
+
+setup_packages() {
+    log_info "Step 1.5: Verifying package manager bundle..."
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        local BREWFILE="$DOTFILES_DIR/config/brew/Brewfile"
+        if command -v brew >/dev/null 2>&1 && [ -f "$BREWFILE" ]; then
+            log_info "Homebrew found. Running brew bundle..."
+            if [ "$DRY_RUN" = true ]; then
+                echo "   [DRY-RUN] Would execute: brew bundle --file='$BREWFILE'"
+            else
+                brew bundle --file="$BREWFILE" || log_warn "Some brew packages could not be installed."
+            fi
+            log_success "Homebrew packages verified."
+        fi
+    fi
 }
 
 download_assets() {
@@ -255,9 +283,11 @@ setup_vim() {
 
     safe_link "$DOTFILES_DIR/config/vim/.vimrc" "$HOME/.vimrc"
     execute "mkdir -p '$HOME/.vim/undo'"
+    execute "mkdir -p '$HOME/.config/nvim'"
+    safe_link "$DOTFILES_DIR/config/vim/.vimrc" "$HOME/.config/nvim/init.vim"
     log_info "Installing Vim plugins..."
     execute "vim +PlugInstall +qall!"
-    log_success "Vim ready."
+    log_success "Vim & Neovim ready."
 }
 
 setup_tmux() {
@@ -344,6 +374,9 @@ setup_iterm2() {
     local ITERM_DIR="$DOTFILES_DIR/config/iterm2"
     if [ -f "$ITERM_DIR/com.googlecode.iterm2.plist" ]; then
         log_info "Linking iTerm2 preferences..."
+        if [ "$DRY_RUN" = false ]; then
+            sed -i.bak "s|/Users/[^<\"/ ]*|$HOME|g" "$ITERM_DIR/com.googlecode.iterm2.plist" && rm -f "$ITERM_DIR/com.googlecode.iterm2.plist.bak"
+        fi
         execute "defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true"
         execute "defaults write com.googlecode.iterm2 PrefsCustomFolder -string '$ITERM_DIR'"
         execute "defaults write com.googlecode.iterm2 NoSyncNeverRemindPrefsChangesLostForFile -bool true"
@@ -527,7 +560,7 @@ main() {
         fi
     fi
 
-    local steps=(setup_zsh setup_vim setup_tmux setup_git setup_ssh setup_iterm2 setup_macos)
+    local steps=(setup_packages setup_zsh setup_vim setup_tmux setup_git setup_ssh setup_iterm2 setup_macos)
     for step in "${steps[@]}"; do
         if [[ " ${SKIP_STEPS[*]} " == *" $step "* ]]; then
             log_warn "Skipping $step"

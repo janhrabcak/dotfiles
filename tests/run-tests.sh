@@ -86,6 +86,18 @@ else
   fail "Vim configuration parse check" ".vimrc failed to parse cleanly"
 fi
 
+if [[ -f "$REPO_ROOT/config/brew/Brewfile" ]]; then
+  pass "Homebrew Brewfile present"
+else
+  fail "Homebrew Brewfile" "config/brew/Brewfile is missing"
+fi
+
+if grep -q "corp.google.com" "$REPO_ROOT/config/zsh/aliases.zsh"; then
+  fail "Secret sanitization" "Corporate hostnames detected in aliases.zsh"
+else
+  pass "Secret sanitization: no internal corporate hostnames in public config"
+fi
+
 if command -v shellcheck >/dev/null 2>&1; then
   if shellcheck -s bash "$REPO_ROOT/tests/"*.sh >/dev/null 2>&1; then
     pass "ShellCheck static analysis"
@@ -270,14 +282,23 @@ alias_test=$(zsh -c "
   alias gc >/dev/null 2>&1 || exit 1
   alias gp >/dev/null 2>&1 || exit 1
   alias gl >/dev/null 2>&1 || exit 1
+  alias v >/dev/null 2>&1 || exit 1
   functions ssh-cc >/dev/null 2>&1 || exit 1
   echo 'OK'
 " 2>/dev/null || echo "FAILED")
 
 if [[ "$alias_test" == "OK" ]]; then
-  pass "Git and tmux aliases and functions successfully defined"
+  pass "Git, editor, and tmux aliases/functions successfully defined"
 else
   fail "Zsh aliases" "One or more core aliases/functions missing"
+fi
+
+# Test Neovim init.vim link
+zsh "$DOTFILES_DIR/dot.sh" --only setup_vim >/dev/null 2>&1
+if [[ -L "$HOME/.config/nvim/init.vim" ]]; then
+  pass "Neovim init.vim correctly symlinked to .vimrc"
+else
+  fail "Neovim init.vim" "Expected symlink at $HOME/.config/nvim/init.vim"
 fi
 
 teardown_sandbox

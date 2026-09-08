@@ -33,8 +33,15 @@ function ssh-cc() { ssh -t "$@" 'tmux -CC attach || tmux -CC new'; }
 
 # --- SSH & Networking ---
 alias sshp="ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no"
-alias gv="rw papagaj.hot.corp.google.com"
-alias vssh="$DOT/bin/ssh-tmux papagaj.hot.corp.google.com"
+# Note: Place private/work hosts and custom aliases into ~/.zshrc.local (automatically sourced)
+
+# --- Editor ---
+if command -v nvim >/dev/null 2>&1; then
+  alias v="nvim"
+  alias vim="nvim"
+else
+  alias v="vim"
+fi
 
 # --- Developer Tools ---
 alias objdump="command objdump -M intel"

@@ -2,7 +2,12 @@
 " VIM CONFIGURATION (v3.0 - Power Pack)
 " ==============================================================================
 
-" --- 1. Plugin Management (Vim-Plug) ---
+" --- 1. Neovim & Plugin Management ---
+if has('nvim')
+  set runtimepath^=~/.vim runtimepath+=~/.vim/after
+  let &packpath = &runtimepath
+endif
+
 if !filereadable(expand('~/.vim/autoload/plug.vim'))
   if !has('batch') | echohl WarningMsg | echo "Vim-Plug not found. Run bootstrap.sh to install." | echohl None | endif
 else

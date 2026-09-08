@@ -4,15 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.5.1] - 2026-09-08
 ### Added
-- **Unified Behavioral Test Suite (`tests/run-tests.sh`)**: Zero-dependency automated test runner executing 23 checks across isolated temporary sandboxes (syntax, headless Vim evaluation, `--dry-run` side-effect absence, `--skip`/`--only` flags, file backup recovery, SSH 600 permissions, Git identity resolution, and doctor diagnostic failure detection).
+- **Unified Behavioral Test Suite (`tests/run-tests.sh`)**: Zero-dependency automated test runner executing 26 checks across isolated temporary sandboxes (syntax, headless Vim evaluation, `--dry-run` side-effect absence, `--skip`/`--only` flags, file backup recovery, SSH 600 permissions, Git identity resolution, and doctor diagnostic failure detection).
 - **CI Static Analysis & Automated Testing**: Added ShellCheck static analysis to GitHub Actions lint job and integrated `tests/run-tests.sh` across all OS runner matrices.
+- **Package Management & Brewfile (`config/brew/Brewfile`)**: Declared Homebrew bundle dependencies (`ripgrep`, `fzf`, `tmux`, `gh`, `neovim`, `iterm2`), added automated bundle verification in `dot.sh`, and introduced `--install-deps` flag for automated package installation on Debian/Ubuntu.
+- **Neovim & Modern Editor Integration**: Added shared `.vimrc` linking to `~/.config/nvim/init.vim`, Neovim runtimepath sharing, and smart `v` / `vim` aliases.
 
 ### Security
+- **Secret & Internal Hostname Sanitization**: Removed internal Google corporate hostnames from public `config/zsh/aliases.zsh`.
+- **Portable iTerm2 Configuration**: Dynamically adapt hardcoded home paths in `com.googlecode.iterm2.plist` to current user's `$HOME` during install.
 - **SSH Hardening**: Removed redundant `ForwardAgent yes` for `github.com`.
 - **SSH Config Permissions**: Enforced `chmod 600` on `~/.ssh/config` and used secure temporary files during updates.
 - **Eval & Injection Elimination**: Replaced `eval` string concatenation in `safe_append`, `safe_prepend`, and `ONLY_STEP` with native redirection and literal handling.
 - **Gatekeeper Protection**: Removed global disable of macOS LaunchServices quarantine (`LSQuarantine`).
 - **Authorized Keys**: Added support for local `config/ssh/authorized_keys.local` ignored by Git.
+
+### Changed
+- **Fast-Path Shell Startup**: Replaced `whoami` subshell execution with `$USER`, cached prompt hostname lookups, and enabled Zsh completion caching.
 
 ### Fixed
 - **Vim Persistent Undo Feature**: Corrected Vim feature check from `has('undofile')` to `has('persistent_undo')` so persistent undo is properly enabled.
