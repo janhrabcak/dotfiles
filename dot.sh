@@ -4,7 +4,7 @@
 # BOOTSTRAP SCRIPT (v3.4)
 # ==============================================================================
 
-set -e 
+set -eo pipefail
 
 # --- Configuration ---
 GITHUB_USER="janhrabcak"
@@ -24,10 +24,10 @@ ONLY_STEP=""
 SKIP_STEPS=()
 
 # --- Logging Helpers ---
-log_info()    { echo "\033[0;34m[INFO]\033[0m  $1"; }
-log_warn()    { echo "\033[0;33m[WARN]\033[0m  $1"; }
-log_error()   { echo "\033[0;31m[ERROR]\033[0m $1"; }
-log_success() { echo "\033[0;32m[OK]\033[0m    $1"; }
+log_info()    { printf "\033[0;34m[INFO]\033[0m  %s\n" "$1"; }
+log_warn()    { printf "\033[0;33m[WARN]\033[0m  %s\n" "$1"; }
+log_error()   { printf "\033[0;31m[ERROR]\033[0m %s\n" "$1"; }
+log_success() { printf "\033[0;32m[OK]\033[0m    %s\n" "$1"; }
 
 # --- CLI Argument Parsing ---
 ORIGINAL_ARGS=("$@")
@@ -49,18 +49,18 @@ done
 
 # --- Execution Wrapper ---
 execute() {
-    local cmd=$1
-    local critical=${2:-false}
+    local cmd="$1"
+    local critical="${2:-false}"
     
-    if [ "$DRY_RUN" = true ]; then
+    if [[ "$DRY_RUN" == "true" ]]; then
         echo "   [DRY-RUN] Would execute: $cmd"
     else
         if eval "$cmd"; then
             return 0
         else
             log_error "Command failed: $cmd"
-            if [ "$critical" = true ]; then
-                echo "\033[0;31mFATAL: Critical step failed. Aborting.\033[0m"
+            if [[ "$critical" == "true" ]]; then
+                printf "\033[0;31mFATAL: Critical step failed. Aborting.\033[0m\n"
                 exit 1
             fi
             return 0
@@ -71,7 +71,7 @@ execute() {
 # --- Safety/Idempotency Helpers ---
 
 init_backup_dir() {
-    if [ ! -d "$BACKUP_DIR" ]; then
+    if [[ ! -d "$BACKUP_DIR" ]]; then
         execute "mkdir -p '$BACKUP_DIR'"
     fi
 }
@@ -79,17 +79,17 @@ init_backup_dir() {
 safe_append() {
     local line="$1"
     local file="$2"
-    if [ ! -f "$file" ]; then
-        if [ "$DRY_RUN" = true ]; then
+    if [[ ! -f "$file" ]]; then
+        if [[ "$DRY_RUN" == "true" ]]; then
             echo "   [DRY-RUN] Would create: $file"
         else
             execute "mkdir -p '$(dirname "$file")' && touch '$file'"
         fi
     fi
-    if [ -f "$file" ] && grep -qsF "$line" "$file"; then
+    if [[ -f "$file" ]] && grep -qsF "$line" "$file"; then
         log_success "Entry already exists in $(basename "$file")"
     else
-        if [ "$DRY_RUN" = true ]; then
+        if [[ "$DRY_RUN" == "true" ]]; then
             echo "   [DRY-RUN] Would append to $file: $line"
         else
             printf '%s\n' "$line" >> "$file"
@@ -101,17 +101,17 @@ safe_append() {
 safe_prepend() {
     local line="$1"
     local file="$2"
-    if [ ! -f "$file" ]; then
-        if [ "$DRY_RUN" = true ]; then
+    if [[ ! -f "$file" ]]; then
+        if [[ "$DRY_RUN" == "true" ]]; then
             echo "   [DRY-RUN] Would create: $file"
         else
             execute "mkdir -p '$(dirname "$file")' && touch '$file'"
         fi
     fi
-    if [ -f "$file" ] && grep -qxF "$line" "$file"; then
+    if [[ -f "$file" ]] && grep -qxF "$line" "$file"; then
         log_success "Entry already exists in $(basename "$file")"
     else
-        if [ "$DRY_RUN" = true ]; then
+        if [[ "$DRY_RUN" == "true" ]]; then
             echo "   [DRY-RUN] Would prepend to $file: $line"
         else
             local tmp_file
@@ -120,7 +120,7 @@ safe_prepend() {
                 chmod 600 "$tmp_file"
             fi
             printf '%s\n' "$line" > "$tmp_file"
-            [ -f "$file" ] && cat "$file" >> "$tmp_file"
+            [[ -f "$file" ]] && cat "$file" >> "$tmp_file"
             mv -f "$tmp_file" "$file"
         fi
         log_success "Updated $(basename "$file") (prepended)"
@@ -130,23 +130,23 @@ safe_prepend() {
 safe_link() {
     local src="$1"
     local dest="$2"
-    if [ -e "$src" ]; then
+    if [[ -e "$src" ]]; then
         local needs_link=false
         execute "mkdir -p '$(dirname "$dest")'"
-        if [ -e "$dest" ] && [ ! -L "$dest" ]; then
+        if [[ -e "$dest" && ! -L "$dest" ]]; then
             init_backup_dir
             log_warn "Existing file or directory found at $dest. Moving to backup."
             execute "mv '$dest' '$BACKUP_DIR/$(basename "$dest")'"
             needs_link=true
-        elif [ -L "$dest" ] && [ "${dest:A}" != "${src:A}" ]; then
+        elif [[ -L "$dest" && "${dest:A}" != "${src:A}" ]]; then
             log_warn "Broken or incorrect symlink at $dest. Re-linking."
             execute "rm -f '$dest'"
             needs_link=true
-        elif [ ! -e "$dest" ] && [ ! -L "$dest" ]; then
+        elif [[ ! -e "$dest" && ! -L "$dest" ]]; then
             needs_link=true
         fi
         
-        if [ "$needs_link" = true ]; then
+        if [[ "$needs_link" == "true" ]]; then
             execute "ln -sfn '$src' '$dest'"
             log_success "Linked $src to $dest"
         else
@@ -306,7 +306,8 @@ setup_zsh() {
     # 4. Change Default Shell
     if [[ "$SHELL" != *"zsh"* && "$GITHUB_ACTIONS" != "true" ]]; then
         if command -v zsh >/dev/null 2>&1; then
-            local zsh_path=$(command -v zsh)
+            local zsh_path
+            zsh_path="$(command -v zsh)"
             log_info "Changing default shell to $zsh_path (may prompt for password)."
             execute "chsh -s '$zsh_path'"
         fi

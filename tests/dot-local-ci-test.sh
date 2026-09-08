@@ -8,6 +8,8 @@
 # executes. This ensures changes can be validated locally without polluting the
 # host environment.
 
+set -euo pipefail
+
 # Auto-start Docker Desktop on macOS if it's not running
 if ! docker info >/dev/null 2>&1; then
   echo "⚠️  Docker daemon is not responding."
@@ -18,7 +20,7 @@ if ! docker info >/dev/null 2>&1; then
     attempts=0
     while ! docker info > /dev/null 2>&1; do
       sleep 2
-      (( attempts++ ))
+      (( attempts += 1 ))
       if (( attempts > 30 )); then
         echo "❌ ERROR: Docker Desktop failed to start after 60 seconds. Aborting."
         exit 1
@@ -31,8 +33,10 @@ if ! docker info >/dev/null 2>&1; then
   fi
 fi
 
-DOCKER_FLAGS="-i"
-[ -t 0 ] && DOCKER_FLAGS="-it"
+DOCKER_FLAGS=("-i")
+if [[ -t 0 ]]; then
+  DOCKER_FLAGS=("-it")
+fi
 
 for MODE in "linux-server" "linux-client"; do
   echo ""
@@ -41,7 +45,7 @@ for MODE in "linux-server" "linux-client"; do
   echo "======================================================================="
 
   # Run disposable container and verify exit status
-  if ! docker run --rm $DOCKER_FLAGS -v "$PWD:/root/.dotfiles" -w /root/.dotfiles ubuntu:latest bash -c "
+  if ! docker run --rm "${DOCKER_FLAGS[@]}" -v "$PWD:/root/.dotfiles" -w /root/.dotfiles ubuntu:latest bash -c "
     echo '📦 Installing necessary system dependencies...'
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq && apt-get install -y -qq sudo zsh curl git vim tmux > /dev/null
