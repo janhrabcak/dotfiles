@@ -28,6 +28,8 @@ log_error()   { echo "\033[0;31m[ERROR]\033[0m $1"; }
 log_success() { echo "\033[0;32m[OK]\033[0m    $1"; }
 
 # --- CLI Argument Parsing ---
+ORIGINAL_ARGS=("$@")
+
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --dry-run|-d) DRY_RUN=true; log_warn "DRY RUN MODE ENABLED."; shift ;;
@@ -38,7 +40,7 @@ while [[ "$#" -gt 0 ]]; do
         --skip)      SKIP_STEP="$2"; shift 2 ;;
         --doctor)    RUN_DOCTOR=true; shift ;;
         --test)      RUN_TESTS=true; shift ;;
-        *) echo "Unknown parameter: $1"; shift ;;
+        *) log_error "Unknown parameter: $1"; exit 1 ;;
     esac
 done
 
@@ -58,7 +60,7 @@ execute() {
                 echo "\033[0;31mFATAL: Critical step failed. Aborting.\033[0m"
                 exit 1
             fi
-            return 1
+            return 0
         fi
     fi
 }
@@ -74,24 +76,51 @@ init_backup_dir() {
 safe_append() {
     local line="$1"
     local file="$2"
-    if [ ! -f "$file" ]; then execute "touch '$file'"; fi
-    if grep -qsF "$line" "$file"; then
-        log_success "Entry already exists in $(basename $file)"
+    if [ ! -f "$file" ]; then
+        if [ "$DRY_RUN" = true ]; then
+            echo "   [DRY-RUN] Would create: $file"
+        else
+            execute "mkdir -p '$(dirname "$file")' && touch '$file'"
+        fi
+    fi
+    if [ -f "$file" ] && grep -qsF "$line" "$file"; then
+        log_success "Entry already exists in $(basename "$file")"
     else
-        execute "echo '$line' >> '$file'"
-        log_success "Updated $(basename $file) (appended)"
+        if [ "$DRY_RUN" = true ]; then
+            echo "   [DRY-RUN] Would append to $file: $line"
+        else
+            printf '%s\n' "$line" >> "$file"
+        fi
+        log_success "Updated $(basename "$file") (appended)"
     fi
 }
 
 safe_prepend() {
     local line="$1"
     local file="$2"
-    if [ ! -f "$file" ]; then execute "touch '$file'"; fi
-    if grep -qxF "$line" "$file"; then
-        log_success "Entry already exists in $(basename $file)"
+    if [ ! -f "$file" ]; then
+        if [ "$DRY_RUN" = true ]; then
+            echo "   [DRY-RUN] Would create: $file"
+        else
+            execute "mkdir -p '$(dirname "$file")' && touch '$file'"
+        fi
+    fi
+    if [ -f "$file" ] && grep -qxF "$line" "$file"; then
+        log_success "Entry already exists in $(basename "$file")"
     else
-        execute "echo '$line' | cat - '$file' > '$file.tmp' && mv '$file.tmp' '$file'"
-        log_success "Updated $(basename $file) (prepended)"
+        if [ "$DRY_RUN" = true ]; then
+            echo "   [DRY-RUN] Would prepend to $file: $line"
+        else
+            local tmp_file
+            tmp_file="$(mktemp "${file}.tmp.XXXXXX")"
+            if [[ "$file" == *"/ssh/"* ]]; then
+                chmod 600 "$tmp_file"
+            fi
+            printf '%s\n' "$line" > "$tmp_file"
+            [ -f "$file" ] && cat "$file" >> "$tmp_file"
+            mv -f "$tmp_file" "$file"
+        fi
+        log_success "Updated $(basename "$file") (prepended)"
     fi
 }
 
@@ -99,16 +128,21 @@ safe_link() {
     local src="$1"
     local dest="$2"
     if [ -e "$src" ]; then
+        local needs_link=false
         if [ -e "$dest" ] && [ ! -L "$dest" ]; then
             init_backup_dir
             log_warn "Existing file found at $dest. Moving to backup."
-            execute "mv '$dest' '$BACKUP_DIR/$(basename $dest)'"
-        elif [ -L "$dest" ] && [ "$(readlink "$dest")" != "$src" ]; then
+            execute "mv '$dest' '$BACKUP_DIR/$(basename "$dest")'"
+            needs_link=true
+        elif [ -L "$dest" ] && [ "${dest:A}" != "${src:A}" ]; then
             log_warn "Broken or incorrect symlink at $dest. Re-linking."
-            execute "rm '$dest'"
+            execute "rm -f '$dest'"
+            needs_link=true
+        elif [ ! -e "$dest" ] && [ ! -L "$dest" ]; then
+            needs_link=true
         fi
         
-        if [[ ! -L "$dest" ]]; then
+        if [ "$needs_link" = true ]; then
             execute "ln -sfn '$src' '$dest'"
             log_success "Linked $src to $dest"
         else
@@ -203,6 +237,7 @@ setup_zsh() {
     # 4. Link Configurations
     safe_link "$DOTFILES_DIR/config/zsh/.zshrc" "$HOME/.zshrc"
     safe_link "$DOTFILES_DIR/config/zsh/aliases.zsh" "$HOME/.aliases.zsh"
+    [ -d "$DOTFILES_DIR/bin" ] && safe_link "$DOTFILES_DIR/bin" "$HOME/.bin"
     
     log_success "Zsh environment ready."
 }
@@ -218,23 +253,22 @@ setup_vim() {
     fi
 
     safe_link "$DOTFILES_DIR/config/vim/.vimrc" "$HOME/.vimrc"
+    execute "mkdir -p '$HOME/.vim/undo'"
     log_info "Installing Vim plugins..."
     execute "vim +PlugInstall +qall!"
     log_success "Vim ready."
 }
 
 setup_tmux() {
-    if [[ "$WORK_MODE" == "linux-server" ]]; then
-        log_info "Step 4: Setting up Tmux..."
-        local TPM_DIR="$HOME/.tmux/plugins/tpm"
-        if [ ! -d "$TPM_DIR" ]; then
-            execute "mkdir -p '$(dirname "$TPM_DIR")'"
-            execute "git clone https://github.com/tmux-plugins/tpm '$TPM_DIR'"
-            log_success "TPM installed."
-        fi
-        [ -f "$DOTFILES_DIR/config/tmux/.tmux.conf" ] && safe_link "$DOTFILES_DIR/config/tmux/.tmux.conf" "$HOME/.tmux.conf"
-        log_success "Tmux ready."
+    log_info "Step 4: Setting up Tmux..."
+    local TPM_DIR="$HOME/.tmux/plugins/tpm"
+    if [ ! -d "$TPM_DIR" ]; then
+        execute "mkdir -p '$(dirname "$TPM_DIR")'"
+        execute "git clone https://github.com/tmux-plugins/tpm '$TPM_DIR'"
+        log_success "TPM installed."
     fi
+    [ -f "$DOTFILES_DIR/config/tmux/.tmux.conf" ] && safe_link "$DOTFILES_DIR/config/tmux/.tmux.conf" "$HOME/.tmux.conf"
+    log_success "Tmux ready."
 }
 
 setup_git() {
@@ -256,8 +290,8 @@ setup_ssh() {
     log_info "Step 6: Configuring SSH (Mode: $WORK_MODE)..."
     execute "mkdir -p '$HOME/.ssh' && chmod 700 '$HOME/.ssh'"
     
-    local SSH_FILENAME="macos.config"
-    [[ "$WORK_MODE" == "linux-server" ]] && SSH_FILENAME="linux.config"
+    local SSH_FILENAME="linux.config"
+    [[ "$WORK_MODE" == "macos" ]] && SSH_FILENAME="macos.config"
     local GIT_SSH_CONF="$DOTFILES_DIR/config/ssh/$SSH_FILENAME"
     local LOCAL_SSH_CONF="$HOME/.ssh/config"
     
@@ -265,22 +299,31 @@ setup_ssh() {
         execute "chmod 600 '$GIT_SSH_CONF'"
         
         # 1. Remove the other platform's include if it exists (avoids "vice versa" confusion)
-        local OTHER_FILENAME="linux.config"
-        [[ "$SSH_FILENAME" == "linux.config" ]] && OTHER_FILENAME="macos.config"
+        local OTHER_FILENAME="macos.config"
+        [[ "$SSH_FILENAME" == "macos.config" ]] && OTHER_FILENAME="linux.config"
         local OTHER_GIT_SSH_CONF="$DOTFILES_DIR/config/ssh/$OTHER_FILENAME"
         
         if [ -f "$LOCAL_SSH_CONF" ] && grep -qF "Include $OTHER_GIT_SSH_CONF" "$LOCAL_SSH_CONF"; then
             log_info "Cleaning up old $OTHER_FILENAME include from $LOCAL_SSH_CONF..."
-            # Use a temporary file for cross-platform compatibility
-            execute "grep -vF \"Include $OTHER_GIT_SSH_CONF\" \"$LOCAL_SSH_CONF\" > \"$LOCAL_SSH_CONF.tmp\" && mv \"$LOCAL_SSH_CONF.tmp\" \"$LOCAL_SSH_CONF\""
+            if [ "$DRY_RUN" = true ]; then
+                echo "   [DRY-RUN] Would remove old include $OTHER_GIT_SSH_CONF from $LOCAL_SSH_CONF"
+            else
+                local tmp_conf
+                tmp_conf="$(mktemp "${LOCAL_SSH_CONF}.tmp.XXXXXX")"
+                chmod 600 "$tmp_conf"
+                grep -vF "Include $OTHER_GIT_SSH_CONF" "$LOCAL_SSH_CONF" > "$tmp_conf" || true
+                mv -f "$tmp_conf" "$LOCAL_SSH_CONF"
+            fi
         fi
 
         # 2. Add the correct include
         safe_prepend "Include $GIT_SSH_CONF" "$LOCAL_SSH_CONF"
+        execute "chmod 600 '$LOCAL_SSH_CONF'"
     fi
 
     if [[ "$WORK_MODE" == "linux-server" ]]; then
         local GIT_AUTH_KEYS="$DOTFILES_DIR/config/ssh/authorized_keys"
+        [[ -f "$DOTFILES_DIR/config/ssh/authorized_keys.local" ]] && GIT_AUTH_KEYS="$DOTFILES_DIR/config/ssh/authorized_keys.local"
         local LOCAL_AUTH_KEYS="$HOME/.ssh/authorized_keys"
         if [ -f "$GIT_AUTH_KEYS" ]; then
             while IFS= read -r key; do
@@ -288,7 +331,7 @@ setup_ssh() {
                 safe_append "$key" "$LOCAL_AUTH_KEYS"
             done < "$GIT_AUTH_KEYS"
             execute "chmod 600 '$LOCAL_AUTH_KEYS'"
-            log_success "Authorized keys imported."
+            log_success "Authorized keys imported from $(basename "$GIT_AUTH_KEYS")."
         fi
     fi
 }
@@ -337,17 +380,15 @@ setup_macos() {
     execute "defaults write com.apple.dock autohide -bool true"
     execute "defaults write com.apple.dock autohide-delay -float 0"
     execute "defaults write com.apple.dock tilesize -int 48"
-    execute "defaults write com.apple.LaunchServices LSQuarantine -bool false"
 
     if [ "$DRY_RUN" = false ]; then
-        killall Finder Dock Terminal > /dev/null 2>&1 || true
+        killall Finder Dock > /dev/null 2>&1 || true
     fi
     log_success "macOS complete."
 }
 
 run_smoke_tests() {
     log_info "🧪 Running Post-Install Verification..."
-    # Call doctor but capture its success
     run_doctor
 }
 
@@ -358,11 +399,10 @@ run_doctor() {
     # 1. Symlink Checks
     local links=(
         "config/zsh/.zshrc:$HOME/.zshrc"
+        "config/zsh/aliases.zsh:$HOME/.aliases.zsh"
         "config/vim/.vimrc:$HOME/.vimrc"
+        "config/tmux/.tmux.conf:$HOME/.tmux.conf"
     )
-    if [[ "$WORK_MODE" == "linux-server" ]]; then
-        links+=("config/tmux/.tmux.conf:$HOME/.tmux.conf")
-    fi
 
     for pair in "${links[@]}"; do
         local src="$DOTFILES_DIR/${pair%%:*}"
@@ -387,8 +427,8 @@ run_doctor() {
 
     # 1.5 SSH Inclusion Check
     local ssh_conf="$HOME/.ssh/config"
-    local SSH_FILENAME="macos.config"
-    [[ "$WORK_MODE" == "linux-server" ]] && SSH_FILENAME="linux.config"
+    local SSH_FILENAME="linux.config"
+    [[ "$WORK_MODE" == "macos" ]] && SSH_FILENAME="macos.config"
     if [[ -f "$ssh_conf" ]] && grep -q "Include $DOTFILES_DIR/config/ssh/$SSH_FILENAME" "$ssh_conf"; then
         log_success "SSH: Include directive present in $ssh_conf"
     else
@@ -433,8 +473,10 @@ run_doctor() {
     echo "\n--- Diagnostic Summary ---"
     if [[ $errors -eq 0 ]]; then
         log_success "All systems operational. Your environment is healthy!"
+        return 0
     else
         log_error "Detected $errors issues. Run dot.sh to repair."
+        return 1
     fi
 }
 
@@ -443,7 +485,7 @@ run_doctor() {
 main() {
     if [ "$RUN_DOCTOR" = true ]; then
         run_doctor
-        exit 0
+        exit $?
     fi
 
     if [ "$UPDATE_MODE" = true ]; then
@@ -451,7 +493,11 @@ main() {
         if [ -d "$DOTFILES_DIR/.git" ]; then
             execute "git -C '$DOTFILES_DIR' pull --rebase"
             log_success "Update complete. Restarting script..."
-            exec "$DOTFILES_DIR/dot.sh" "$@"
+            local remaining_args=()
+            for arg in "${ORIGINAL_ARGS[@]}"; do
+                [[ "$arg" != "--update" ]] && remaining_args+=("$arg")
+            done
+            exec "$DOTFILES_DIR/dot.sh" "${remaining_args[@]}"
         else
             log_error "Cannot update: $DOTFILES_DIR is not a git repository."
             exit 1
@@ -472,7 +518,7 @@ main() {
     if [ -n "$ONLY_STEP" ]; then
         if declare -f "$ONLY_STEP" > /dev/null; then
             log_info "Running targeted step: $ONLY_STEP..."
-            eval "$ONLY_STEP"
+            "$ONLY_STEP"
             exit 0
         else
             log_error "Function '$ONLY_STEP' does not exist."
@@ -490,9 +536,10 @@ main() {
 
     if [ "$RUN_TESTS" = true ]; then
         run_smoke_tests
+        exit $?
     else
         echo "\n✨ Setup complete! Run with --doctor or --test to verify integrity."
     fi
 }
 
-main "$@"
+main "${ORIGINAL_ARGS[@]}"

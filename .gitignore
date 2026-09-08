@@ -4,4 +4,5 @@
 *.backup
 test-vim.sh
 config/git/.gitconfig.local
+config/ssh/authorized_keys.local
 .viminfo

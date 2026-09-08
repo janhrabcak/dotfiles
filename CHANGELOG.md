@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v3.5.1] - 2026-09-08
+### Security
+- **SSH Hardening**: Removed redundant `ForwardAgent yes` for `github.com`.
+- **SSH Config Permissions**: Enforced `chmod 600` on `~/.ssh/config` and used secure temporary files during updates.
+- **Eval & Injection Elimination**: Replaced `eval` string concatenation in `safe_append`, `safe_prepend`, and `ONLY_STEP` with native redirection and literal handling.
+- **Gatekeeper Protection**: Removed global disable of macOS LaunchServices quarantine (`LSQuarantine`).
+- **Authorized Keys**: Added support for local `config/ssh/authorized_keys.local` ignored by Git.
+
+### Fixed
+- **CI / Diagnostic Exit Codes**: `run_doctor` and `--test` now return non-zero exit codes on failure instead of silently passing.
+- **Git Config Local Include**: Updated `config/git/.gitconfig` to correctly include `~/.dotfiles/config/git/.gitconfig.local`.
+- **Linux Client SSH Config**: Fixed `SSH_FILENAME` selection so `linux-client` mode selects `linux.config` rather than defaulting to `macos.config`.
+- **Vim Undo Directory**: Automatically create `~/.vim/undo` directory in `.vimrc` and `setup_vim` to eliminate `E828` save errors.
+- **CLI Argument Preservation**: Preserved `ORIGINAL_ARGS` across `dot.sh` self-update and fail with error on unknown parameters.
+- **Tmux Cross-Platform**: Enabled `setup_tmux` across all modes, not only `linux-server`.
+- **Zsh Plugin Order**: Moved `zsh-syntax-highlighting` to the end of Oh My Zsh plugins list.
+- **SSH Control Mode Alias**: Forward all arguments (`"$@"`) in `ssh-cc`.
+- **Bin Directory Link**: Automatically link `bin/` to `~/.bin` in `setup_zsh`.
+- **macOS Installer Stability**: Removed `Terminal` from `killall` list to avoid terminating running sessions.
+
 ## [v3.5.0] - 2026-04-30
 ### Added
 - **Zsh Prompt User Prefix**: Added user prefix to the custom Google-themed hostname prompt in `.zshrc`.

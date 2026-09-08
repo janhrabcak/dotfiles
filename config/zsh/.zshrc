@@ -9,7 +9,8 @@ export DEFAULT_USER=$(whoami)
 export LANG=en_US.UTF-8
 
 # Path management
-export PATH="$HOME/.bin:/usr/local/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.bin:/usr/local/bin:$PATH"
+[[ -d "$HOME/.npm-global/bin" ]] && export PATH="$HOME/.npm-global/bin:$PATH"
 [[ -d "$HOME/.bin/google-cloud-sdk/bin" ]] && export PATH="$HOME/.bin/google-cloud-sdk/bin:$PATH"
 
 # SSH Agent Persistence (Linux/Remote only)
@@ -28,7 +29,7 @@ fi
 ZSH_THEME="agnoster"
 DISABLE_UPDATE_PROMPT="true"
 UPDATE_ZSH_DAYS=13
-plugins=(git colorize golang macos zsh-syntax-highlighting zsh-autosuggestions)
+plugins=(git colorize golang macos zsh-autosuggestions zsh-syntax-highlighting)
 
 source "$OHMYZSH/oh-my-zsh.sh"
 
