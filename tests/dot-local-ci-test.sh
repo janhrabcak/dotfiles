@@ -31,13 +31,16 @@ if ! docker info >/dev/null 2>&1; then
   fi
 fi
 
+DOCKER_FLAGS="-i"
+[ -t 0 ] && DOCKER_FLAGS="-it"
+
 for MODE in "linux-server" "linux-client"; do
   echo ""
   echo "======================================================================="
   echo "🚀 RUNNING CI SANDBOX FOR MODE: $MODE"
   echo "======================================================================="
 
-  docker run --rm -it -v "$PWD:/root/.dotfiles" -w /root/.dotfiles ubuntu:latest bash -c "
+  docker run --rm $DOCKER_FLAGS -v "$PWD:/root/.dotfiles" -w /root/.dotfiles ubuntu:latest bash -c "
     echo '📦 Installing necessary system dependencies...'
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq && apt-get install -y -qq sudo zsh curl git vim tmux > /dev/null
@@ -57,6 +60,11 @@ for MODE in "linux-server" "linux-client"; do
     echo '🧪 PASS 3: Zsh Runtime Validation'
     echo '----------------------------------------'
     zsh -c 'source ~/.zshrc' || exit 1
+
+    echo '----------------------------------------'
+    echo '🧪 PASS 4: Behavioral Test Suite'
+    echo '----------------------------------------'
+    ./tests/run-tests.sh || exit 1
   "
 
   # Catch failure

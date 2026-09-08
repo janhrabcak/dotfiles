@@ -38,7 +38,7 @@ set nobackup           " No clunky backup files
 set updatetime=300     " Faster completion/updates
 
 " Persistence: Remember undo history across sessions
-if has('undofile')
+if has('persistent_undo')
   if !isdirectory(expand('~/.vim/undo'))
     call mkdir(expand('~/.vim/undo'), 'p', 0700)
   endif

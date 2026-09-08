@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 
 ## [v3.5.1] - 2026-09-08
+### Added
+- **Unified Behavioral Test Suite (`tests/run-tests.sh`)**: Zero-dependency automated test runner executing 23 checks across isolated temporary sandboxes (syntax, headless Vim evaluation, `--dry-run` side-effect absence, `--skip`/`--only` flags, file backup recovery, SSH 600 permissions, Git identity resolution, and doctor diagnostic failure detection).
+- **CI Static Analysis & Automated Testing**: Added ShellCheck static analysis to GitHub Actions lint job and integrated `tests/run-tests.sh` across all OS runner matrices.
+
 ### Security
 - **SSH Hardening**: Removed redundant `ForwardAgent yes` for `github.com`.
 - **SSH Config Permissions**: Enforced `chmod 600` on `~/.ssh/config` and used secure temporary files during updates.
@@ -11,6 +15,8 @@ All notable changes to this project will be documented in this file.
 - **Authorized Keys**: Added support for local `config/ssh/authorized_keys.local` ignored by Git.
 
 ### Fixed
+- **Vim Persistent Undo Feature**: Corrected Vim feature check from `has('undofile')` to `has('persistent_undo')` so persistent undo is properly enabled.
+- **Docker Local CI TTY Handling**: Added TTY check in `tests/dot-local-ci-test.sh` so tests run in headless environments without TTY errors.
 - **CI / Diagnostic Exit Codes**: `run_doctor` and `--test` now return non-zero exit codes on failure instead of silently passing.
 - **Git Config Local Include**: Updated `config/git/.gitconfig` to correctly include `~/.dotfiles/config/git/.gitconfig.local`.
 - **Linux Client SSH Config**: Fixed `SSH_FILENAME` selection so `linux-client` mode selects `linux.config` rather than defaulting to `macos.config`.

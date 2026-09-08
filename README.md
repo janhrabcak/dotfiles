@@ -12,7 +12,8 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 | **Local Install** (Clone first) | `git clone https://github.com/janhrabcak/dotfiles.git ~/.dotfiles && cd ~/.dotfiles && ./dot.sh` |
 | **Self-Update** | `./dot.sh --update` |
 | **Check Health** | `./dot.sh --doctor` |
-| **Run Local CI Test** | `tests/dot-local-ci-test.sh` |
+| **Run Full Test Suite** | `tests/run-tests.sh` |
+| **Run Local CI Docker Test** | `tests/dot-local-ci-test.sh` |
 | **Run Specific Step** | `./dot.sh --only setup_vim` |
 
 ### Script Flags
