@@ -132,9 +132,10 @@ safe_link() {
     local dest="$2"
     if [ -e "$src" ]; then
         local needs_link=false
+        execute "mkdir -p '$(dirname "$dest")'"
         if [ -e "$dest" ] && [ ! -L "$dest" ]; then
             init_backup_dir
-            log_warn "Existing file found at $dest. Moving to backup."
+            log_warn "Existing file or directory found at $dest. Moving to backup."
             execute "mv '$dest' '$BACKUP_DIR/$(basename "$dest")'"
             needs_link=true
         elif [ -L "$dest" ] && [ "${dest:A}" != "${src:A}" ]; then
@@ -151,6 +152,54 @@ safe_link() {
         else
             log_success "$dest already correctly linked."
         fi
+    fi
+}
+
+# --- Declarative Link Manifest ---
+# Format: "source_relative_to_dotfiles:destination_path:step_owner:platform"
+LINK_MANIFEST=(
+    "config/zsh/.zshrc:$HOME/.zshrc:setup_zsh:all"
+    "config/zsh/aliases.zsh:$HOME/.aliases.zsh:setup_zsh:all"
+    "config/vim/.vimrc:$HOME/.vimrc:setup_vim:all"
+    "config/vim/.vimrc:$HOME/.config/nvim/init.vim:setup_vim:all"
+    "config/tmux/.tmux.conf:$HOME/.tmux.conf:setup_tmux:all"
+    "bin:$HOME/.bin:setup_zsh:all"
+)
+
+setup_links() {
+    local target_step="${1:-}"
+    if [[ -z "$target_step" ]]; then
+        log_info "Step 2: Linking configurations (Declarative Manifest)..."
+    fi
+    for entry in "${LINK_MANIFEST[@]}"; do
+        local src_rel="${entry%%:*}"
+        local rest="${entry#*:}"
+        local dest="${rest%%:*}"
+        rest="${rest#*:}"
+        local step_owner="${rest%%:*}"
+        local platform="${rest#*:}"
+
+        # If a specific step was requested, filter by it
+        if [[ -n "$target_step" && "$step_owner" != "$target_step" ]]; then
+            continue
+        fi
+
+        # Skip link if its owning step is in SKIP_STEPS
+        if [[ " ${SKIP_STEPS[*]} " == *" $step_owner "* ]]; then
+            continue
+        fi
+
+        # Platform filter
+        if [[ "$platform" == "macos" && "$WORK_MODE" != "macos" ]]; then
+            continue
+        elif [[ "$platform" == "linux" && "$WORK_MODE" == "macos" ]]; then
+            continue
+        fi
+
+        safe_link "$DOTFILES_DIR/$src_rel" "$dest"
+    done
+    if [[ -z "$target_step" ]]; then
+        log_success "Manifest symlinks processed."
     fi
 }
 
@@ -264,9 +313,7 @@ setup_zsh() {
     fi
 
     # 4. Link Configurations
-    safe_link "$DOTFILES_DIR/config/zsh/.zshrc" "$HOME/.zshrc"
-    safe_link "$DOTFILES_DIR/config/zsh/aliases.zsh" "$HOME/.aliases.zsh"
-    [ -d "$DOTFILES_DIR/bin" ] && safe_link "$DOTFILES_DIR/bin" "$HOME/.bin"
+    setup_links "setup_zsh"
     
     log_success "Zsh environment ready."
 }
@@ -281,10 +328,8 @@ setup_vim() {
         log_success "Vim-Plug installed."
     fi
 
-    safe_link "$DOTFILES_DIR/config/vim/.vimrc" "$HOME/.vimrc"
+    setup_links "setup_vim"
     execute "mkdir -p '$HOME/.vim/undo'"
-    execute "mkdir -p '$HOME/.config/nvim'"
-    safe_link "$DOTFILES_DIR/config/vim/.vimrc" "$HOME/.config/nvim/init.vim"
     log_info "Installing Vim plugins..."
     execute "vim +PlugInstall +qall!"
     log_success "Vim & Neovim ready."
@@ -298,7 +343,7 @@ setup_tmux() {
         execute "git clone https://github.com/tmux-plugins/tpm '$TPM_DIR'"
         log_success "TPM installed."
     fi
-    [ -f "$DOTFILES_DIR/config/tmux/.tmux.conf" ] && safe_link "$DOTFILES_DIR/config/tmux/.tmux.conf" "$HOME/.tmux.conf"
+    setup_links "setup_tmux"
     log_success "Tmux ready."
 }
 
@@ -430,18 +475,22 @@ run_doctor() {
     log_info "🩺 Starting Dotfiles Diagnostic..."
     local errors=0
 
-    # 1. Symlink Checks
-    local links=(
-        "config/zsh/.zshrc:$HOME/.zshrc"
-        "config/zsh/aliases.zsh:$HOME/.aliases.zsh"
-        "config/vim/.vimrc:$HOME/.vimrc"
-        "config/tmux/.tmux.conf:$HOME/.tmux.conf"
-    )
+    # 1. Symlink Checks (Declarative Manifest)
+    for entry in "${LINK_MANIFEST[@]}"; do
+        local src_rel="${entry%%:*}"
+        local rest="${entry#*:}"
+        local dest="${rest%%:*}"
+        rest="${rest#*:}"
+        local step_owner="${rest%%:*}"
+        local platform="${rest#*:}"
 
-    for pair in "${links[@]}"; do
-        local src="$DOTFILES_DIR/${pair%%:*}"
-        local dest="${pair#*:}"
-        # Resolve both to absolute physical paths before comparing
+        if [[ "$platform" == "macos" && "$WORK_MODE" != "macos" ]]; then
+            continue
+        elif [[ "$platform" == "linux" && "$WORK_MODE" == "macos" ]]; then
+            continue
+        fi
+
+        local src="$DOTFILES_DIR/$src_rel"
         if [[ -L "$dest" && "${dest:A}" == "${src:A}" ]]; then
             log_success "Link OK: $(basename "$dest")"
         else
@@ -560,7 +609,7 @@ main() {
         fi
     fi
 
-    local steps=(setup_packages setup_zsh setup_vim setup_tmux setup_git setup_ssh setup_iterm2 setup_macos)
+    local steps=(setup_packages setup_links setup_zsh setup_vim setup_tmux setup_git setup_ssh setup_iterm2 setup_macos)
     for step in "${steps[@]}"; do
         if [[ " ${SKIP_STEPS[*]} " == *" $step "* ]]; then
             log_warn "Skipping $step"

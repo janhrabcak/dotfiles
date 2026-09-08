@@ -357,6 +357,75 @@ else
   fail "Idempotency" "Symlinks changed after second execution"
 fi
 
+# ------------------------------------------------------------------------------
+# 10. Chaos & Hostile State Resilience
+# ------------------------------------------------------------------------------
+log_suite "Group 10: Chaos & Hostile State Resilience"
+
+# 10.1 Broken symlink recovery
+setup_sandbox
+ln -s "/completely/broken/nonexistent/path" "$HOME/.zshrc"
+zsh "$DOTFILES_DIR/dot.sh" --only setup_links >/dev/null 2>&1
+zshrc_link="$HOME/.zshrc"
+zshrc_target="$DOTFILES_DIR/config/zsh/.zshrc"
+if [[ -L "$zshrc_link" && "${zshrc_link:A}" == "${zshrc_target:A}" ]]; then
+  pass "Chaos: Cleanly repaired pre-existing broken symlink"
+else
+  fail "Chaos: Broken symlink recovery" "Failed to repair dangling symlink at ~/.zshrc"
+fi
+teardown_sandbox
+
+# 10.2 Cyclic self-referencing symlink recovery
+setup_sandbox
+ln -s "$HOME/.tmux.conf" "$HOME/.tmux.conf" 2>/dev/null || true
+zsh "$DOTFILES_DIR/dot.sh" --only setup_links >/dev/null 2>&1
+tmux_link="$HOME/.tmux.conf"
+tmux_target="$DOTFILES_DIR/config/tmux/.tmux.conf"
+if [[ -L "$tmux_link" && "${tmux_link:A}" == "${tmux_target:A}" ]]; then
+  pass "Chaos: Cleanly repaired cyclic self-referencing symlink"
+else
+  fail "Chaos: Cyclic symlink recovery" "Failed to recover from self-referencing symlink"
+fi
+teardown_sandbox
+
+# 10.3 Existing directory collision
+setup_sandbox
+mkdir -p "$HOME/.vimrc/nested_content"
+echo "nested" > "$HOME/.vimrc/nested_content/file.txt"
+zsh "$DOTFILES_DIR/dot.sh" --only setup_links >/dev/null 2>&1
+if [[ -L "$HOME/.vimrc" && -d "$HOME/.dotfiles.backup" ]]; then
+  pass "Chaos: Replaced collided directory with symlink and backed up directory"
+else
+  fail "Chaos: Directory collision" "Failed to safely replace directory with symlink"
+fi
+teardown_sandbox
+
+# 10.4 Missing parent directories for deep links (~/.config/nvim)
+setup_sandbox
+rm -rf "$HOME/.config"
+zsh "$DOTFILES_DIR/dot.sh" --only setup_links >/dev/null 2>&1
+if [[ -L "$HOME/.config/nvim/init.vim" ]]; then
+  pass "Chaos: Automatically created missing parent directory hierarchy"
+else
+  fail "Chaos: Missing parent directories" "Failed to create ~/.config/nvim before linking"
+fi
+teardown_sandbox
+
+# 10.5 SSH Config Preservation of Custom Directives
+setup_sandbox
+cat << 'SSHEOF' > "$HOME/.ssh/config"
+# User custom host
+Host custom-work-server
+  User dev
+  Port 2222
+SSHEOF
+chmod 600 "$HOME/.ssh/config"
+zsh "$DOTFILES_DIR/dot.sh" --only setup_ssh >/dev/null 2>&1
+if grep -q "Include .*config/ssh" "$HOME/.ssh/config" && grep -q "custom-work-server" "$HOME/.ssh/config"; then
+  pass "Chaos: SSH setup preserved custom host blocks while prepending Include"
+else
+  fail "Chaos: SSH setup preservation" "Custom host blocks were lost during SSH setup"
+fi
 teardown_sandbox
 
 # ==============================================================================

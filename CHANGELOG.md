@@ -4,7 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.5.1] - 2026-09-08
 ### Added
-- **Unified Behavioral Test Suite (`tests/run-tests.sh`)**: Zero-dependency automated test runner executing 26 checks across isolated temporary sandboxes (syntax, headless Vim evaluation, `--dry-run` side-effect absence, `--skip`/`--only` flags, file backup recovery, SSH 600 permissions, Git identity resolution, and doctor diagnostic failure detection).
+- **Unified Behavioral Test Suite (`tests/run-tests.sh`)**: Zero-dependency automated test runner executing 31 checks across isolated temporary sandboxes (syntax, headless Vim evaluation, `--dry-run` side-effect absence, `--skip`/`--only` flags, file backup recovery, SSH 600 permissions, Git identity resolution, and doctor diagnostic failure detection).
+- **Chaos & Hostile State Resilience Testing**: Extended test suite with Group 10 testing automatic recovery from broken symlinks, cyclic self-referencing symlinks, directory collisions with backups, missing parent hierarchies, and SSH custom configuration preservation.
+- **Declarative Symlink Manifest**: Refactored procedural symlinking across `setup_zsh`, `setup_vim`, `setup_tmux`, and `run_doctor` into a single declarative `LINK_MANIFEST` supporting step ownership, platform scoping, and automatic `--skip` integration.
 - **CI Static Analysis & Automated Testing**: Added ShellCheck static analysis to GitHub Actions lint job and integrated `tests/run-tests.sh` across all OS runner matrices.
 - **Package Management & Brewfile (`config/brew/Brewfile`)**: Declared Homebrew bundle dependencies (`ripgrep`, `fzf`, `tmux`, `gh`, `neovim`, `iterm2`), added automated bundle verification in `dot.sh`, and introduced `--install-deps` flag for automated package installation on Debian/Ubuntu.
 - **Neovim & Modern Editor Integration**: Added shared `.vimrc` linking to `~/.config/nvim/init.vim`, Neovim runtimepath sharing, and smart `v` / `vim` aliases.
