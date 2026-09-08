@@ -90,6 +90,9 @@ jobs:
         run: |
           [ -L ~/.zshrc ] || exit 1
           [ -L ~/.vimrc ] || exit 1
+          [ -L ~/.aliases.zsh ] || exit 1
+          [ -L ~/.tmux.conf ] || exit 1
+          [ -L ~/.bin ] || exit 1
           if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
             defaults read com.apple.finder AppleShowAllExtensions | grep "1"
           fi

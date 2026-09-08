@@ -21,6 +21,11 @@ All notable changes to this project will be documented in this file.
 - **SSH Control Mode Alias**: Forward all arguments (`"$@"`) in `ssh-cc`.
 - **Bin Directory Link**: Automatically link `bin/` to `~/.bin` in `setup_zsh`.
 - **macOS Installer Stability**: Removed `Terminal` from `killall` list to avoid terminating running sessions.
+- **Multi-step Skipping**: Converted `SKIP_STEP` to `SKIP_STEPS` array in `dot.sh` to allow multiple `--skip` flags without overwriting.
+- **Tmux Escape Time & SSH Socket**: Excluded `SSH_AUTH_SOCK` from `update-environment` and removed redundant `tmux-sensible` to preserve `escape-time 0` and stable agent socket.
+- **CI Symlink Checks**: Added verification for `.aliases.zsh`, `.tmux.conf`, and `.bin` in GitHub Actions workflow.
+- **iTerm2 Diagnostic Path**: Fixed expected path string in `dot.sh` doctor output (`config/iterm2`).
+- **Example Config Paths**: Corrected stale paths in `.gitconfig.local.example`.
 
 ## [v3.5.0] - 2026-04-30
 ### Added

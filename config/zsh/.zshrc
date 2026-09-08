@@ -48,7 +48,7 @@ bindkey "^[[A" up-line-or-beginning-search
 bindkey "^[[B" down-line-or-beginning-search
 
 
-# --- 5. Terminal Title & Hooks ---
+# --- 4. Terminal Title & Hooks ---
 autoload -Uz add-zsh-hook
 
 function set_terminal_title() {
@@ -64,7 +64,7 @@ function set_terminal_title() {
 add-zsh-hook precmd  () { set_terminal_title "%n@%m: %~" }
 add-zsh-hook preexec () { set_terminal_title "${1[(w)1]} | %~" }
 
-# --- 6. Final Inclusions & Visuals ---
+# --- 5. Final Inclusions & Visuals ---
 
 # Load Aliases & Local Overrides
 [[ -f "$HOME/.aliases.zsh" ]] && source "$HOME/.aliases.zsh"

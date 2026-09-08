@@ -1,7 +1,7 @@
-# git/.gitconfig.local — personal identity (this file is gitignored)
-# Copy this file to git/.gitconfig.local and fill in your details:
+# config/git/.gitconfig.local — personal identity (this file is gitignored)
+# Copy this file to config/git/.gitconfig.local and fill in your details:
 #
-#   cp git/.gitconfig.local.example git/.gitconfig.local
+#   cp config/git/.gitconfig.local.example config/git/.gitconfig.local
 
 [user]
 	name = Your Name

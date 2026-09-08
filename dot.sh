@@ -20,6 +20,7 @@ else
     WORK_MODE="linux-server"
 fi
 ONLY_STEP=""
+SKIP_STEPS=()
 
 # --- Logging Helpers ---
 log_info()    { echo "\033[0;34m[INFO]\033[0m  $1"; }
@@ -37,7 +38,7 @@ while [[ "$#" -gt 0 ]]; do
         --update)    UPDATE_MODE=true; shift ;;
         --mode)      WORK_MODE="$2"; shift 2 ;;
         --only)      ONLY_STEP="$2"; shift 2 ;;
-        --skip)      SKIP_STEP="$2"; shift 2 ;;
+        --skip)      SKIP_STEPS+=("$2"); shift 2 ;;
         --doctor)    RUN_DOCTOR=true; shift ;;
         --test)      RUN_TESTS=true; shift ;;
         *) log_error "Unknown parameter: $1"; exit 1 ;;
@@ -459,7 +460,7 @@ run_doctor() {
         if [[ "$pref_folder" == "$DOTFILES_DIR/config/iterm2" ]]; then
             log_success "iTerm2: Preferences correctly linked."
         else
-            log_warn "iTerm2: Preferences pointing to $pref_folder (not $DOTFILES_DIR/iterm2)"
+            log_warn "iTerm2: Preferences pointing to $pref_folder (not $DOTFILES_DIR/config/iterm2)"
         fi
     fi
 
@@ -526,13 +527,14 @@ main() {
         fi
     fi
 
-    [[ "$SKIP_STEP" == "setup_zsh"    ]] && log_warn "Skipping setup_zsh"    || setup_zsh
-    [[ "$SKIP_STEP" == "setup_vim"    ]] && log_warn "Skipping setup_vim"    || setup_vim
-    [[ "$SKIP_STEP" == "setup_tmux"   ]] && log_warn "Skipping setup_tmux"   || setup_tmux
-    [[ "$SKIP_STEP" == "setup_git"    ]] && log_warn "Skipping setup_git"    || setup_git
-    [[ "$SKIP_STEP" == "setup_ssh"    ]] && log_warn "Skipping setup_ssh"    || setup_ssh
-    [[ "$SKIP_STEP" == "setup_iterm2" ]] && log_warn "Skipping setup_iterm2" || setup_iterm2
-    [[ "$SKIP_STEP" == "setup_macos"  ]] && log_warn "Skipping setup_macos"  || setup_macos
+    local steps=(setup_zsh setup_vim setup_tmux setup_git setup_ssh setup_iterm2 setup_macos)
+    for step in "${steps[@]}"; do
+        if [[ " ${SKIP_STEPS[*]} " == *" $step "* ]]; then
+            log_warn "Skipping $step"
+        else
+            "$step"
+        fi
+    done
 
     if [ "$RUN_TESTS" = true ]; then
         run_smoke_tests
