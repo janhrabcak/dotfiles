@@ -40,7 +40,8 @@ for MODE in "linux-server" "linux-client"; do
   echo "🚀 RUNNING CI SANDBOX FOR MODE: $MODE"
   echo "======================================================================="
 
-  docker run --rm $DOCKER_FLAGS -v "$PWD:/root/.dotfiles" -w /root/.dotfiles ubuntu:latest bash -c "
+  # Run disposable container and verify exit status
+  if ! docker run --rm $DOCKER_FLAGS -v "$PWD:/root/.dotfiles" -w /root/.dotfiles ubuntu:latest bash -c "
     echo '📦 Installing necessary system dependencies...'
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq && apt-get install -y -qq sudo zsh curl git vim tmux > /dev/null
@@ -65,10 +66,7 @@ for MODE in "linux-server" "linux-client"; do
     echo '🧪 PASS 4: Behavioral Test Suite'
     echo '----------------------------------------'
     ./tests/run-tests.sh || exit 1
-  "
-
-  # Catch failure
-  if [ $? -ne 0 ]; then
+  "; then
     echo ""
     echo "❌ ERROR: CI validations FAILED for mode: $MODE"
     exit 1

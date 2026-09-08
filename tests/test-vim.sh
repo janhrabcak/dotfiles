@@ -2,4 +2,4 @@
 echo "Installing Vim plugins..."
 vim +PlugInstall +qall!
 echo "Vim exited."
-ps aux | grep -v grep | grep -E "vim|go" || true
+pgrep -f -l "vim|go" || true
