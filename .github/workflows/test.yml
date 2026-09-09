@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install Dependencies
         run: sudo apt-get update && sudo apt-get install -y zsh vim tmux shellcheck
@@ -58,7 +58,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Prepare Environment
         run: |
