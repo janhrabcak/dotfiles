@@ -101,10 +101,14 @@ else
   fail "Dependabot configuration" ".github/dependabot.yml is missing"
 fi
 
-if tmux -f "$REPO_ROOT/config/tmux/.tmux.conf" start-server \; kill-server >/dev/null 2>&1; then
-  pass "Tmux configuration syntax check"
+if command -v tmux >/dev/null 2>&1; then
+  if tmux -f "$REPO_ROOT/config/tmux/.tmux.conf" start-server \; kill-server >/dev/null 2>&1; then
+    pass "Tmux configuration syntax check"
+  else
+    fail "Tmux configuration syntax check" "tmux.conf failed to parse"
+  fi
 else
-  fail "Tmux configuration syntax check" "tmux.conf failed to parse"
+  echo "  ${YELLOW}[SKIP]${RESET} Tmux configuration syntax check (tmux not installed)"
 fi
 
 if HOME="$REPO_ROOT" vim -u "$REPO_ROOT/config/vim/.vimrc" -e -s -c "q" >/dev/null 2>&1; then
