@@ -46,6 +46,19 @@ setup_sandbox() {
   touch "$HOME/.ssh/config" && chmod 600 "$HOME/.ssh/config"
   git config --global user.name "Test Bot"
   git config --global user.email "test@example.com"
+  mkdir -p "$HOME/.vim/autoload"
+  cat << 'VIMEOF' > "$HOME/.vim/autoload/plug.vim"
+let g:plugs = {}
+function! plug#begin(...)
+  command! -nargs=+ -bar Plug call s:plug(<args>)
+endfunction
+function! s:plug(repo, ...)
+  let name = split(a:repo, "/")[-1]
+  let g:plugs[name] = a:0 > 0 ? a:1 : {}
+endfunction
+function! plug#end(...)
+endfunction
+VIMEOF
 }
 
 teardown_sandbox() {
@@ -233,16 +246,21 @@ else
 fi
 
 # Gated Vim binary hooks: check that without DOTFILES_INSTALL_DEPS, fzf#install and GoUpdateBinaries are omitted
-vim_hooks=$(DOTFILES_INSTALL_DEPS=false vim -u "$DOTFILES_DIR/config/vim/.vimrc" -c "redir => g:plugs_out | silent echo g:plugs | redir END | echo g:plugs_out" -c "qall" 2>/dev/null || true)
-if echo "$vim_hooks" | grep -q "fzf" && ! echo "$vim_hooks" | grep -q "fzf#install"; then
+set +e
+DOTFILES_INSTALL_DEPS=false vim -u "$DOTFILES_DIR/config/vim/.vimrc" -c "if has_key(g:plugs['fzf'], 'do') | cquit 1 | else | cquit 0 | endif" >/dev/null 2>&1
+status_false=$?
+
+DOTFILES_INSTALL_DEPS=true vim -u "$DOTFILES_DIR/config/vim/.vimrc" -c "if has_key(g:plugs['fzf'], 'do') | cquit 0 | else | cquit 1 | endif" >/dev/null 2>&1
+status_true=$?
+set -e
+
+if [[ $status_false -eq 0 ]]; then
   pass "Vim: Binary post-install hooks are disabled when DOTFILES_INSTALL_DEPS is false"
 else
-  fail "Vim binary hooks guard" "Binary hooks were registered despite DOTFILES_INSTALL_DEPS=false"
+  fail "Vim binary hooks guard" "Binary hook fzf#install was registered despite DOTFILES_INSTALL_DEPS=false"
 fi
 
-# When DOTFILES_INSTALL_DEPS=true, fzf#install hook is registered
-vim_hooks_with_deps=$(DOTFILES_INSTALL_DEPS=true vim -u "$DOTFILES_DIR/config/vim/.vimrc" -c "redir => g:plugs_out | silent echo g:plugs | redir END | echo g:plugs_out" -c "qall" 2>/dev/null || true)
-if echo "$vim_hooks_with_deps" | grep -q "fzf#install"; then
+if [[ $status_true -eq 0 ]]; then
   pass "Vim: Binary post-install hooks are enabled when DOTFILES_INSTALL_DEPS=true"
 else
   fail "Vim binary hooks guard" "Binary hook fzf#install was not registered when DOTFILES_INSTALL_DEPS=true"
