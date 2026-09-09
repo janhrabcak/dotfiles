@@ -13,17 +13,22 @@ if !filereadable(expand('~/.vim/autoload/plug.vim'))
 else
   call plug#begin('~/.vim/plugged')
   " Navigation & Productivity
-  Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
+  if $DOTFILES_INSTALL_DEPS ==# 'true'
+    Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
+    if $GITHUB_ACTIONS ==# 'true'
+      Plug 'fatih/vim-go'                       " skip GoUpdateBinaries in CI
+    else
+      Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+    endif
+  else
+    Plug 'junegunn/fzf'
+    Plug 'fatih/vim-go'
+  endif
   Plug 'junegunn/fzf.vim'
   Plug 'preservim/nerdtree'
   
   " Git & Languages
   Plug 'tpope/vim-fugitive'
-  if $GITHUB_ACTIONS ==# 'true'
-    Plug 'fatih/vim-go'                       " skip GoUpdateBinaries in CI
-  else
-    Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
-  endif
   
   " Appearance
   Plug 'altercation/vim-colors-solarized'

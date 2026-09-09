@@ -217,6 +217,37 @@ else
   fail "--clean pruning" "Dead dotfiles symlink was not pruned or external symlink was removed"
 fi
 
+# --install-deps enforcement: missing dependency refuses auto-install without flag
+set +e
+check_output=$(PATH="/usr/bin:/bin" zsh -c "
+  command() { if [[ \"\$2\" == 'zsh' ]]; then return 1; fi; builtin command \"\$@\"; }
+  source '$DOTFILES_DIR/dot.sh' --dry-run
+  check_dependencies
+" 2>&1)
+check_exit=$?
+set -e
+if [[ $check_exit -ne 0 ]] && echo "$check_output" | grep -q "Run dot.sh with --install-deps"; then
+  pass "Dependency check refuses to install missing tools without --install-deps"
+else
+  fail "Dependency check --install-deps enforcement" "Script did not require --install-deps for missing dependencies"
+fi
+
+# Gated Vim binary hooks: check that without DOTFILES_INSTALL_DEPS, fzf#install and GoUpdateBinaries are omitted
+vim_hooks=$(DOTFILES_INSTALL_DEPS=false vim -u "$DOTFILES_DIR/config/vim/.vimrc" -c "redir => g:plugs_out | silent echo g:plugs | redir END | echo g:plugs_out" -c "qall" 2>/dev/null || true)
+if echo "$vim_hooks" | grep -q "fzf" && ! echo "$vim_hooks" | grep -q "fzf#install"; then
+  pass "Vim: Binary post-install hooks are disabled when DOTFILES_INSTALL_DEPS is false"
+else
+  fail "Vim binary hooks guard" "Binary hooks were registered despite DOTFILES_INSTALL_DEPS=false"
+fi
+
+# When DOTFILES_INSTALL_DEPS=true, fzf#install hook is registered
+vim_hooks_with_deps=$(DOTFILES_INSTALL_DEPS=true vim -u "$DOTFILES_DIR/config/vim/.vimrc" -c "redir => g:plugs_out | silent echo g:plugs | redir END | echo g:plugs_out" -c "qall" 2>/dev/null || true)
+if echo "$vim_hooks_with_deps" | grep -q "fzf#install"; then
+  pass "Vim: Binary post-install hooks are enabled when DOTFILES_INSTALL_DEPS=true"
+else
+  fail "Vim binary hooks guard" "Binary hook fzf#install was not registered when DOTFILES_INSTALL_DEPS=true"
+fi
+
 teardown_sandbox
 
 # ------------------------------------------------------------------------------

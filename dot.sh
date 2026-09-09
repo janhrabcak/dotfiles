@@ -44,7 +44,7 @@ while [[ "$#" -gt 0 ]]; do
         --doctor)    RUN_DOCTOR=true; shift ;;
         --test)      RUN_TESTS=true; shift ;;
         --clean)     CLEAN_MODE=true; shift ;;
-        --install-deps) AUTO_INSTALL_DEPS=true; shift ;;
+        --install-deps) AUTO_INSTALL_DEPS=true; export DOTFILES_INSTALL_DEPS=true; shift ;;
         *) log_error "Unknown parameter: $1"; exit 1 ;;
     esac
 done
@@ -312,9 +312,14 @@ check_dependencies() {
     fi
 
     if [ ${#missing[@]} -ne 0 ]; then
-        if [ "$AUTO_INSTALL_DEPS" = true ] && command -v apt-get >/dev/null 2>&1; then
-            log_info "Attempting to auto-install missing packages: ${missing[*]}..."
-            execute "sudo apt-get update && sudo apt-get install -y ${missing[*]}" true
+        if [ "$AUTO_INSTALL_DEPS" = true ]; then
+            if command -v apt-get >/dev/null 2>&1; then
+                log_info "Attempting to auto-install missing packages via apt-get: ${missing[*]}..."
+                execute "sudo apt-get update && sudo apt-get install -y ${missing[*]}" true
+            elif command -v brew >/dev/null 2>&1; then
+                log_info "Attempting to auto-install missing packages via brew: ${missing[*]}..."
+                execute "brew install ${missing[*]}" true
+            fi
             missing=()
             for dep in "${deps[@]}"; do
                 command -v "$dep" >/dev/null 2>&1 || missing+=("$dep")
@@ -322,6 +327,7 @@ check_dependencies() {
         fi
         if [ ${#missing[@]} -ne 0 ]; then
             log_error "Missing required dependencies: ${missing[*]}"
+            log_error "Run dot.sh with --install-deps to permit automated package installation."
             exit 1
         fi
     fi
@@ -333,13 +339,27 @@ setup_packages() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         local BREWFILE="$DOTFILES_DIR/config/brew/Brewfile"
         if command -v brew >/dev/null 2>&1 && [ -f "$BREWFILE" ]; then
-            log_info "Homebrew found. Running brew bundle..."
-            if [ "$DRY_RUN" = true ]; then
-                echo "   [DRY-RUN] Would execute: brew bundle --file='$BREWFILE'"
+            if [ "$AUTO_INSTALL_DEPS" = true ]; then
+                log_info "Homebrew found and --install-deps enabled. Installing brew bundle..."
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   [DRY-RUN] Would execute: brew bundle --file='$BREWFILE'"
+                else
+                    brew bundle --file="$BREWFILE" || log_warn "Some brew packages could not be installed."
+                fi
+                log_success "Homebrew bundle installed."
             else
-                brew bundle --file="$BREWFILE" || log_warn "Some brew packages could not be installed."
+                log_info "Homebrew found. Checking bundle dependencies (read-only)..."
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   [DRY-RUN] Would check: brew bundle check --file='$BREWFILE'"
+                else
+                    if brew bundle check --file="$BREWFILE" >/dev/null 2>&1; then
+                        log_success "Homebrew bundle packages already satisfied."
+                    else
+                        log_warn "Some Homebrew bundle packages are not installed."
+                        log_warn "Run dot.sh with --install-deps to permit installing Homebrew formulas & casks."
+                    fi
+                fi
             fi
-            log_success "Homebrew packages verified."
         fi
     fi
 }
@@ -379,8 +399,14 @@ setup_zsh() {
     
     # 1. Install Oh My Zsh
     if [[ "$GITHUB_ACTIONS" != "true" && ! -d "$HOME/.oh-my-zsh" ]]; then
-        execute "sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended --keep-zshrc"
-        log_success "Oh My Zsh installed."
+        if [ "$AUTO_INSTALL_DEPS" = true ]; then
+            log_info "Installing Oh My Zsh (--install-deps permitted)..."
+            execute "sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended --keep-zshrc"
+            log_success "Oh My Zsh installed."
+        else
+            log_warn "Oh My Zsh is not installed at $HOME/.oh-my-zsh."
+            log_warn "Run dot.sh with --install-deps to permit downloading and installing Oh My Zsh."
+        fi
     fi
 
     # 2. Install Custom Plugins
@@ -440,7 +466,11 @@ setup_vim() {
     setup_links "setup_vim"
     execute "mkdir -p '$HOME/.vim/undo'"
     log_info "Installing Vim plugins..."
-    execute "vim +PlugInstall +qall!"
+    if [ "$AUTO_INSTALL_DEPS" = true ]; then
+        DOTFILES_INSTALL_DEPS=true execute "vim +PlugInstall +qall!"
+    else
+        DOTFILES_INSTALL_DEPS=false execute "vim +PlugInstall +qall!"
+    fi
     log_success "Vim & Neovim ready."
 }
 
@@ -585,8 +615,15 @@ setup_macos() {
 
     local FONT_DEST="$HOME/Library/Fonts/MesloLGS NF Regular.ttf"
     if [ ! -f "$FONT_DEST" ]; then
-        execute "mkdir -p '$HOME/Library/Fonts'"
-        execute "curl -fLo '$FONT_DEST' 'https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf'" true
+        if [ "$AUTO_INSTALL_DEPS" = true ]; then
+            log_info "Downloading MesloLGS NF font (--install-deps permitted)..."
+            execute "mkdir -p '$HOME/Library/Fonts'"
+            execute "curl -fLo '$FONT_DEST' 'https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf'" true
+            log_success "MesloLGS NF font installed."
+        else
+            log_warn "Nerd Font not found at $FONT_DEST."
+            log_warn "Run dot.sh with --install-deps to permit downloading the font."
+        fi
     fi
     
     execute "defaults write NSGlobalDomain KeyRepeat -int 1"

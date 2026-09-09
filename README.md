@@ -25,7 +25,7 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 *   `--skip <step>`: Skips a specific setup function (can be specified multiple times, e.g., `--skip setup_vim --skip setup_tmux`).
 *   `--dry-run`: Preview execution steps without modifying the system.
 *   `--test`: Runs a post-setup verification suite (Symlinks, Permissions, SSH).
-*   `--install-deps`: Automatically installs missing required system packages via `apt-get` on Debian/Ubuntu.
+*   `--install-deps`: Explicitly permits installing missing system packages (`apt-get`/`brew`), Homebrew bundle formulas/casks, Oh My Zsh, fonts, and Vim binary tooling (`fzf`, `vim-go`). Without this flag, the script will never install any binary or external executable.
 
 ---
 

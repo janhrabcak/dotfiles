@@ -8,7 +8,8 @@ All notable changes to this project will be documented in this file.
 - **Git Pre-Commit Hooks Integration**: Added repository-tracked pre-commit hook in `.githooks/pre-commit` verifying Zsh syntax, Vim config, Tmux config, and ShellCheck. Configured automatic hook activation via `git config core.hooksPath .githooks` during `setup_git`.
 - **Automatic `.local` Template Generation**: Added automated initialization of missing local machine overrides. Automatically creates `config/git/.gitconfig.local` pre-populated with existing user identity and generates starter `~/.zshrc.local` template for private shell environments. Added `config/ssh/authorized_keys.local.example` documentation.
 - **Automated Dependency Updates (Dependabot)**: Added `.github/dependabot.yml` configured to monitor and generate weekly pull requests for GitHub Actions dependencies.
-- **Expanded Test Suite (38/38 Checks Passing)**: Added comprehensive test coverage for `--clean` dry-run and live pruning, backup directory rotation, Git hook installation and execution, and `.local` template auto-generators.
+- **Strict Binary Installation Policy (`--install-deps`)**: Ensured no binary, package, font, or external executable is ever installed without explicit `--install-deps` permission. Gated `brew bundle` behind `--install-deps` on macOS (defaulting to read-only `brew bundle check`), gated Vim post-install binary hooks (`fzf#install()` and `:GoUpdateBinaries`), and gated Oh My Zsh and font downloads.
+- **Expanded Test Suite (43/43 Checks Passing)**: Added comprehensive test coverage for `--install-deps` enforcement, gated Vim binary hooks, `--clean` dry-run and live pruning, backup directory rotation, Git hook installation and execution, and `.local` template auto-generators.
 
 ## [v3.5.1] - 2026-09-08
 ### Added
