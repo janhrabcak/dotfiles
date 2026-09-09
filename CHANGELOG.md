@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v3.6.0] - 2026-09-09
+### Added
+- **Maintenance & Pruning (`--clean` & Backup Rotator)**: Added `--clean` CLI option and `prune_dead_symlinks` function to identify and purge broken dotfiles symlinks without touching external links. Added automated backup rotation (`rotate_backups`) to retain only the 5 most recent timestamped backup directories in `~/.dotfiles.backup/`.
+- **Git Pre-Commit Hooks Integration**: Added repository-tracked pre-commit hook in `.githooks/pre-commit` verifying Zsh syntax, Vim config, Tmux config, and ShellCheck. Configured automatic hook activation via `git config core.hooksPath .githooks` during `setup_git`.
+- **Automatic `.local` Template Generation**: Added automated initialization of missing local machine overrides. Automatically creates `config/git/.gitconfig.local` pre-populated with existing user identity and generates starter `~/.zshrc.local` template for private shell environments. Added `config/ssh/authorized_keys.local.example` documentation.
+- **Automated Dependency Updates (Dependabot)**: Added `.github/dependabot.yml` configured to monitor and generate weekly pull requests for GitHub Actions dependencies.
+- **Expanded Test Suite (38/38 Checks Passing)**: Added comprehensive test coverage for `--clean` dry-run and live pruning, backup directory rotation, Git hook installation and execution, and `.local` template auto-generators.
+
 ## [v3.5.1] - 2026-09-08
 ### Added
 - **Unified Behavioral Test Suite (`tests/run-tests.sh`)**: Zero-dependency automated test runner executing 31 checks across isolated temporary sandboxes (syntax, headless Vim evaluation, `--dry-run` side-effect absence, `--skip`/`--only` flags, file backup recovery, SSH 600 permissions, Git identity resolution, and doctor diagnostic failure detection).

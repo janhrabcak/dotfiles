@@ -28,6 +28,8 @@ jobs:
           zsh -n dot.sh
           zsh -n config/zsh/.zshrc
           zsh -n config/zsh/aliases.zsh
+          zsh -n .githooks/pre-commit
+          zsh -n tests/run-tests.sh
 
       - name: Tmux Syntax Check
         run: tmux -f config/tmux/.tmux.conf start-server \; kill-server

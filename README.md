@@ -1,4 +1,4 @@
-# 🚀 Dotfiles Bootstrapper (v3.5)
+# 🚀 Dotfiles Bootstrapper (v3.6)
 
 ![CI State](https://github.com/janhrabcak/dotfiles/actions/workflows/test.yml/badge.svg)
 
@@ -12,13 +12,15 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 | **Local Install** (Clone first) | `git clone https://github.com/janhrabcak/dotfiles.git ~/.dotfiles && cd ~/.dotfiles && ./dot.sh` |
 | **Self-Update** | `./dot.sh --update` |
 | **Check Health** | `./dot.sh --doctor` |
+| **Prune & Rotate Backups** | `./dot.sh --clean` |
 | **Run Full Test Suite** | `tests/run-tests.sh` |
 | **Run Local CI Docker Test** | `tests/dot-local-ci-test.sh` |
 | **Run Specific Step** | `./dot.sh --only setup_vim` |
 
 ### Script Flags
+*   `--clean`: Prunes dead dotfiles symlinks in `$HOME` and rotates backups (retains 5 most recent).
 *   `--remote`: Downloads the latest archive directly from GitHub.
-*   `--doctor`: Runs a deep diagnostic of the system health and symlinks.
+*   `--doctor`: Runs a deep diagnostic of the system health, git hooks, and symlinks.
 *   `--only <step>`: Runs a specific setup function only (e.g., `setup_vim`).
 *   `--skip <step>`: Skips a specific setup function (can be specified multiple times, e.g., `--skip setup_vim --skip setup_tmux`).
 *   `--dry-run`: Preview execution steps without modifying the system.
@@ -75,7 +77,7 @@ The `dot.sh` script is a robust, idempotent bootstrapper designed to configure a
 3.  **Modular Setup Phases**:
     *   **Zsh**: Installs Oh My Zsh, custom plugins (autosuggestions, syntax highlighting), and links `.zshrc`.
     *   **Vim**: Bootstraps `vim-plug`, links `.vimrc`, and triggers plugin installation.
-    *   **Git**: Links global configurations via the `include.path` directive to keep local config separate.
+    *   **Git**: Auto-generates local identity template (`.gitconfig.local`), links global configuration via `include.path`, and configures tracked pre-commit hooks (`.githooks`).
     *   **SSH**: Injects a platform-aware `Include` directive into `~/.ssh/config` and manages authorized keys for server environments.
     *   **macOS Defaults**: Applies system-level performance tweaks (key repeat, dock speed) and installs required fonts.
 4.  **Verification**: The `--doctor` flag performs deep physical path resolution to ensure all symlinks are pointing to the correct files in the repository.
@@ -84,6 +86,8 @@ The `dot.sh` script is a robust, idempotent bootstrapper designed to configure a
 The script uses specialized shell functions to ensure consistency:
 *   `safe_link`: Creates symlinks while backing up existing files and repairing broken links.
 *   `safe_append/prepend`: Ensures specific configuration lines (like SSH `Include`) exist in files without creating duplicates.
+*   `prune_dead_symlinks`: Identifies and removes broken symlinks in `$HOME` pointing into `$DOTFILES_DIR`.
+*   `rotate_backups`: Automatically retains only the 5 most recent timestamped backup directories in `~/.dotfiles.backup/`.
 
 ---
 
@@ -91,9 +95,14 @@ The script uses specialized shell functions to ensure consistency:
 
 ### 1. The Bootstrap Engine (`dot.sh`)
 *   **Doctor Logic**: The `--doctor` flag performs deep physical path resolution (`:A`) to verify integrity even across symlinked directories.
+*   **Maintenance & Pruning**: Running `./dot.sh --clean` safely purges broken dotfiles symlinks and rotates snapshot backups.
+*   **Local Overrides**: Machine-specific identity is decoupled from version control via auto-generated `.local` files (`config/git/.gitconfig.local` and `~/.zshrc.local`).
+*   **Git Pre-commit Hooks**: Tracked in `.githooks/` and active through `core.hooksPath = .githooks`, automatically enforcing shell, vim, and tmux syntax checks before commit.
+*   **Dependabot**: Configured in `.github/dependabot.yml` for automated weekly updates of GitHub Actions dependencies.
 
 ### 2. SSH Agent Strategy
 *   **Linux/Remote**: Uses a **Stable Symlink** at `~/.ssh/ssh_auth_sock`. The `.zshrc` updates this symlink on every fresh login and forces all sub-shells (including those inside tmux) to reference it. This prevents "Dead Agent" syndrome when re-attaching to old sessions.
 
 ### 3. iTerm2 Control Mode Hardening
 *   **Protocol Protection**: All background output (like TPM initialization) is redirected to `/dev/null` to prevent corrupting the `-CC` handshake.
+

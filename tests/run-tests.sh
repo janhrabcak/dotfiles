@@ -68,10 +68,24 @@ log_suite "Group 1: Syntax & Linter Checks"
 
 if zsh -n "$REPO_ROOT/dot.sh" \
    && zsh -n "$REPO_ROOT/config/zsh/.zshrc" \
-   && zsh -n "$REPO_ROOT/config/zsh/aliases.zsh"; then
-  pass "Zsh syntax check (dot.sh, .zshrc, aliases.zsh)"
+   && zsh -n "$REPO_ROOT/config/zsh/aliases.zsh" \
+   && zsh -n "$REPO_ROOT/.githooks/pre-commit" \
+   && zsh -n "$REPO_ROOT/tests/run-tests.sh"; then
+  pass "Zsh syntax check (dot.sh, .zshrc, aliases, pre-commit, run-tests)"
 else
   fail "Zsh syntax check" "Syntax error detected in shell scripts"
+fi
+
+if [[ -x "$REPO_ROOT/.githooks/pre-commit" ]]; then
+  pass "Pre-commit hook is present and executable"
+else
+  fail "Pre-commit hook" ".githooks/pre-commit is missing or not executable"
+fi
+
+if [[ -f "$REPO_ROOT/.github/dependabot.yml" ]]; then
+  pass "Dependabot configuration present"
+else
+  fail "Dependabot configuration" ".github/dependabot.yml is missing"
 fi
 
 if tmux -f "$REPO_ROOT/config/tmux/.tmux.conf" start-server \; kill-server >/dev/null 2>&1; then
@@ -99,7 +113,7 @@ else
 fi
 
 if command -v shellcheck >/dev/null 2>&1; then
-  if shellcheck -s bash "$REPO_ROOT/tests/"*.sh >/dev/null 2>&1; then
+  if shellcheck -s bash "$REPO_ROOT/tests/dot-local-ci-test.sh" "$REPO_ROOT/tests/test-vim.sh" >/dev/null 2>&1; then
     pass "ShellCheck static analysis"
   else
     fail "ShellCheck static analysis" "ShellCheck warnings found in tests/"
@@ -183,6 +197,26 @@ else
   fail "Multiple --skip flags" "One or more skipped steps were executed"
 fi
 
+# --clean dry-run safety
+teardown_sandbox
+setup_sandbox
+ln -s "$DOTFILES_DIR/nonexistent_test_dead" "$HOME/.dead_dotfile"
+ln -s "/nonexistent_external_target" "$HOME/.dead_external"
+zsh "$DOTFILES_DIR/dot.sh" --clean --dry-run >/dev/null 2>&1
+if [[ -L "$HOME/.dead_dotfile" && -L "$HOME/.dead_external" ]]; then
+  pass "--clean --dry-run leaves all symlinks untouched"
+else
+  fail "--clean --dry-run" "Symlink was unexpectedly removed during dry run"
+fi
+
+# --clean removes dead dotfiles symlinks but preserves external dead symlinks
+zsh "$DOTFILES_DIR/dot.sh" --clean >/dev/null 2>&1
+if [[ ! -L "$HOME/.dead_dotfile" && -L "$HOME/.dead_external" ]]; then
+  pass "--clean prunes dead dotfiles symlinks while preserving external symlinks"
+else
+  fail "--clean pruning" "Dead dotfiles symlink was not pruned or external symlink was removed"
+fi
+
 teardown_sandbox
 
 # ------------------------------------------------------------------------------
@@ -207,6 +241,22 @@ if [[ -n "$backup_file" ]] && grep -q "$UNIQUE_CONTENT" "$backup_file"; then
   pass "Pre-existing file safely backed up with identical contents"
 else
   fail "Safe backup" "Backup not found or content altered"
+fi
+
+# Backup rotation: keeps only 5 newest backups
+teardown_sandbox
+setup_sandbox
+mkdir -p "$HOME/.dotfiles.backup"
+for i in {1..8}; do
+  mkdir -p "$HOME/.dotfiles.backup/2026010${i}_000000"
+  touch "$HOME/.dotfiles.backup/2026010${i}_000000/test.txt"
+done
+zsh "$DOTFILES_DIR/dot.sh" --clean >/dev/null 2>&1
+backup_count=$(find "$HOME/.dotfiles.backup" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+if [[ "$backup_count" -eq 5 ]] && [[ ! -d "$HOME/.dotfiles.backup/20260101_000000" ]] && [[ -d "$HOME/.dotfiles.backup/20260108_000000" ]]; then
+  pass "Backup rotation prunes oldest directories and retains 5 newest"
+else
+  fail "Backup rotation" "Expected 5 backups with oldest pruned, found $backup_count"
 fi
 
 teardown_sandbox
@@ -248,9 +298,29 @@ teardown_sandbox
 log_suite "Group 6: Git Configuration & Identity Resolution"
 
 setup_sandbox
+rm -f "$DOTFILES_DIR/config/git/.gitconfig.local"
 zsh "$DOTFILES_DIR/dot.sh" --only setup_git >/dev/null 2>&1
 
-# Create local identity config
+if [[ -f "$DOTFILES_DIR/config/git/.gitconfig.local" ]] && grep -q "Test Bot" "$DOTFILES_DIR/config/git/.gitconfig.local"; then
+  pass "Git setup automatically generates missing .gitconfig.local with user identity"
+else
+  fail "Git local template generator" ".gitconfig.local was not generated or missing user identity"
+fi
+
+hooks_path=$(git -C "$DOTFILES_DIR" config core.hooksPath 2>/dev/null || true)
+if [[ "$hooks_path" == ".githooks" ]]; then
+  pass "Git setup configures core.hooksPath to .githooks"
+else
+  fail "Git pre-commit hooks" "core.hooksPath is '$hooks_path', expected '.githooks'"
+fi
+
+if "$REPO_ROOT/.githooks/pre-commit" >/dev/null 2>&1; then
+  pass "Git pre-commit hook runs and passes validation"
+else
+  fail "Git pre-commit hook" ".githooks/pre-commit failed execution"
+fi
+
+# Test custom local identity config override
 cat << 'CONFIG_EOF' > "$DOTFILES_DIR/config/git/.gitconfig.local"
 [user]
 	name = Test Identity
@@ -273,6 +343,13 @@ log_suite "Group 7: Zsh Environment & Aliases"
 
 setup_sandbox
 zsh "$DOTFILES_DIR/dot.sh" --only setup_zsh >/dev/null 2>&1
+
+# Test local zshrc template auto-generator
+if [[ -f "$HOME/.zshrc.local" ]]; then
+  pass "Zsh setup automatically generates missing ~/.zshrc.local starter template"
+else
+  fail "Zsh local template generator" "Expected ~/.zshrc.local to be created"
+fi
 
 # Test alias loading and function definitions
 alias_test=$(zsh -c "

@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
 # ==============================================================================
-# BOOTSTRAP SCRIPT (v3.4)
+# BOOTSTRAP SCRIPT (v3.6)
 # ==============================================================================
 
 set -eo pipefail
@@ -14,6 +14,7 @@ BACKUP_DIR="$HOME/.dotfiles.backup/$(date +%Y%m%d_%H%M%S)"
 DRY_RUN=false
 REMOTE_MODE=false
 AUTO_INSTALL_DEPS=false
+CLEAN_MODE=false
 # Detect OS and set default mode
 if [[ "$OSTYPE" == "darwin"* ]]; then
     WORK_MODE="macos"
@@ -42,6 +43,7 @@ while [[ "$#" -gt 0 ]]; do
         --skip)      SKIP_STEPS+=("$2"); shift 2 ;;
         --doctor)    RUN_DOCTOR=true; shift ;;
         --test)      RUN_TESTS=true; shift ;;
+        --clean)     CLEAN_MODE=true; shift ;;
         --install-deps) AUTO_INSTALL_DEPS=true; shift ;;
         *) log_error "Unknown parameter: $1"; exit 1 ;;
     esac
@@ -70,9 +72,34 @@ execute() {
 
 # --- Safety/Idempotency Helpers ---
 
+rotate_backups() {
+    local keep="${1:-5}"
+    local backup_root="$HOME/.dotfiles.backup"
+    if [[ ! -d "$backup_root" ]]; then
+        return 0
+    fi
+
+    local all=("$backup_root"/*(/Non))
+    local total=${#all[@]}
+    if (( total > keep )); then
+        local to_remove=$(( total - keep ))
+        log_info "Rotating backups: keeping $keep newest, pruning $to_remove older backup(s)..."
+        local old_backups=("${(@)all[1,to_remove]}")
+        for dir in "${old_backups[@]}"; do
+            if [[ "$DRY_RUN" == "true" ]]; then
+                echo "   [DRY-RUN] Would remove old backup: $dir"
+            else
+                rm -rf "$dir"
+                log_success "Pruned old backup: $(basename "$dir")"
+            fi
+        done
+    fi
+}
+
 init_backup_dir() {
     if [[ ! -d "$BACKUP_DIR" ]]; then
         execute "mkdir -p '$BACKUP_DIR'"
+        rotate_backups 5
     fi
 }
 
@@ -203,6 +230,69 @@ setup_links() {
     fi
 }
 
+prune_dead_symlinks() {
+    log_info "Scanning for dead dotfiles symlinks..."
+    local dead_links=()
+    local link
+
+    # 1. Check destinations in LINK_MANIFEST
+    for entry in "${LINK_MANIFEST[@]}"; do
+        local rest="${entry#*:}"
+        local dest="${rest%%:*}"
+        if [[ -L "$dest" && ! -e "$dest" ]]; then
+            dead_links+=("$dest")
+        fi
+    done
+
+    # 2. Check broken symlinks in $HOME, $HOME/.config, and $HOME/.bin pointing to $DOTFILES_DIR
+    local search_dirs=("$HOME")
+    [[ -d "$HOME/.config" ]] && search_dirs+=("$HOME/.config")
+    [[ -d "$HOME/.bin" ]] && search_dirs+=("$HOME/.bin")
+
+    local canon_dotfiles="${DOTFILES_DIR:A}"
+
+    for dir in "${search_dirs[@]}"; do
+        for link in "$dir"/*(@N) "$dir"/.*(@N); do
+            [[ "$(basename "$link")" == "." || "$(basename "$link")" == ".." ]] && continue
+            if [[ -L "$link" && ! -e "$link" ]]; then
+                local target
+                target="$(readlink "$link" 2>/dev/null || true)"
+                local abs_target="$target"
+                if [[ "$target" != /* ]]; then
+                    local link_dir
+                    link_dir="$(cd "$(dirname "$link")" 2>/dev/null && pwd)"
+                    abs_target="$(cd "$link_dir/$(dirname "$target")" 2>/dev/null && pwd)/$(basename "$target")"
+                fi
+                if [[ "$abs_target" == "$DOTFILES_DIR"* || "$abs_target" == "$canon_dotfiles"* ]]; then
+                    if [[ ! " ${dead_links[*]} " == *" $link "* ]]; then
+                        dead_links+=("$link")
+                    fi
+                fi
+            fi
+        done
+    done
+
+    if [[ ${#dead_links[@]} -eq 0 ]]; then
+        log_success "No dead dotfiles symlinks found."
+    else
+        for link in "${dead_links[@]}"; do
+            if [[ "$DRY_RUN" == "true" ]]; then
+                echo "   [DRY-RUN] Would remove dead symlink: $link"
+            else
+                rm -f "$link"
+                log_success "Removed dead symlink: $link"
+            fi
+        done
+    fi
+}
+
+clean_dotfiles() {
+    log_info "🧹 Starting dotfiles cleanup and maintenance..."
+    prune_dead_symlinks
+    rotate_backups 5
+    log_success "Cleanup complete."
+}
+
 # --- Functions ---
 
 check_dependencies() {
@@ -315,6 +405,24 @@ setup_zsh() {
 
     # 4. Link Configurations
     setup_links "setup_zsh"
+
+    # 5. Missing .local template auto-generator
+    local zsh_local="$HOME/.zshrc.local"
+    if [[ ! -f "$zsh_local" ]]; then
+        log_info "Generating starter $zsh_local template..."
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "   [DRY-RUN] Would create starter $zsh_local"
+        else
+            cat << 'EOF' > "$zsh_local"
+# ~/.zshrc.local — Machine-specific shell configuration & private environment
+# Loaded at the end of ~/.zshrc and ignored in git.
+
+# export WORK_ENV="development"
+# export PATH="$HOME/.local/bin:$PATH"
+EOF
+            log_success "Created starter template at $zsh_local"
+        fi
+    fi
     
     log_success "Zsh environment ready."
 }
@@ -353,6 +461,29 @@ setup_git() {
     local GIT_CONF_SRC="$DOTFILES_DIR/config/git/.gitconfig"
     local GIT_CONF_DEST="$HOME/.gitconfig"
 
+    # 1. Missing .local template auto-generator
+    local git_local="$DOTFILES_DIR/config/git/.gitconfig.local"
+    if [[ ! -f "$git_local" ]]; then
+        log_info "Creating initial $git_local from template..."
+        local user_name user_email
+        user_name="$(git config --global user.name 2>/dev/null || true)"
+        user_email="$(git config --global user.email 2>/dev/null || true)"
+        [[ -z "$user_name" ]] && user_name="Your Name"
+        [[ -z "$user_email" ]] && user_email="you@example.com"
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "   [DRY-RUN] Would create $git_local with name: $user_name, email: $user_email"
+        else
+            cat << EOF > "$git_local"
+# config/git/.gitconfig.local — personal identity (gitignored)
+[user]
+	name = $user_name
+	email = $user_email
+EOF
+            log_success "Generated $git_local"
+        fi
+    fi
+
+    # 2. Link Global Git Config
     if [ -f "$GIT_CONF_SRC" ]; then
         if ! grep -q "path = $GIT_CONF_SRC" "$GIT_CONF_DEST" 2>/dev/null; then
             execute "git config --global include.path '$GIT_CONF_SRC'"
@@ -360,6 +491,12 @@ setup_git() {
         else
             log_success "Git config already linked."
         fi
+    fi
+
+    # 3. Pre-commit Hooks Configuration
+    if [ -d "$DOTFILES_DIR/.git" ] && [ -d "$DOTFILES_DIR/.githooks" ]; then
+        execute "git -C '$DOTFILES_DIR' config core.hooksPath .githooks"
+        log_success "Git pre-commit hooks configured (.githooks)."
     fi
 }
 
@@ -509,6 +646,24 @@ run_doctor() {
         errors=$((errors + 1))
     fi
 
+    # 1.4 Git Local Identity & Hooks Check
+    local git_local="$DOTFILES_DIR/config/git/.gitconfig.local"
+    if [[ -f "$git_local" ]]; then
+        log_success "Git: Local identity file (.gitconfig.local) present"
+    else
+        log_warn "Git: Local identity file (.gitconfig.local) missing (run dot.sh to generate)"
+    fi
+
+    if [[ -d "$DOTFILES_DIR/.git" ]]; then
+        local hooks_path
+        hooks_path="$(git -C "$DOTFILES_DIR" config core.hooksPath 2>/dev/null || true)"
+        if [[ "$hooks_path" == ".githooks" ]]; then
+            log_success "Git: Pre-commit hooks active (.githooks)"
+        else
+            log_warn "Git: Pre-commit hooks not configured (run dot.sh to configure)"
+        fi
+    fi
+
     # 1.5 SSH Inclusion Check
     local ssh_conf="$HOME/.ssh/config"
     local SSH_FILENAME="linux.config"
@@ -567,6 +722,11 @@ run_doctor() {
 # --- Main Execution ---
 
 main() {
+    if [ "$CLEAN_MODE" = true ]; then
+        clean_dotfiles
+        exit 0
+    fi
+
     if [ "$RUN_DOCTOR" = true ]; then
         run_doctor
         exit $?
