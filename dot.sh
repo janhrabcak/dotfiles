@@ -191,6 +191,9 @@ LINK_MANIFEST=(
     "config/vim/.vimrc:$HOME/.config/nvim/init.vim:setup_vim:all"
     "config/tmux/.tmux.conf:$HOME/.tmux.conf:setup_tmux:all"
     "bin:$HOME/.bin:setup_zsh:all"
+    "config/gemini/GEMINI.md:$HOME/.gemini/config/GEMINI.md:setup_gemini:all"
+    "config/gemini/GEMINI.md:$HOME/.gemini/config/AGENTS.md:setup_gemini:all"
+    "config/gemini/settings.json:$HOME/.gemini/settings.json:setup_gemini:all"
 )
 
 setup_links() {
@@ -641,6 +644,12 @@ setup_macos() {
     log_success "macOS complete."
 }
 
+setup_gemini() {
+    log_info "Step 9: Setting up Gemini / Antigravity..."
+    setup_links "setup_gemini"
+    log_success "Gemini complete."
+}
+
 run_smoke_tests() {
     log_info "🧪 Running Post-Install Verification..."
     run_doctor
@@ -807,7 +816,7 @@ main() {
         fi
     fi
 
-    local steps=(setup_packages setup_links setup_zsh setup_vim setup_tmux setup_git setup_ssh setup_iterm2 setup_macos)
+    local steps=(setup_packages setup_links setup_zsh setup_vim setup_tmux setup_git setup_ssh setup_iterm2 setup_macos setup_gemini)
     for step in "${steps[@]}"; do
         if [[ " ${SKIP_STEPS[*]} " == *" $step "* ]]; then
             log_warn "Skipping $step"

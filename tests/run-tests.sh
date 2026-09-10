@@ -431,6 +431,14 @@ else
   fail "Neovim init.vim" "Expected symlink at $HOME/.config/nvim/init.vim"
 fi
 
+# Test Gemini / Antigravity links
+zsh "$DOTFILES_DIR/dot.sh" --only setup_gemini >/dev/null 2>&1
+if [[ -L "$HOME/.gemini/config/GEMINI.md" && -L "$HOME/.gemini/config/AGENTS.md" && -L "$HOME/.gemini/settings.json" ]]; then
+  pass "Gemini rules and settings correctly symlinked"
+else
+  fail "Gemini symlinks" "Expected symlinks under $HOME/.gemini"
+fi
+
 teardown_sandbox
 
 # ------------------------------------------------------------------------------

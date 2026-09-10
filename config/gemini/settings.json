@@ -1,0 +1,60 @@
+{
+  "security": {
+    "auth": {
+      "selectedType": "oauth-personal"
+    }
+  },
+  "permissions": {
+    "autoApprove": [
+      "readFile",
+      "listFiles",
+      "searchFiles",
+      "fetchWebPage"
+    ],
+    "requireConfirmation": [
+      "writeFile",
+      "editFile",
+      "deleteFile",
+      "executeCommand"
+    ],
+    "bash": {
+      "autoApprovePatterns": [
+        "^ls",
+        "^cat",
+        "^grep",
+        "^find",
+        "^rg(\\s|$)",
+        "^head(\\s|$)",
+        "^tail(\\s|$)",
+        "^tree(\\s|$)",
+        "^wc(\\s|$)",
+        "^file(\\s|$)",
+        "^stat(\\s|$)",
+        "^which(\\s|$)",
+        "^whereis(\\s|$)",
+        "^uname(\\s|$)",
+        "^pwd$",
+        "^git status",
+        "^git diff",
+        "^git log",
+        "^git branch(\\s|$)",
+        "^git show(\\s|$)",
+        "^git rev-parse(\\s|$)",
+        "^git remote(\\s|$)",
+        "^git tag(\\s|$)",
+        "^node (-v|--version)",
+        "^npm (-v|--version|view|show|list)",
+        "^go (version|env)",
+        "^python3? (-V|--version)",
+        "^pip (list|show)",
+        "^docker ps",
+        "^docker logs",
+        "^docker (inspect|images)",
+        "^docker-compose (ps|logs)",
+        "^npm (test|run test)",
+        "^go test(\\s|$)",
+        "^\\./dot\\.sh (--doctor|--dry-run|--test)"
+      ]
+    }
+  }
+}
