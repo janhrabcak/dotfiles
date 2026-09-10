@@ -433,8 +433,8 @@ fi
 
 # Test Gemini / Antigravity links
 zsh "$DOTFILES_DIR/dot.sh" --only setup_gemini >/dev/null 2>&1
-if [[ -L "$HOME/.gemini/config/GEMINI.md" && -L "$HOME/.gemini/config/AGENTS.md" && -L "$HOME/.gemini/settings.json" ]]; then
-  pass "Gemini rules and settings correctly symlinked"
+if [[ -L "$HOME/.gemini/config/GEMINI.md" && -L "$HOME/.gemini/config/AGENTS.md" && -L "$HOME/.gemini/settings.json" && -L "$HOME/.gemini/config/mcp_config.json" && -L "$HOME/.gemini/config/skills" ]]; then
+  pass "Gemini rules, settings, MCP config, and skills correctly symlinked"
 else
   fail "Gemini symlinks" "Expected symlinks under $HOME/.gemini"
 fi

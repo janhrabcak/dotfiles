@@ -194,6 +194,8 @@ LINK_MANIFEST=(
     "config/gemini/GEMINI.md:$HOME/.gemini/config/GEMINI.md:setup_gemini:all"
     "config/gemini/GEMINI.md:$HOME/.gemini/config/AGENTS.md:setup_gemini:all"
     "config/gemini/settings.json:$HOME/.gemini/settings.json:setup_gemini:all"
+    "config/gemini/mcp_config.json:$HOME/.gemini/config/mcp_config.json:setup_gemini:all"
+    "config/gemini/skills:$HOME/.gemini/config/skills:setup_gemini:all"
 )
 
 setup_links() {
