@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v3.7.0] - 2026-09-10
+### Added
+- **Gemini & Antigravity Global Configuration**: Integrated agent settings, rules, MCP tool definitions, and custom skills into the dotfiles declarative linking pipeline (`setup_gemini`).
+- **Global Developer Guidelines (`GEMINI.md` / `AGENTS.md`)**: Configured universal developer guidelines enforcing concise communication, Conventional Commits, proactive test verification, code integrity, and zero-secrets security across all projects.
+- **Command Whitelist & Security (`settings.json`)**: Consolidated and validated permission settings with regex-based auto-approvals for safe read-only inspection (`rg`, `head`, `tree`, `stat`, `which`), git queries (`git branch`, `show`, `rev-parse`, `remote`, `tag`), runtime tools (`node`, `npm`, `go`, `docker`), and local test runners.
+- **Global MCP Tool Configuration (`mcp_config.json`)**: Configured global Model Context Protocol servers for persistent memory graph (`@modelcontextprotocol/server-memory`), GitHub tools (`@modelcontextprotocol/server-github`), and web fetching (`mcp-fetch-server`).
+- **Custom Global Skills**: Created on-demand progressive disclosure playbooks for `conventional-release` (SemVer calculation, changelog generation, and tag drafting) and `rigorous-pr-review` (multi-pillar code inspection).
+- **Diagnostic & Test Suite Integration**: Extended `run_doctor` and `tests/run-tests.sh` with automated verification for all Gemini symlinks (`GEMINI.md`, `AGENTS.md`, `settings.json`, `mcp_config.json`, and `skills/`).
+
 ## [v3.6.0] - 2026-09-09
 ### Added
 - **Maintenance & Pruning (`--clean` & Backup Rotator)**: Added `--clean` CLI option and `prune_dead_symlinks` function to identify and purge broken dotfiles symlinks without touching external links. Added automated backup rotation (`rotate_backups`) to retain only the 5 most recent timestamped backup directories in `~/.dotfiles.backup/`.

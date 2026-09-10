@@ -1,4 +1,4 @@
-# 🚀 Dotfiles Bootstrapper (v3.6)
+# 🚀 Dotfiles Bootstrapper (v3.7)
 
 ![CI State](https://github.com/janhrabcak/dotfiles/actions/workflows/test.yml/badge.svg)
 
@@ -60,6 +60,12 @@ The script applies professional defaults for high-performance workflows:
 *   **Trackpad**: Enables tap-to-click by default.
 *   **Dock**: Auto-hide enabled with zero delay.
 
+### 🤖 Gemini & Antigravity (AI Assistant)
+*   **Unified Guidelines**: Global developer guidelines (`GEMINI.md` / `AGENTS.md`) enforcing concise technical explanations, Conventional Commits, proactive test verification, code integrity, and zero-secrets security across all projects.
+*   **Security & Command Whitelist**: Pre-approved non-destructive inspection commands (`rg`, `find`, `git status/diff/log/branch/show`, runtime version lookups, and test runners) in `settings.json` for seamless agent pair programming without confirmation popups.
+*   **Global MCP Servers**: Model Context Protocol integration (`mcp_config.json`) pre-configured for persistent memory graph (`@modelcontextprotocol/server-memory`), GitHub API integration (`@modelcontextprotocol/server-github`), and Markdown web scraping (`mcp-fetch-server`).
+*   **Custom Global Skills**: Progressive-disclosure playbooks for `conventional-release` (automated SemVer bumps, changelog updates, and release tagging) and `rigorous-pr-review` (multi-pillar code reviews covering security, robustness, conventions, and tests).
+
 ---
 
 ## 🏗️ How it Works (`dot.sh`)
@@ -80,6 +86,7 @@ The `dot.sh` script is a robust, idempotent bootstrapper designed to configure a
     *   **Git**: Auto-generates local identity template (`.gitconfig.local`), links global configuration via `include.path`, and configures tracked pre-commit hooks (`.githooks`).
     *   **SSH**: Injects a platform-aware `Include` directive into `~/.ssh/config` and manages authorized keys for server environments.
     *   **macOS Defaults**: Applies system-level performance tweaks (key repeat, dock speed) and installs required fonts.
+    *   **Gemini & Antigravity**: Links global AI developer guidelines, command whitelist permissions, MCP servers, and custom skills under `~/.gemini/`.
 4.  **Verification**: The `--doctor` flag performs deep physical path resolution to ensure all symlinks are pointing to the correct files in the repository.
 
 ### Idempotent Helpers
