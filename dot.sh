@@ -191,11 +191,14 @@ LINK_MANIFEST=(
     "config/vim/.vimrc:$HOME/.config/nvim/init.vim:setup_vim:all"
     "config/tmux/.tmux.conf:$HOME/.tmux.conf:setup_tmux:all"
     "bin:$HOME/.bin:setup_zsh:all"
-    "config/gemini/GEMINI.md:$HOME/.gemini/config/GEMINI.md:setup_gemini:all"
-    "config/gemini/GEMINI.md:$HOME/.gemini/config/AGENTS.md:setup_gemini:all"
-    "config/gemini/settings.json:$HOME/.gemini/settings.json:setup_gemini:all"
-    "config/gemini/mcp_config.json:$HOME/.gemini/config/mcp_config.json:setup_gemini:all"
-    "config/gemini/skills:$HOME/.gemini/config/skills:setup_gemini:all"
+    "config/ai/AGENTS.md:$HOME/.gemini/config/GEMINI.md:setup_ai:all"
+    "config/ai/AGENTS.md:$HOME/.gemini/config/AGENTS.md:setup_ai:all"
+    "config/ai/AGENTS.md:$HOME/.claude/CLAUDE.md:setup_ai:all"
+    "config/ai/AGENTS.md:$HOME/.cursorrules:setup_ai:all"
+    "config/ai/AGENTS.md:$HOME/.clinerules:setup_ai:all"
+    "config/ai/settings.json:$HOME/.gemini/settings.json:setup_ai:all"
+    "config/ai/mcp_config.json:$HOME/.gemini/config/mcp_config.json:setup_ai:all"
+    "config/ai/skills:$HOME/.gemini/config/skills:setup_ai:all"
 )
 
 setup_links() {
@@ -646,10 +649,14 @@ setup_macos() {
     log_success "macOS complete."
 }
 
+setup_ai() {
+    log_info "Step 9: Setting up AI Agents (Gemini, Claude, Cursor, Cline)..."
+    setup_links "setup_ai"
+    log_success "AI agents configuration complete."
+}
+
 setup_gemini() {
-    log_info "Step 9: Setting up Gemini / Antigravity..."
-    setup_links "setup_gemini"
-    log_success "Gemini complete."
+    setup_ai "$@"
 }
 
 run_smoke_tests() {
@@ -818,7 +825,7 @@ main() {
         fi
     fi
 
-    local steps=(setup_packages setup_links setup_zsh setup_vim setup_tmux setup_git setup_ssh setup_iterm2 setup_macos setup_gemini)
+    local steps=(setup_packages setup_links setup_zsh setup_vim setup_tmux setup_git setup_ssh setup_iterm2 setup_macos setup_ai)
     for step in "${steps[@]}"; do
         if [[ " ${SKIP_STEPS[*]} " == *" $step "* ]]; then
             log_warn "Skipping $step"

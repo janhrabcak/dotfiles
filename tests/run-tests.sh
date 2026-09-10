@@ -431,12 +431,12 @@ else
   fail "Neovim init.vim" "Expected symlink at $HOME/.config/nvim/init.vim"
 fi
 
-# Test Gemini / Antigravity links
-zsh "$DOTFILES_DIR/dot.sh" --only setup_gemini >/dev/null 2>&1
-if [[ -L "$HOME/.gemini/config/GEMINI.md" && -L "$HOME/.gemini/config/AGENTS.md" && -L "$HOME/.gemini/settings.json" && -L "$HOME/.gemini/config/mcp_config.json" && -L "$HOME/.gemini/config/skills" ]]; then
-  pass "Gemini rules, settings, MCP config, and skills correctly symlinked"
+# Test AI Agent links (Gemini, Claude, Cursor, Cline)
+zsh "$DOTFILES_DIR/dot.sh" --only setup_ai >/dev/null 2>&1
+if [[ -L "$HOME/.gemini/config/GEMINI.md" && -L "$HOME/.gemini/config/AGENTS.md" && -L "$HOME/.claude/CLAUDE.md" && -L "$HOME/.cursorrules" && -L "$HOME/.clinerules" && -L "$HOME/.gemini/settings.json" && -L "$HOME/.gemini/config/mcp_config.json" && -L "$HOME/.gemini/config/skills" ]]; then
+  pass "AI Agent rules (Gemini, Claude, Cursor, Cline) and configs correctly symlinked"
 else
-  fail "Gemini symlinks" "Expected symlinks under $HOME/.gemini"
+  fail "AI Agent symlinks" "Expected symlinks for Gemini, Claude, Cursor, or Cline"
 fi
 
 teardown_sandbox

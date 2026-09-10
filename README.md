@@ -60,12 +60,12 @@ The script applies professional defaults for high-performance workflows:
 *   **Trackpad**: Enables tap-to-click by default.
 *   **Dock**: Auto-hide enabled with zero delay.
 
-### 🤖 Gemini & Antigravity (AI Assistant)
-*   **Unified Guidelines**: Global developer guidelines (`GEMINI.md` / `AGENTS.md`) enforcing concise technical explanations, Conventional Commits, proactive test verification, code integrity, and zero-secrets security across all projects.
+### 🤖 AI Agent Environments (Gemini, Claude, Cursor, Cline)
+*   **Universal Guidelines (`AGENTS.md`)**: Single source of truth in `config/ai/AGENTS.md` automatically symlinked to Gemini/Antigravity (`~/.gemini/config/GEMINI.md`, `~/.gemini/config/AGENTS.md`), Claude Code (`~/.claude/CLAUDE.md`), Cursor (`~/.cursorrules`), and Cline/Roo (`~/.clinerules`). Enforces concise technical explanations, Conventional Commits, proactive test verification, code integrity, and zero-secrets security.
 *   **Security & Command Whitelist**: Pre-approved non-destructive inspection commands (`rg`, `find`, `git status/diff/log/branch/show`, runtime version lookups, and test runners) in `settings.json` for seamless agent pair programming without confirmation popups.
 *   **Global MCP Servers**: Model Context Protocol integration (`mcp_config.json`) pre-configured for persistent memory graph (`@modelcontextprotocol/server-memory`), GitHub API integration (`@modelcontextprotocol/server-github`), and Markdown web scraping (`mcp-fetch-server`).
 *   **Custom Global Skills**: Progressive-disclosure playbooks for `conventional-release` (automated SemVer bumps, changelog updates, and release tagging) and `rigorous-pr-review` (multi-pillar code reviews covering security, robustness, conventions, and tests).
-*   **Dual-Audience Documentation**: Mandates that code modifications update both human-facing documentation (README, guides, changelogs) and agent-facing contextual memory (invariants, caveats, and architectural constraints in `GEMINI.md`).
+*   **Dual-Audience Documentation**: Mandates that code modifications update both human-facing documentation (README, guides, changelogs) and agent-facing contextual memory (invariants, caveats, and architectural constraints in `AGENTS.md`).
 
 ---
 
@@ -87,7 +87,7 @@ The `dot.sh` script is a robust, idempotent bootstrapper designed to configure a
     *   **Git**: Auto-generates local identity template (`.gitconfig.local`), links global configuration via `include.path`, and configures tracked pre-commit hooks (`.githooks`).
     *   **SSH**: Injects a platform-aware `Include` directive into `~/.ssh/config` and manages authorized keys for server environments.
     *   **macOS Defaults**: Applies system-level performance tweaks (key repeat, dock speed) and installs required fonts.
-    *   **Gemini & Antigravity**: Links global AI developer guidelines, command whitelist permissions, MCP servers, and custom skills under `~/.gemini/`.
+    *   **AI Agents (`setup_ai`)**: Links universal AI developer guidelines, command whitelist permissions, MCP servers, and custom skills across Gemini, Claude Code, Cursor, and Cline.
 4.  **Verification**: The `--doctor` flag performs deep physical path resolution to ensure all symlinks are pointing to the correct files in the repository.
 
 ### Idempotent Helpers

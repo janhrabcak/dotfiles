@@ -4,13 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.7.0] - 2026-09-10
 ### Added
-- **Gemini & Antigravity Global Configuration**: Integrated agent settings, rules, MCP tool definitions, and custom skills into the dotfiles declarative linking pipeline (`setup_gemini`).
-- **Global Developer Guidelines (`GEMINI.md` / `AGENTS.md`)**: Configured universal developer guidelines enforcing concise communication, Conventional Commits, proactive test verification, code integrity, and zero-secrets security across all projects.
+- **Multi-Agent Global AI Configuration (`setup_ai`)**: Refactored agent configuration into vendor-neutral single-source-of-truth architecture (`config/ai/`), declarative symlinking across Gemini/Antigravity (`~/.gemini/config/GEMINI.md`, `~/.gemini/config/AGENTS.md`), Claude Code (`~/.claude/CLAUDE.md`), Cursor (`~/.cursorrules`), and Cline/Roo (`~/.clinerules`).
+- **Global Developer Guidelines (`config/ai/AGENTS.md`)**: Configured universal developer guidelines enforcing concise communication, Conventional Commits, proactive test verification, code integrity, and zero-secrets security across all AI assistants.
 - **Command Whitelist & Security (`settings.json`)**: Consolidated and validated permission settings with regex-based auto-approvals for safe read-only inspection (`rg`, `head`, `tree`, `stat`, `which`), git queries (`git branch`, `show`, `rev-parse`, `remote`, `tag`), runtime tools (`node`, `npm`, `go`, `docker`), and local test runners.
 - **Global MCP Tool Configuration (`mcp_config.json`)**: Configured global Model Context Protocol servers for persistent memory graph (`@modelcontextprotocol/server-memory`), GitHub tools (`@modelcontextprotocol/server-github`), and web fetching (`mcp-fetch-server`).
 - **Custom Global Skills**: Created on-demand progressive disclosure playbooks for `conventional-release` (SemVer calculation, changelog generation, and tag drafting) and `rigorous-pr-review` (multi-pillar code inspection).
-- **Dual-Audience Documentation Requirement**: Enforced that all code modifications must include updates to human-readable project documentation (features, usage, changelogs) as well as agent-facing contextual instructions (architectural invariants, codebase history, edge-case caveats, and negative constraints in `GEMINI.md`/`AGENTS.md`).
-- **Diagnostic & Test Suite Integration**: Extended `run_doctor` and `tests/run-tests.sh` with automated verification for all Gemini symlinks (`GEMINI.md`, `AGENTS.md`, `settings.json`, `mcp_config.json`, and `skills/`).
+- **Dual-Audience Documentation Requirement**: Enforced that all code modifications must include updates to human-readable project documentation (features, usage, changelogs) as well as agent-facing contextual instructions (architectural invariants, codebase history, edge-case caveats, and negative constraints in `AGENTS.md`).
+- **Diagnostic & Test Suite Integration**: Extended `run_doctor` and `tests/run-tests.sh` with automated verification for all AI symlinks (`GEMINI.md`, `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.clinerules`, `settings.json`, `mcp_config.json`, and `skills/`).
 
 ## [v3.6.0] - 2026-09-09
 ### Added
