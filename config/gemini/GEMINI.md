@@ -24,3 +24,14 @@
 ## 4. Security & Safety
 - **Zero Secrets**: Never print, generate, store, or commit plaintext secrets, API tokens, private keys, or credentials.
 - **Ignore Rules**: Respect `.gitignore` at all times. Do not leave stray scratch files or artifacts outside designated temporary or artifact directories.
+
+## 5. Dual-Audience Documentation Requirement
+Every code change must be accompanied by updates to at least two distinct types of documentation (proportional to the scope of the change):
+- **Human-Readable Project Documentation (`README.md`, `CHANGELOG.md`, `docs/`)**:
+  - Explains the project, features, user guides, API changes, and release notes.
+  - Focuses on conceptual clarity, intent, and usability for human developers and users.
+- **Agent-Facing Instructions & Context (`GEMINI.md`, `AGENTS.md`, or Project Technical Memory)**:
+  - Records actionable instructions, architectural invariants, codebase history, edge-case caveats, hidden assumptions, and negative decisions ("why we avoided approach X").
+  - Ensures future AI sessions and subagents thoroughly understand the codebase, avoid known traps, and never regress past fixes.
+  - Keeps content dense, structured, and operational without repeating redundant prose.
+

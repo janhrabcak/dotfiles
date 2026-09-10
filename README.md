@@ -65,6 +65,7 @@ The script applies professional defaults for high-performance workflows:
 *   **Security & Command Whitelist**: Pre-approved non-destructive inspection commands (`rg`, `find`, `git status/diff/log/branch/show`, runtime version lookups, and test runners) in `settings.json` for seamless agent pair programming without confirmation popups.
 *   **Global MCP Servers**: Model Context Protocol integration (`mcp_config.json`) pre-configured for persistent memory graph (`@modelcontextprotocol/server-memory`), GitHub API integration (`@modelcontextprotocol/server-github`), and Markdown web scraping (`mcp-fetch-server`).
 *   **Custom Global Skills**: Progressive-disclosure playbooks for `conventional-release` (automated SemVer bumps, changelog updates, and release tagging) and `rigorous-pr-review` (multi-pillar code reviews covering security, robustness, conventions, and tests).
+*   **Dual-Audience Documentation**: Mandates that code modifications update both human-facing documentation (README, guides, changelogs) and agent-facing contextual memory (invariants, caveats, and architectural constraints in `GEMINI.md`).
 
 ---
 
