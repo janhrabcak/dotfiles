@@ -35,3 +35,6 @@ Every code change must be accompanied by updates to at least two distinct types 
   - Ensures future AI sessions and subagents thoroughly understand the codebase, avoid known traps, and never regress past fixes.
   - Keeps content dense, structured, and operational without repeating redundant prose.
 
+## 6. Architecture & Platform Invariants
+- **Platform-Scoped Plugins**: Shell plugins designed for specific operating systems (e.g. Oh My Zsh's `macos` plugin) must be guarded conditionally (`[[ "$OSTYPE" == darwin* ]]`) in `config/zsh/.zshrc` to avoid spawning redundant subprocesses, errors, or latency on Linux.
+

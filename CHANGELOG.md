@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Changed
+- **Zsh Configuration**: Guarded the Oh My Zsh `macos` plugin to load conditionally only on Darwin (`$OSTYPE == darwin*`), avoiding extraneous shell startup execution on Linux.
+
 ## [v3.7.0] - 2026-09-10
 ### Added
 - **Multi-Agent Global AI Configuration (`setup_ai`)**: Refactored agent configuration into vendor-neutral single-source-of-truth architecture (`config/ai/`), declarative symlinking across Gemini/Antigravity (`~/.gemini/config/GEMINI.md`, `~/.gemini/config/AGENTS.md`), Claude Code (`~/.claude/CLAUDE.md`), Cursor (`~/.cursorrules`), and Cline/Roo (`~/.clinerules`).

@@ -33,7 +33,8 @@ fi
 ZSH_THEME="agnoster"
 DISABLE_UPDATE_PROMPT="true"
 UPDATE_ZSH_DAYS=13
-plugins=(git colorize golang macos zsh-autosuggestions zsh-syntax-highlighting)
+plugins=(git colorize golang zsh-autosuggestions zsh-syntax-highlighting)
+[[ "$OSTYPE" == darwin* ]] && plugins+=(macos)
 
 source "$OHMYZSH/oh-my-zsh.sh"
 
