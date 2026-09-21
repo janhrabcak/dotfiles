@@ -54,7 +54,7 @@ bindkey "^[[B" down-line-or-beginning-search
 
 
 # --- 4. Terminal Title & Hooks ---
-autoload -Uz add-zsh-hook
+autoload -Uz add-zsh-hook vcs_info
 
 function set_terminal_title() {
   local title="$1"
@@ -66,8 +66,21 @@ function set_terminal_title() {
   esac
 }
 
-add-zsh-hook precmd  () { set_terminal_title "%n@%m: %~" }
-add-zsh-hook preexec () { set_terminal_title "${1[(w)1]} | %~" }
+_title_precmd()  { set_terminal_title "%n@%m: %~" }
+_title_preexec() { set_terminal_title "${1[(w)1]} | %~" }
+
+# Native Zsh VCS Info (replaces OMZ prompt_git to eliminate subshell forks)
+zstyle ':vcs_info:*' enable git
+zstyle ':vcs_info:git:*' max-exports 2
+zstyle ':vcs_info:git:*' check-for-changes true
+zstyle ':vcs_info:git:*' stagedstr '✚'
+zstyle ':vcs_info:git:*' unstagedstr '±'
+zstyle ':vcs_info:git:*' formats '%b' '%u%c'
+zstyle ':vcs_info:git:*' actionformats '%b|%a' '%u%c'
+
+add-zsh-hook precmd _title_precmd
+add-zsh-hook precmd vcs_info
+add-zsh-hook preexec _title_preexec
 
 # --- 5. Final Inclusions & Visuals ---
 
@@ -100,6 +113,19 @@ prompt_context() {
 # Dir: current working directory (Limited to 3 levels)
 prompt_dir() {
   prompt_segment blue black '%3~'
+}
+
+# Git Segment (Streamlined via Zsh native vcs_info)
+prompt_git() {
+  [[ -z "$vcs_info_msg_0_" ]] && return
+  local pl_branch_char=$'\ue0a0'
+  local status_str=""
+  [[ -n "$vcs_info_msg_1_" ]] && status_str=" $vcs_info_msg_1_"
+  if [[ -n "$vcs_info_msg_1_" ]]; then
+    prompt_segment "${AGNOSTER_GIT_DIRTY_BG:-yellow}" "${AGNOSTER_GIT_DIRTY_FG:-black}" "${pl_branch_char} ${vcs_info_msg_0_}${status_str}"
+  else
+    prompt_segment "${AGNOSTER_GIT_CLEAN_BG:-green}" "${AGNOSTER_GIT_CLEAN_FG:-black}" "${pl_branch_char} ${vcs_info_msg_0_}"
+  fi
 }
 
 # Clean Build Order

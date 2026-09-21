@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 ### Changed
 - **Zsh Configuration**: Guarded the Oh My Zsh `macos` plugin to load conditionally only on Darwin (`$OSTYPE == darwin*`), avoiding extraneous shell startup execution on Linux.
+- **Prompt Performance (`vcs_info`)**: Replaced Oh My Zsh's multi-fork `prompt_git` implementation with Zsh's native `vcs_info` module in `config/zsh/.zshrc`. Hooks into `precmd` to eliminate 10–15 child `git` processes per prompt evaluation while preserving the Agnoster theme Powerline aesthetics (branch glyph, clean/dirty colors, staged/unstaged badges, and action formats). Fixed `add-zsh-hook` function shadowing.
 
 ## [v3.7.0] - 2026-09-10
 ### Added

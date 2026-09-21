@@ -37,4 +37,7 @@ Every code change must be accompanied by updates to at least two distinct types 
 
 ## 6. Architecture & Platform Invariants
 - **Platform-Scoped Plugins**: Shell plugins designed for specific operating systems (e.g. Oh My Zsh's `macos` plugin) must be guarded conditionally (`[[ "$OSTYPE" == darwin* ]]`) in `config/zsh/.zshrc` to avoid spawning redundant subprocesses, errors, or latency on Linux.
+- **Prompt Performance & `vcs_info`**:
+  - Prompt git segments must use Zsh's built-in `vcs_info` module (`add-zsh-hook precmd vcs_info`) rather than Oh My Zsh's default `prompt_git`, which forks 10–15 child `git` processes per prompt.
+  - When configuring hooks with `add-zsh-hook`, never pass anonymous function syntax (`add-zsh-hook precmd () { ... }`); in Zsh this defines a function named `add-zsh-hook` and clobbers the utility itself. Always register named helper functions.
 
