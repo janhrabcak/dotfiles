@@ -38,9 +38,15 @@ while [[ "$#" -gt 0 ]]; do
         --dry-run|-d) DRY_RUN=true; log_warn "DRY RUN MODE ENABLED."; shift ;;
         --remote)    REMOTE_MODE=true; shift ;;
         --update)    UPDATE_MODE=true; shift ;;
-        --mode)      WORK_MODE="$2"; shift 2 ;;
-        --only)      ONLY_STEP="$2"; shift 2 ;;
-        --skip)      SKIP_STEPS+=("$2"); shift 2 ;;
+        --mode)
+            [[ -z "${2:-}" || "${2:-}" == -* ]] && { log_error "Option --mode requires a value."; exit 1; }
+            WORK_MODE="$2"; shift 2 ;;
+        --only)
+            [[ -z "${2:-}" || "${2:-}" == -* ]] && { log_error "Option --only requires a value."; exit 1; }
+            ONLY_STEP="$2"; shift 2 ;;
+        --skip)
+            [[ -z "${2:-}" || "${2:-}" == -* ]] && { log_error "Option --skip requires a value."; exit 1; }
+            SKIP_STEPS+=("$2"); shift 2 ;;
         --doctor)    RUN_DOCTOR=true; shift ;;
         --test)      RUN_TESTS=true; shift ;;
         --clean)     CLEAN_MODE=true; shift ;;
@@ -314,11 +320,6 @@ check_dependencies() {
         fi
     done
 
-    # Check for iTerm2 on macOS (skip in CI)
-    if [[ "$OSTYPE" == "darwin"* && "$GITHUB_ACTIONS" != "true" ]]; then
-        [[ -d "/Applications/iTerm.app" ]] || missing+=("iTerm2 (App)")
-    fi
-
     if [ ${#missing[@]} -ne 0 ]; then
         if [ "$AUTO_INSTALL_DEPS" = true ]; then
             if command -v apt-get >/dev/null 2>&1; then
@@ -339,6 +340,12 @@ check_dependencies() {
             exit 1
         fi
     fi
+
+    # Check for iTerm2 on macOS (non-blocking warning; installed via Brewfile when --install-deps is set)
+    if [[ "$OSTYPE" == "darwin"* && "$GITHUB_ACTIONS" != "true" && ! -d "/Applications/iTerm.app" ]]; then
+        log_warn "iTerm2 (/Applications/iTerm.app) not found. Run with --install-deps to install via Homebrew bundle."
+    fi
+
     log_success "Dependency check complete."
 }
 
@@ -396,8 +403,12 @@ install_zsh_plugins() {
         local name="${plugin_pair%%:*}"
         local url="${plugin_pair#*:}"
         if [ ! -d "$ZSH_CUSTOM/plugins/$name" ]; then
-            log_info "Cloning $name..."
-            execute "git clone --depth=1 '$url' '$ZSH_CUSTOM/plugins/$name'"
+            if [ "$AUTO_INSTALL_DEPS" = true ]; then
+                log_info "Cloning $name (--install-deps permitted)..."
+                execute "git clone --depth=1 '$url' '$ZSH_CUSTOM/plugins/$name'"
+            else
+                log_warn "Zsh plugin '$name' not found. Run with --install-deps to clone."
+            fi
         fi
     done
 }
@@ -423,8 +434,12 @@ setup_zsh() {
     # 3. iTerm2 Shell Integration
     local ITERM_SHELL_INT="$HOME/.iterm2_shell_integration.zsh"
     if [ ! -f "$ITERM_SHELL_INT" ]; then
-        log_info "Downloading iTerm2 shell integration..."
-        execute "curl -fsSL https://iterm2.com/shell_integration/zsh -o '$ITERM_SHELL_INT'"
+        if [ "$AUTO_INSTALL_DEPS" = true ]; then
+            log_info "Downloading iTerm2 shell integration (--install-deps permitted)..."
+            execute "curl -fsSL https://iterm2.com/shell_integration/zsh -o '$ITERM_SHELL_INT'"
+        else
+            log_warn "iTerm2 shell integration not found. Run with --install-deps to download."
+        fi
     fi
 
     # 4. Change Default Shell
@@ -466,18 +481,22 @@ setup_vim() {
     local PLUG_URL="https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim"
     local PLUG_DEST="$HOME/.vim/autoload/plug.vim"
     
-    if [ ! -f "$PLUG_DEST" ]; then
-        execute "curl -fLo '$PLUG_DEST' --create-dirs '$PLUG_URL'" true
-        log_success "Vim-Plug installed."
-    fi
-
     setup_links "setup_vim"
     execute "mkdir -p '$HOME/.vim/undo'"
-    log_info "Installing Vim plugins..."
+
     if [ "$AUTO_INSTALL_DEPS" = true ]; then
+        if [ ! -f "$PLUG_DEST" ]; then
+            execute "curl -fLo '$PLUG_DEST' --create-dirs '$PLUG_URL'" true
+            log_success "Vim-Plug installed."
+        fi
+        log_info "Installing Vim plugins..."
         DOTFILES_INSTALL_DEPS=true execute "vim +PlugInstall +qall!"
     else
-        DOTFILES_INSTALL_DEPS=false execute "vim +PlugInstall +qall!"
+        if [ ! -f "$PLUG_DEST" ]; then
+            log_warn "Vim-Plug not found at $PLUG_DEST. Run with --install-deps to download and install Vim plugins."
+        else
+            log_info "Skipping external plugin installation (pass --install-deps to run PlugInstall)."
+        fi
     fi
     log_success "Vim & Neovim ready."
 }
@@ -486,9 +505,13 @@ setup_tmux() {
     log_info "Step 4: Setting up Tmux..."
     local TPM_DIR="$HOME/.tmux/plugins/tpm"
     if [ ! -d "$TPM_DIR" ]; then
-        execute "mkdir -p '$(dirname "$TPM_DIR")'"
-        execute "git clone https://github.com/tmux-plugins/tpm '$TPM_DIR'"
-        log_success "TPM installed."
+        if [ "$AUTO_INSTALL_DEPS" = true ]; then
+            execute "mkdir -p '$(dirname "$TPM_DIR")'"
+            execute "git clone https://github.com/tmux-plugins/tpm '$TPM_DIR'"
+            log_success "TPM installed."
+        else
+            log_warn "Tmux Plugin Manager (TPM) not found. Run with --install-deps to clone."
+        fi
     fi
     setup_links "setup_tmux"
     log_success "Tmux ready."
@@ -597,6 +620,9 @@ setup_iterm2() {
         log_info "Linking iTerm2 preferences..."
         if [ "$DRY_RUN" = false ]; then
             sed -i.bak "s|/Users/[^<\"/ ]*|$HOME|g" "$ITERM_DIR/com.googlecode.iterm2.plist" && rm -f "$ITERM_DIR/com.googlecode.iterm2.plist.bak"
+            if [ -d "$DOTFILES_DIR/.git" ]; then
+                git -C "$DOTFILES_DIR" update-index --assume-unchanged "config/iterm2/com.googlecode.iterm2.plist" 2>/dev/null || true
+            fi
         fi
         execute "defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true"
         execute "defaults write com.googlecode.iterm2 PrefsCustomFolder -string '$ITERM_DIR'"

@@ -29,10 +29,13 @@ fi
 # 3. Vim syntax check
 if command -v vim >/dev/null 2>&1; then
   echo "  [3/4] Checking Vim configuration..."
-  HOME="$REPO_ROOT" vim -u "$REPO_ROOT/config/vim/.vimrc" -e -s -c "q" >/dev/null 2>&1 || {
+  vim_tmp_home="$(mktemp -d)"
+  HOME="$vim_tmp_home" vim -u "$REPO_ROOT/config/vim/.vimrc" -e -s -c "q" >/dev/null 2>&1 || {
+    rm -rf "$vim_tmp_home"
     echo "❌ Vim configuration check failed." >&2
     exit 1
   }
+  rm -rf "$vim_tmp_home"
 fi
 
 # 4. ShellCheck static analysis (if installed)

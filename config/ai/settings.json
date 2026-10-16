@@ -49,11 +49,12 @@
         "^pip (list|show)",
         "^docker ps",
         "^docker logs",
-        "^docker (inspect|images)",
+        "^docker (inspect|images|exec)",
         "^docker-compose (ps|logs)",
         "^npm (test|run test)",
         "^go test(\\s|$)",
-        "^\\./dot\\.sh (--doctor|--dry-run|--test)"
+        "^\\./dot\\.sh (--doctor|--dry-run|--test)",
+        "^curl(\\s|$)"
       ]
     }
   }

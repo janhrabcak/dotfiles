@@ -62,9 +62,11 @@ VIMEOF
 }
 
 teardown_sandbox() {
-  export HOME="$TEST_ORIG_HOME"
-  rm -rf "$SANDBOX"
+  [[ -n "${TEST_ORIG_HOME:-}" ]] && export HOME="$TEST_ORIG_HOME"
+  [[ -n "${SANDBOX:-}" && -d "$SANDBOX" ]] && rm -rf "$SANDBOX"
+  SANDBOX=""
 }
+trap teardown_sandbox EXIT INT TERM
 
 # ==============================================================================
 # TEST SUITE
@@ -111,11 +113,13 @@ else
   echo "  ${YELLOW}[SKIP]${RESET} Tmux configuration syntax check (tmux not installed)"
 fi
 
-if HOME="$REPO_ROOT" vim -u "$REPO_ROOT/config/vim/.vimrc" -e -s -c "q" >/dev/null 2>&1; then
+vim_parse_home="$(mktemp -d)"
+if HOME="$vim_parse_home" vim -u "$REPO_ROOT/config/vim/.vimrc" -e -s -c "q" >/dev/null 2>&1; then
   pass "Vim configuration parse check"
 else
   fail "Vim configuration parse check" ".vimrc failed to parse cleanly"
 fi
+rm -rf "$vim_parse_home"
 
 if [[ -f "$REPO_ROOT/config/brew/Brewfile" ]]; then
   pass "Homebrew Brewfile present"
@@ -147,11 +151,14 @@ log_suite "Group 2: Vim Configuration Behavioral Assertions"
 vim_assert() {
   local expr="$1"
   local desc="$2"
-  if vim -u "$REPO_ROOT/config/vim/.vimrc" -c "if !($expr) | cquit 1 | endif" -c "qall" >/dev/null 2>&1; then
+  local tmp_vh
+  tmp_vh="$(mktemp -d)"
+  if HOME="$tmp_vh" vim -u "$REPO_ROOT/config/vim/.vimrc" -e -s -c "if !($expr) | cquit 1 | endif" -c "qall" >/dev/null 2>&1; then
     pass "Vim: $desc"
   else
     fail "Vim: $desc" "Assertion ($expr) evaluated to false"
   fi
+  rm -rf "$tmp_vh"
 }
 
 vim_assert "g:mapleader ==# ','" "Map leader is comma (,)"
@@ -159,6 +166,17 @@ vim_assert "&undofile == 1" "Persistent undo (undofile) is enabled"
 vim_assert "&ignorecase == 1" "Ignorecase search enabled"
 vim_assert "&smartcase == 1" "Smartcase search enabled"
 vim_assert "&relativenumber == 1" "Relative line numbering enabled"
+
+# Verify opening a Go buffer does not clobber global <leader>b (:Buffers<CR>) in non-Go buffers
+tmp_vh="$(mktemp -d)"
+if HOME="$tmp_vh" vim -u "$REPO_ROOT/config/vim/.vimrc" -e -s \
+  -c "set filetype=go" -c "enew" \
+  -c "if maparg('<leader>b', 'n') !=# ':Buffers<CR>' | cquit 1 | endif" -c "qall" >/dev/null 2>&1; then
+  pass "Vim: Go FileType mappings are buffer-local and preserve global <leader>b"
+else
+  fail "Vim: Go FileType buffer-local mappings" "Global <leader>b was clobbered after setting filetype=go"
+fi
+rm -rf "$tmp_vh"
 
 # ------------------------------------------------------------------------------
 # 3. CLI Argument Handling
@@ -176,6 +194,17 @@ if [[ $exit_code -eq 1 ]]; then
   pass "CLI rejects unknown parameters with exit code 1"
 else
   fail "CLI rejects unknown parameters" "Expected exit code 1, got $exit_code"
+fi
+
+# Missing option value for --mode / --only / --skip
+set +e
+zsh "$DOTFILES_DIR/dot.sh" --only >/dev/null 2>&1
+missing_val_code=$?
+set -e
+if [[ $missing_val_code -eq 1 ]]; then
+  pass "CLI rejects flags missing required values (--mode/--only/--skip)"
+else
+  fail "CLI missing option value" "Expected exit code 1, got $missing_val_code"
 fi
 
 # Dry Run Non-Destructive Invariant

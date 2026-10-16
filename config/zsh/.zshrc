@@ -19,14 +19,28 @@ export PATH="$HOME/.local/bin:$HOME/.bin:/usr/local/bin:$PATH"
 
 # SSH Agent Persistence (Linux/Remote only)
 if [[ "$OSTYPE" != "darwin"* ]]; then
-  # 1. If we have a fresh agent, update the stable symlink
-  if [[ -S "$SSH_AUTH_SOCK" && "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" ]]; then
-    ln -sf "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
-  fi
-  # 2. Always prefer the stable symlink if it exists (ensures tmux persistence)
-  if [[ -S "$HOME/.ssh/ssh_auth_sock" ]]; then
-    export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
-  fi
+  () {
+    local auth_symlink="$HOME/.ssh/ssh_auth_sock"
+    # 1. If we have a fresh agent, update the stable symlink (only fork ln if target changed)
+    if [[ -n "$SSH_AUTH_SOCK" && -S "$SSH_AUTH_SOCK" && "$SSH_AUTH_SOCK" != "$auth_symlink" ]]; then
+      [[ -d "$HOME/.ssh" ]] || mkdir -p -m 700 "$HOME/.ssh"
+      [[ "${auth_symlink:A}" != "${SSH_AUTH_SOCK:A}" ]] && ln -sf "$SSH_AUTH_SOCK" "$auth_symlink"
+      export SSH_AUTH_SOCK="$auth_symlink"
+    # 2. If falling back to existing symlink (e.g. inside tmux), verify the agent socket is live
+    elif [[ -S "$auth_symlink" ]]; then
+      local agent_rc=0
+      SSH_AUTH_SOCK="$auth_symlink" ssh-add -l >/dev/null 2>&1 || agent_rc=$?
+      if (( agent_rc != 2 )); then
+        export SSH_AUTH_SOCK="$auth_symlink"
+      else
+        rm -f "$auth_symlink"
+        [[ "$SSH_AUTH_SOCK" == "$auth_symlink" ]] && unset SSH_AUTH_SOCK
+      fi
+    elif [[ -L "$auth_symlink" ]]; then
+      rm -f "$auth_symlink"
+      [[ "$SSH_AUTH_SOCK" == "$auth_symlink" ]] && unset SSH_AUTH_SOCK
+    fi
+  }
 fi
 
 # --- 2. Oh My Zsh Settings ---
@@ -36,7 +50,7 @@ UPDATE_ZSH_DAYS=13
 plugins=(git colorize golang zsh-autosuggestions zsh-syntax-highlighting)
 [[ "$OSTYPE" == darwin* ]] && plugins+=(macos)
 
-source "$OHMYZSH/oh-my-zsh.sh"
+[[ -f "$OHMYZSH/oh-my-zsh.sh" ]] && source "$OHMYZSH/oh-my-zsh.sh"
 
 # iTerm2 Shell Integration (Required for Automatic Profile Switching)
 [[ -e "$HOME/.iterm2_shell_integration.zsh" ]] && source "$HOME/.iterm2_shell_integration.zsh"

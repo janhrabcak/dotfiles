@@ -37,8 +37,10 @@ jobs:
       - name: Vim Syntax Check
         run: |
           # Use -e (Ex mode) and -s (silent) to avoid hanging
-          # Mock home to avoid permission issues
-          HOME=$PWD vim -u config/vim/.vimrc -e -s -c "q"
+          # Mock home in a disposable temp dir to avoid polluting the repo root
+          VIM_TMP_HOME="$(mktemp -d)"
+          HOME="$VIM_TMP_HOME" vim -u config/vim/.vimrc -e -s -c "q"
+          rm -rf "$VIM_TMP_HOME"
 
   test:
     name: Test on ${{ matrix.os }} (${{ matrix.mode }})

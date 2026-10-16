@@ -119,12 +119,18 @@ nnoremap <leader>f :Rg<CR>
 map <silent> <F12> :set invlist<CR>
 
 " vim-go
-au FileType go nmap <leader>r <Plug>(go-run)
-au FileType go nmap <leader>b <Plug>(go-build)
-au FileType go nmap <leader>t <Plug>(go-test)
-au FileType go nmap <leader>c <Plug>(go-coverage)
-au FileType go nmap <Leader>gd <Plug>(go-doc)
-au FileType go nmap <Leader>gv <Plug>(go-doc-vertical)
+augroup dotfiles_go
+  autocmd!
+  autocmd FileType go nmap <buffer> <leader>r <Plug>(go-run)
+  autocmd FileType go nmap <buffer> <leader>b <Plug>(go-build)
+  autocmd FileType go nmap <buffer> <leader>t <Plug>(go-test)
+  autocmd FileType go nmap <buffer> <leader>c <Plug>(go-coverage)
+  autocmd FileType go nmap <buffer> <Leader>gd <Plug>(go-doc)
+  autocmd FileType go nmap <buffer> <Leader>gv <Plug>(go-doc-vertical)
+augroup END
 
 " --- 6. Cleanup & Auto-formatting ---
-autocmd FileType * setlocal formatoptions-=c formatoptions-=r formatoptions-=o
+augroup dotfiles_formatoptions
+  autocmd!
+  autocmd FileType * setlocal formatoptions-=c formatoptions-=r formatoptions-=o
+augroup END
