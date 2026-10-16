@@ -20,7 +20,7 @@ zsh -n "$REPO_ROOT/dot.sh" \
 # 2. Tmux syntax check
 if command -v tmux >/dev/null 2>&1; then
   echo "  [2/4] Checking Tmux configuration..."
-  tmux -f "$REPO_ROOT/config/tmux/.tmux.conf" start-server \; kill-server 2>/dev/null || {
+  tmux -L "dotfiles-precommit-$$" -f "$REPO_ROOT/config/tmux/.tmux.conf" start-server \; kill-server 2>/dev/null || {
     echo "❌ Tmux configuration check failed." >&2
     exit 1
   }

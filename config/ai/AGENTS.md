@@ -40,4 +40,5 @@ Every code change must be accompanied by updates to at least two distinct types 
 - **Prompt Performance & `vcs_info`**:
   - Prompt git segments must use Zsh's built-in `vcs_info` module (`add-zsh-hook precmd vcs_info`) rather than Oh My Zsh's default `prompt_git`, which forks 10–15 child `git` processes per prompt.
   - When configuring hooks with `add-zsh-hook`, never pass anonymous function syntax (`add-zsh-hook precmd () { ... }`); in Zsh this defines a function named `add-zsh-hook` and clobbers the utility itself. Always register named helper functions.
+- **Tmux Socket Isolation in Tests & Hooks**: Never run `tmux ... start-server \; kill-server` without an isolated socket flag (`-L "dotfiles-test-$$"`). Running `kill-server` without `-L` targets the user's default socket (`/tmp/tmux-$UID/default`), ignoring `-f` if a server is already running and terminating all active user `tmux` sessions.
 

@@ -104,7 +104,7 @@ else
 fi
 
 if command -v tmux >/dev/null 2>&1; then
-  if tmux -f "$REPO_ROOT/config/tmux/.tmux.conf" start-server \; kill-server >/dev/null 2>&1; then
+  if tmux -L "dotfiles-test-$$" -f "$REPO_ROOT/config/tmux/.tmux.conf" start-server \; kill-server >/dev/null 2>&1; then
     pass "Tmux configuration syntax check"
   else
     fail "Tmux configuration syntax check" "tmux.conf failed to parse"

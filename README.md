@@ -105,7 +105,7 @@ The script uses specialized shell functions to ensure consistency:
 *   **Doctor Logic**: The `--doctor` flag performs deep physical path resolution (`:A`) to verify integrity even across symlinked directories.
 *   **Maintenance & Pruning**: Running `./dot.sh --clean` safely purges broken dotfiles symlinks and rotates snapshot backups.
 *   **Local Overrides**: Machine-specific identity is decoupled from version control via auto-generated `.local` files (`config/git/.gitconfig.local` and `~/.zshrc.local`).
-*   **Git Pre-commit Hooks**: Tracked in `.githooks/` and active through `core.hooksPath = .githooks`, automatically enforcing shell, vim, and tmux syntax checks before commit.
+*   **Git Pre-commit Hooks**: Tracked in `.githooks/` and active through `core.hooksPath = .githooks`, automatically enforcing shell, headless Vim, and isolated-socket (`-L`) Tmux syntax checks before commit without disturbing active user sessions.
 *   **Dependabot**: Configured in `.github/dependabot.yml` for automated weekly updates of GitHub Actions dependencies.
 
 ### 2. SSH Agent Strategy

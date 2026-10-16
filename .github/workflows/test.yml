@@ -32,7 +32,7 @@ jobs:
           zsh -n tests/run-tests.sh
 
       - name: Tmux Syntax Check
-        run: tmux -f config/tmux/.tmux.conf start-server \; kill-server
+        run: tmux -L "dotfiles-ci-$$" -f config/tmux/.tmux.conf start-server \; kill-server
 
       - name: Vim Syntax Check
         run: |
