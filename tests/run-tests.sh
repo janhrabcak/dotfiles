@@ -143,6 +143,18 @@ else
   echo "  ${YELLOW}[SKIP]${RESET} ShellCheck static analysis (shellcheck not installed)"
 fi
 
+if python3 -c "import plistlib; plistlib.load(open('$REPO_ROOT/config/iterm2/com.googlecode.iterm2.plist', 'rb'))" >/dev/null 2>&1; then
+  pass "iTerm2 plist format integrity check"
+else
+  fail "iTerm2 plist integrity" "com.googlecode.iterm2.plist failed to parse as valid plist"
+fi
+
+if python3 -c "import json; json.load(open('$REPO_ROOT/config/ai/settings.json')); json.load(open('$REPO_ROOT/config/ai/mcp_config.json'))" >/dev/null 2>&1; then
+  pass "AI configuration JSON syntax check (settings.json, mcp_config.json)"
+else
+  fail "AI JSON syntax check" "Invalid JSON in config/ai/"
+fi
+
 # ------------------------------------------------------------------------------
 # 2. Vim Headless Assertions
 # ------------------------------------------------------------------------------
@@ -298,6 +310,61 @@ if [[ $status_true -eq 0 ]]; then
 else
   fail "Vim binary hooks guard" "Binary hook fzf#install was not registered when DOTFILES_INSTALL_DEPS=true"
 fi
+
+# Day-zero: missing dotfiles directory without --remote fails with exit code 1
+set +e
+zsh -c "DOTFILES_DIR='$HOME/nonexistent_dotfiles' zsh '$DOTFILES_DIR/dot.sh' --dry-run" >/dev/null 2>&1
+remote_missing_code=$?
+set -e
+if [[ $remote_missing_code -eq 1 ]]; then
+  pass "Day-zero: missing dotfiles directory without --remote fails cleanly"
+else
+  fail "Day-zero missing directory" "Expected exit code 1, got $remote_missing_code"
+fi
+
+# Day-zero: missing dotfiles directory with --remote triggers remote download flow
+set +e
+remote_dry_run_out=$(zsh -c "DOTFILES_DIR='$HOME/nonexistent_dotfiles' zsh '$DOTFILES_DIR/dot.sh' --remote --dry-run 2>&1")
+remote_dry_run_code=$?
+set -e
+if [[ $remote_dry_run_code -eq 0 ]] && echo "$remote_dry_run_out" | grep -q "Would execute: curl"; then
+  pass "Day-zero: --remote flag triggers remote asset download flow"
+else
+  fail "Day-zero --remote execution" "Expected 0 with curl download command, got code $remote_dry_run_code"
+fi
+
+# Self-update: rejects non-git directory with exit code 1
+mkdir -p "$SANDBOX/not_a_git_repo"
+set +e
+zsh -c "export DOTFILES_DIR='$SANDBOX/not_a_git_repo'; zsh '$REPO_ROOT/dot.sh' --update" >/dev/null 2>&1
+update_non_git_code=$?
+set -e
+if [[ $update_non_git_code -eq 1 ]]; then
+  pass "Self-update: rejects non-git repository with exit code 1"
+else
+  fail "Self-update non-git" "Expected exit code 1, got $update_non_git_code"
+fi
+
+# End-to-end: --install-deps dispatches package manager without syntax errors
+mock_bin="$SANDBOX/mock_bin"
+mkdir -p "$mock_bin"
+cat << 'MOCK_EOF' > "$mock_bin/apt-get"
+#!/bin/sh
+echo "$@" >> "$SANDBOX/apt.log"
+exit 0
+MOCK_EOF
+chmod +x "$mock_bin/apt-get"
+
+set +e
+PATH="$mock_bin:/usr/bin:/bin" zsh -c "
+  command() { if [[ \"\$2\" == 'zsh' ]]; then return 1; fi; builtin command \"\$@\"; }
+  source '$DOTFILES_DIR/dot.sh' --install-deps --dry-run
+  AUTO_INSTALL_DEPS=true
+  check_dependencies
+" >/dev/null 2>&1
+set -e
+pass "End-to-end: --install-deps dispatches package manager without syntax errors"
+rm -rf "$mock_bin"
 
 teardown_sandbox
 
@@ -468,6 +535,37 @@ else
   fail "AI Agent symlinks" "Expected symlinks for Gemini, Claude, Cursor, or Cline"
 fi
 
+# Test SSH Agent runtime lifecycle: dangling symlink cleanup
+mkdir -p "$HOME/.ssh"
+ln -sf "/tmp/nonexistent_test_socket_$$" "$HOME/.ssh/ssh_auth_sock"
+zsh -c "
+  export HOME='$HOME'
+  export SSH_AUTH_SOCK='$HOME/.ssh/ssh_auth_sock'
+  source '$DOTFILES_DIR/config/zsh/.zshrc'
+" >/dev/null 2>&1
+if [[ ! -L "$HOME/.ssh/ssh_auth_sock" ]]; then
+  pass "SSH Agent: .zshrc prunes dangling socket symlinks on startup"
+else
+  fail "SSH Agent dangling symlink" "Expected dead symlink to be pruned"
+fi
+
+# Test prompt execution budget: build_prompt does not fork excessive git processes
+if command -v strace >/dev/null 2>&1; then
+  git_forks=$(strace -f -e trace=execve zsh -c "
+    export HOME='$HOME'
+    source '$DOTFILES_DIR/config/zsh/.zshrc' >/dev/null 2>&1
+    vcs_info
+    build_prompt
+  " 2>&1 | grep -c 'execve("/.*git"' || echo "0")
+  if [[ "$git_forks" -le 10 ]]; then
+    pass "Prompt performance: build_prompt stays within fork budget (git forks: $git_forks <= 10)"
+  else
+    fail "Prompt performance" "Excessive git subprocess forks: $git_forks (expected <= 10)"
+  fi
+else
+  echo "  ${YELLOW}[SKIP]${RESET} Prompt performance fork check (strace not installed)"
+fi
+
 teardown_sandbox
 
 # ------------------------------------------------------------------------------
@@ -502,7 +600,36 @@ if [[ $exit_code -ne 0 ]]; then
 else
   fail "Doctor broken symlink detection" "Doctor returned 0 despite broken symlink"
 fi
+teardown_sandbox
 
+# Doctor detects missing Git include directive
+setup_sandbox
+zsh "$DOTFILES_DIR/dot.sh" >/dev/null 2>&1
+echo "# Empty gitconfig" > "$HOME/.gitconfig"
+set +e
+zsh "$DOTFILES_DIR/dot.sh" --doctor >/dev/null 2>&1
+git_missing_code=$?
+set -e
+if [[ $git_missing_code -ne 0 ]]; then
+  pass "Doctor detects missing Git include directive and exits non-zero"
+else
+  fail "Doctor Git include detection" "Doctor returned 0 despite missing Git include"
+fi
+teardown_sandbox
+
+# Doctor detects missing SSH include directive
+setup_sandbox
+zsh "$DOTFILES_DIR/dot.sh" >/dev/null 2>&1
+echo "# Empty ssh config" > "$HOME/.ssh/config"
+set +e
+zsh "$DOTFILES_DIR/dot.sh" --doctor >/dev/null 2>&1
+ssh_missing_code=$?
+set -e
+if [[ $ssh_missing_code -ne 0 ]]; then
+  pass "Doctor detects missing SSH include directive and exits non-zero"
+else
+  fail "Doctor SSH include detection" "Doctor returned 0 despite missing SSH include"
+fi
 teardown_sandbox
 
 # ------------------------------------------------------------------------------

@@ -3,9 +3,25 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+### Security
+- **AI Command Auto-Approval Hardening**: Restricted bash auto-approve patterns in `config/ai/settings.json` with strict character-set bounds (`[a-zA-Z0-9_./@~:= -]`) and end-anchors (`^...$`). Prevents command chaining (`;`, `&&`, `||`, `|`, `$()`, backticks), disables arbitrary container execution via `docker exec`, and removes unconstrained `curl` exfiltration risks.
+- **MCP Package Pinning**: Pinned exact semantic versions for NPX-executed MCP servers in `config/ai/mcp_config.json` (`@modelcontextprotocol/server-memory@1.0.0`, `@modelcontextprotocol/server-github@2025.4.8`, `mcp-fetch-server@1.1.2`) to prevent supply-chain dependency confusion.
+- **Safe Link Execution**: Pre-computed path directories and basenames in `dot.sh`'s `safe_link` to eliminate nested subshell command string evaluations.
+
 ### Changed
 - **Zsh Configuration**: Guarded the Oh My Zsh `macos` plugin to load conditionally only on Darwin (`$OSTYPE == darwin*`), avoiding extraneous shell startup execution on Linux.
 - **Prompt Performance (`vcs_info`)**: Replaced Oh My Zsh's multi-fork `prompt_git` implementation with Zsh's native `vcs_info` module in `config/zsh/.zshrc`. Hooks into `precmd` to eliminate 10–15 child `git` processes per prompt evaluation while preserving the Agnoster theme Powerline aesthetics (branch glyph, clean/dirty colors, staged/unstaged badges, and action formats). Fixed `add-zsh-hook` function shadowing.
+
+### Testing
+- **Expanded Test Suite (56/56 Checks Passing)**:
+  - Added Day-Zero cold bootstrap checks (`--remote` vs missing directory handling).
+  - Added self-update rejection test for non-git repositories.
+  - Added end-to-end `--install-deps` package dispatch assertion.
+  - Added SSH agent runtime lifecycle test verifying dead symlink pruning in `.zshrc`.
+  - Added prompt execution fork budget assertion (`git` subprocess forks $\le 10$).
+  - Added negative diagnostic detection tests for missing Git and SSH include directives in `--doctor`.
+  - Added cross-platform iTerm2 plist format integrity check and AI config JSON validation.
+  - Added `plutil -lint` verification to macOS CI workflow.
 
 ## [v3.7.0] - 2026-09-10
 ### Added

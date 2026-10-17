@@ -165,11 +165,13 @@ safe_link() {
     local dest="$2"
     if [[ -e "$src" ]]; then
         local needs_link=false
-        execute "mkdir -p '$(dirname "$dest")'"
+        local dest_dir="$(dirname "$dest")"
+        local bname="$(basename "$dest")"
+        execute "mkdir -p '$dest_dir'"
         if [[ -e "$dest" && ! -L "$dest" ]]; then
             init_backup_dir
             log_warn "Existing file or directory found at $dest. Moving to backup."
-            execute "mv '$dest' '$BACKUP_DIR/$(basename "$dest")'"
+            execute "mv '$dest' '$BACKUP_DIR/$bname'"
             needs_link=true
         elif [[ -L "$dest" && "${dest:A}" != "${src:A}" ]]; then
             log_warn "Broken or incorrect symlink at $dest. Re-linking."

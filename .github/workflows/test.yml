@@ -102,6 +102,7 @@ jobs:
           [ -L ~/.bin ] || exit 1
           if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
             defaults read com.apple.finder AppleShowAllExtensions | grep "1"
+            plutil -lint config/iterm2/com.googlecode.iterm2.plist
           fi
 
       - name: Run Behavioral Test Suite
