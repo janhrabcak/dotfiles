@@ -9,14 +9,23 @@ All notable changes to this project will be documented in this file.
 - **Safe Link Execution**: Pre-computed path directories and basenames in `dot.sh`'s `safe_link` to eliminate nested subshell command string evaluations.
 
 ### Changed
+- **Bootstrapper Simplification (`dot.sh`)**: Streamlined `dot.sh` by ~35% (872 to 578 lines):
+  - Replaced `eval`-based `execute()` wrapper with direct array-based `run_cmd "$@"`.
+  - Simplified `LINK_MANIFEST` to a 3-field format (`src:dest:step`) targeting **Gemini** and **Claude** AI agents.
+  - Replaced external `find` loop in `prune_dead_symlinks` with native Zsh `(-@N)` broken-symlink globbing.
+  - Eliminated double symlink execution in `main()` and removed dummy `.local` file auto-generators (`you@example.com` placeholder identity).
 - **Zsh Configuration**: Guarded the Oh My Zsh `macos` plugin to load conditionally only on Darwin (`$OSTYPE == darwin*`), avoiding extraneous shell startup execution on Linux.
 - **Prompt Performance (`vcs_info`)**: Replaced Oh My Zsh's multi-fork `prompt_git` implementation with Zsh's native `vcs_info` module in `config/zsh/.zshrc`. Hooks into `precmd` to eliminate 10–15 child `git` processes per prompt evaluation while preserving the Agnoster theme Powerline aesthetics (branch glyph, clean/dirty colors, staged/unstaged badges, and action formats). Fixed `add-zsh-hook` function shadowing.
 
+### Removed
+- **Redundant CLI Flags**: Removed `--test` (consolidated into `--doctor`), `--update` (replaced by standard `git pull && ./dot.sh`), and `--skip` (`--only` covers targeted step runs).
+- **Legacy & Unused Files**: Removed superseded `tests/test-vim.sh` and `tests/dot-local-ci-test.sh` harnesses, deprecated `config/macos-terminal/zsh.terminal`, empty `bin/.keep` (`~/.bin` symlink), duplicate `config/ai/skills/rigorous-pr-review/`, and Cursor/Cline symlink targets (`.cursorrules`, `.clinerules`).
+
 ### Testing
-- **Expanded Test Suite (56/56 Checks Passing)**:
+- **Streamlined Unified Test Suite (51/51 Checks Passing)**:
+  - Optimized sandbox initialization in `tests/run-tests.sh` to copy only lightweight config files and run all 9 test groups in ~8 seconds.
   - Added Day-Zero cold bootstrap checks (`--remote` vs missing directory handling).
-  - Added self-update rejection test for non-git repositories.
-  - Added end-to-end `--install-deps` package dispatch assertion.
+  - Added end-to-end `--install-deps` package dispatch assertion (including dry-run verification).
   - Added SSH agent runtime lifecycle test verifying dead symlink pruning in `.zshrc`.
   - Added prompt execution fork budget assertion (`git` subprocess forks $\le 10$).
   - Added negative diagnostic detection tests for missing Git and SSH include directives in `--doctor`.

@@ -2,7 +2,7 @@
 *.swp
 *.swo
 *.backup
-test-vim.sh
+.vim/
+.viminfo
 config/git/.gitconfig.local
 config/ssh/authorized_keys.local
-.viminfo

@@ -43,4 +43,8 @@ Every code change must be accompanied by updates to at least two distinct types 
 - **Tmux Socket Isolation in Tests & Hooks**: Never run `tmux ... start-server \; kill-server` without an isolated socket flag (`-L "dotfiles-test-$$"`). Running `kill-server` without `-L` targets the user's default socket (`/tmp/tmux-$UID/default`), ignoring `-f` if a server is already running and terminating all active user `tmux` sessions.
 - **AI Command Whitelist Invariant (`settings.json`)**: Auto-approved command regex patterns must always be strictly anchored (`^...$`) and bound to safe argument characters (`[a-zA-Z0-9_./@~:= -]`). Never allow shell control operators (`;`, `&&`, `||`, `|`, `$()`, backticks) or arbitrary command execution wrappers (`docker exec`, `find -exec`, `curl`).
 - **MCP Version Pinning Invariant (`mcp_config.json`)**: All MCP servers invoked via `npx` must specify pinned semantic versions (`package@x.y.z`) to prevent unpinned execution and protect token secrets.
-
+- **Bootstrapper (`dot.sh`) Execution & Manifest Invariants**:
+  - Execute commands directly via `run_cmd "$@"` rather than `eval` string concatenation.
+  - Maintain a 3-field `LINK_MANIFEST` (`src_rel:dest:step_owner`) targeting only **Gemini** (`~/.gemini/...`) and **Claude** (`~/.claude/CLAUDE.md`) for AI configurations.
+  - Use Zsh's native `(-@N)` broken-symlink glob qualifier in `prune_dead_symlinks` rather than spawning external `find` loops.
+  - Never auto-generate dummy `.local` override files with placeholder identities (e.g. `you@example.com` in `.gitconfig.local`); `.local` files are optional user-managed overrides.

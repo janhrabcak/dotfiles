@@ -10,11 +10,9 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 | :--- | :--- |
 | **Remote Install** (No clone) | `/bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/janhrabcak/dotfiles/main/dot.sh)" -- --remote` |
 | **Local Install** (Clone first) | `git clone https://github.com/janhrabcak/dotfiles.git ~/.dotfiles && cd ~/.dotfiles && ./dot.sh` |
-| **Self-Update** | `./dot.sh --update` |
 | **Check Health** | `./dot.sh --doctor` |
 | **Prune & Rotate Backups** | `./dot.sh --clean` |
 | **Run Full Test Suite** | `tests/run-tests.sh` |
-| **Run Local CI Docker Test** | `tests/dot-local-ci-test.sh` |
 | **Run Specific Step** | `./dot.sh --only setup_vim` |
 
 ### Script Flags
@@ -22,9 +20,8 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 *   `--remote`: Downloads the latest archive directly from GitHub.
 *   `--doctor`: Runs a deep diagnostic of the system health, git hooks, and symlinks.
 *   `--only <step>`: Runs a specific setup function only (e.g., `setup_vim`).
-*   `--skip <step>`: Skips a specific setup function (can be specified multiple times, e.g., `--skip setup_vim --skip setup_tmux`).
-*   `--dry-run`: Preview execution steps without modifying the system.
-*   `--test`: Runs a post-setup verification suite (Symlinks, Permissions, SSH).
+*   `--mode <mode>`: Overrides OS mode detection (`macos`, `linux-server`, `linux-client`).
+*   `--dry-run` (`-d`): Preview execution steps without modifying the system.
 *   `--install-deps`: Explicitly permits installing missing system packages (`apt-get`/`brew`), Homebrew bundle formulas/casks, Oh My Zsh, fonts, and Vim binary tooling (`fzf`, `vim-go`). Without this flag, the script will never install any binary or external executable.
 
 ---
@@ -60,11 +57,11 @@ The script applies professional defaults for high-performance workflows:
 *   **Trackpad**: Enables tap-to-click by default.
 *   **Dock**: Auto-hide enabled with zero delay.
 
-### 🤖 AI Agent Environments (Gemini, Claude, Cursor, Cline)
-*   **Universal Guidelines (`AGENTS.md`)**: Single source of truth in `config/ai/AGENTS.md` automatically symlinked to Gemini/Antigravity (`~/.gemini/config/GEMINI.md`, `~/.gemini/config/AGENTS.md`), Claude Code (`~/.claude/CLAUDE.md`), Cursor (`~/.cursorrules`), and Cline/Roo (`~/.clinerules`). Enforces concise technical explanations, Conventional Commits, proactive test verification, code integrity, and zero-secrets security.
+### 🤖 AI Agent Environments (Gemini & Claude)
+*   **Universal Guidelines (`AGENTS.md`)**: Single source of truth in `config/ai/AGENTS.md` automatically symlinked to Gemini/Antigravity (`~/.gemini/config/GEMINI.md`, `~/.gemini/config/AGENTS.md`) and Claude Code (`~/.claude/CLAUDE.md`). Enforces concise technical explanations, Conventional Commits, proactive test verification, code integrity, and zero-secrets security.
 *   **Security & Command Whitelist**: Pre-approved non-destructive inspection commands (`rg`, `find`, `git status/diff/log/branch/show`, runtime version lookups, and test runners) in `settings.json` for seamless agent pair programming without confirmation popups.
 *   **Global MCP Servers**: Model Context Protocol integration (`mcp_config.json`) pre-configured for persistent memory graph (`@modelcontextprotocol/server-memory`), GitHub API integration (`@modelcontextprotocol/server-github`), and Markdown web scraping (`mcp-fetch-server`).
-*   **Custom Global Skills**: Progressive-disclosure playbooks for `conventional-release` (automated SemVer bumps, changelog updates, and release tagging), `rigorous-pr-review` (multi-pillar code reviews), and Sentry `code-review` (Sentry engineering practices, runtime/ORM optimization, and empathy guidelines).
+*   **Custom Global Skills**: Progressive-disclosure playbooks for `conventional-release` (automated SemVer bumps, changelog updates, and release tagging) and Sentry `code-review` (Sentry engineering practices, runtime/ORM optimization, and empathy guidelines).
 *   **Dual-Audience Documentation**: Mandates that code modifications update both human-facing documentation (README, guides, changelogs) and agent-facing contextual memory (invariants, caveats, and architectural constraints in `AGENTS.md`).
 
 ---
@@ -80,21 +77,21 @@ The `dot.sh` script is a robust, idempotent bootstrapper designed to configure a
 
 ### Execution Lifecycle
 1.  **Dependency Check**: Ensures `git`, `curl`, `vim`, and `zsh` are installed. On macOS, it also checks for iTerm2.
-2.  **Asset Synchronization**: Clones the repository to `~/.dotfiles` or pulls the latest changes. In `--remote` mode, it downloads a tarball directly from GitHub.
+2.  **Asset Synchronization**: Verifies `~/.dotfiles` exists locally or, in `--remote` mode, downloads and extracts the latest archive directly from GitHub.
 3.  **Modular Setup Phases**:
-    *   **Zsh**: Installs Oh My Zsh, custom plugins (autosuggestions, syntax highlighting), and links `.zshrc`.
-    *   **Vim**: Bootstraps `vim-plug`, links `.vimrc`, and triggers plugin installation.
-    *   **Git**: Auto-generates local identity template (`.gitconfig.local`), links global configuration via `include.path`, and configures tracked pre-commit hooks (`.githooks`).
+    *   **Zsh**: Installs Oh My Zsh, custom plugins (autosuggestions, syntax highlighting), and links `.zshrc` and `aliases.zsh`.
+    *   **Vim**: Bootstraps `vim-plug`, links `.vimrc` and Neovim `init.vim`, and triggers plugin installation.
+    *   **Git**: Links global configuration via `include.path` and configures tracked pre-commit hooks (`.githooks`).
     *   **SSH**: Injects a platform-aware `Include` directive into `~/.ssh/config` and manages authorized keys for server environments.
-    *   **macOS Defaults**: Applies system-level performance tweaks (key repeat, dock speed) and installs required fonts.
-    *   **AI Agents (`setup_ai`)**: Links universal AI developer guidelines, command whitelist permissions, MCP servers, and custom skills across Gemini, Claude Code, Cursor, and Cline.
+    *   **macOS Defaults**: Applies system-level performance tweaks (key repeat, dock speed), iTerm2 dynamic profiles, and required fonts.
+    *   **AI Agents (`setup_ai`)**: Links universal AI developer guidelines, command whitelist permissions, MCP servers, and custom skills across Gemini and Claude Code.
 4.  **Verification**: The `--doctor` flag performs deep physical path resolution to ensure all symlinks are pointing to the correct files in the repository.
 
 ### Idempotent Helpers
 The script uses specialized shell functions to ensure consistency:
 *   `safe_link`: Creates symlinks while backing up existing files and repairing broken links.
 *   `safe_append/prepend`: Ensures specific configuration lines (like SSH `Include`) exist in files without creating duplicates.
-*   `prune_dead_symlinks`: Identifies and removes broken symlinks in `$HOME` pointing into `$DOTFILES_DIR`.
+*   `prune_dead_symlinks`: Uses native Zsh `(-@N)` broken-symlink globbing to identify and remove dead symlinks in `$HOME` pointing into `$DOTFILES_DIR`.
 *   `rotate_backups`: Automatically retains only the 5 most recent timestamped backup directories in `~/.dotfiles.backup/`.
 
 ---
@@ -104,7 +101,7 @@ The script uses specialized shell functions to ensure consistency:
 ### 1. The Bootstrap Engine (`dot.sh`)
 *   **Doctor Logic**: The `--doctor` flag performs deep physical path resolution (`:A`) to verify integrity even across symlinked directories.
 *   **Maintenance & Pruning**: Running `./dot.sh --clean` safely purges broken dotfiles symlinks and rotates snapshot backups.
-*   **Local Overrides**: Machine-specific identity is decoupled from version control via auto-generated `.local` files (`config/git/.gitconfig.local` and `~/.zshrc.local`).
+*   **Local Overrides**: Machine-specific identity and private shell settings are decoupled from version control via optional `.local` files (`config/git/.gitconfig.local`, `~/.zshrc.local`, and `config/ssh/authorized_keys.local`).
 *   **Git Pre-commit Hooks**: Tracked in `.githooks/` and active through `core.hooksPath = .githooks`, automatically enforcing shell, headless Vim, and isolated-socket (`-L`) Tmux syntax checks before commit without disturbing active user sessions.
 *   **Dependabot**: Configured in `.github/dependabot.yml` for automated weekly updates of GitHub Actions dependencies.
 

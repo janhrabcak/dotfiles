@@ -13,9 +13,8 @@ zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompcache"
 
 # Path management
-export PATH="$HOME/.local/bin:$HOME/.bin:/usr/local/bin:$PATH"
+export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
 [[ -d "$HOME/.npm-global/bin" ]] && export PATH="$HOME/.npm-global/bin:$PATH"
-[[ -d "$HOME/.bin/google-cloud-sdk/bin" ]] && export PATH="$HOME/.bin/google-cloud-sdk/bin:$PATH"
 
 # SSH Agent Persistence (Linux/Remote only)
 if [[ "$OSTYPE" != "darwin"* ]]; then

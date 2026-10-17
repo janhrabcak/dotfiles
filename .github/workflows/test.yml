@@ -18,10 +18,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install Dependencies
-        run: sudo apt-get update && sudo apt-get install -y zsh vim tmux shellcheck
-
-      - name: ShellCheck Static Analysis
-        run: shellcheck -s bash tests/dot-local-ci-test.sh tests/test-vim.sh
+        run: sudo apt-get update && sudo apt-get install -y zsh vim tmux
 
       - name: Zsh Syntax Check
         run: |
@@ -85,10 +82,13 @@ jobs:
           zsh ./dot.sh --mode ${{ matrix.mode }} --dry-run
 
       - name: Run Bootstrap (Initial Run)
-        run: zsh ./dot.sh --mode ${{ matrix.mode }} --test
+        run: zsh ./dot.sh --mode ${{ matrix.mode }}
 
       - name: Run Bootstrap (Idempotency Check)
-        run: zsh ./dot.sh --mode ${{ matrix.mode }} --test
+        run: zsh ./dot.sh --mode ${{ matrix.mode }}
+
+      - name: Run Doctor Diagnostics
+        run: zsh ./dot.sh --mode ${{ matrix.mode }} --doctor
 
       - name: Zsh Runtime Check
         run: zsh -c "source ~/.zshrc"
@@ -99,7 +99,6 @@ jobs:
           [ -L ~/.vimrc ] || exit 1
           [ -L ~/.aliases.zsh ] || exit 1
           [ -L ~/.tmux.conf ] || exit 1
-          [ -L ~/.bin ] || exit 1
           if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
             defaults read com.apple.finder AppleShowAllExtensions | grep "1"
             plutil -lint config/iterm2/com.googlecode.iterm2.plist

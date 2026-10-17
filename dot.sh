@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
 # ==============================================================================
-# BOOTSTRAP SCRIPT (v3.6)
+# DOTFILES BOOTSTRAPPER
 # ==============================================================================
 
 set -eo pipefail
@@ -15,14 +15,14 @@ DRY_RUN=false
 REMOTE_MODE=false
 AUTO_INSTALL_DEPS=false
 CLEAN_MODE=false
-# Detect OS and set default mode
+RUN_DOCTOR=false
+ONLY_STEP=""
+
 if [[ "$OSTYPE" == "darwin"* ]]; then
     WORK_MODE="macos"
 else
     WORK_MODE="linux-server"
 fi
-ONLY_STEP=""
-SKIP_STEPS=()
 
 # --- Logging Helpers ---
 log_info()    { printf "\033[0;34m[INFO]\033[0m  %s\n" "$1"; }
@@ -31,80 +31,53 @@ log_error()   { printf "\033[0;31m[ERROR]\033[0m %s\n" "$1"; }
 log_success() { printf "\033[0;32m[OK]\033[0m    %s\n" "$1"; }
 
 # --- CLI Argument Parsing ---
-ORIGINAL_ARGS=("$@")
-
 while [[ "$#" -gt 0 ]]; do
-    case $1 in
-        --dry-run|-d) DRY_RUN=true; log_warn "DRY RUN MODE ENABLED."; shift ;;
-        --remote)    REMOTE_MODE=true; shift ;;
-        --update)    UPDATE_MODE=true; shift ;;
+    case "$1" in
+        --dry-run|-d)   DRY_RUN=true; log_warn "DRY RUN MODE ENABLED."; shift ;;
+        --remote)       REMOTE_MODE=true; shift ;;
         --mode)
             [[ -z "${2:-}" || "${2:-}" == -* ]] && { log_error "Option --mode requires a value."; exit 1; }
             WORK_MODE="$2"; shift 2 ;;
         --only)
             [[ -z "${2:-}" || "${2:-}" == -* ]] && { log_error "Option --only requires a value."; exit 1; }
             ONLY_STEP="$2"; shift 2 ;;
-        --skip)
-            [[ -z "${2:-}" || "${2:-}" == -* ]] && { log_error "Option --skip requires a value."; exit 1; }
-            SKIP_STEPS+=("$2"); shift 2 ;;
-        --doctor)    RUN_DOCTOR=true; shift ;;
-        --test)      RUN_TESTS=true; shift ;;
-        --clean)     CLEAN_MODE=true; shift ;;
+        --doctor)       RUN_DOCTOR=true; shift ;;
+        --clean)        CLEAN_MODE=true; shift ;;
         --install-deps) AUTO_INSTALL_DEPS=true; export DOTFILES_INSTALL_DEPS=true; shift ;;
-        *) log_error "Unknown parameter: $1"; exit 1 ;;
+        *)              log_error "Unknown parameter: $1"; exit 1 ;;
     esac
 done
 
 # --- Execution Wrapper ---
-execute() {
-    local cmd="$1"
-    local critical="${2:-false}"
-    
+run_cmd() {
     if [[ "$DRY_RUN" == "true" ]]; then
-        echo "   [DRY-RUN] Would execute: $cmd"
+        echo "   [DRY-RUN] Would execute: $*"
     else
-        if eval "$cmd"; then
-            return 0
-        else
-            log_error "Command failed: $cmd"
-            if [[ "$critical" == "true" ]]; then
-                printf "\033[0;31mFATAL: Critical step failed. Aborting.\033[0m\n"
-                exit 1
-            fi
-            return 0
-        fi
+        "$@"
     fi
 }
 
-# --- Safety/Idempotency Helpers ---
-
+# --- Safety & Idempotency Helpers ---
 rotate_backups() {
     local keep="${1:-5}"
     local backup_root="$HOME/.dotfiles.backup"
-    if [[ ! -d "$backup_root" ]]; then
-        return 0
-    fi
+    [[ -d "$backup_root" ]] || return 0
 
     local all=("$backup_root"/*(/Non))
     local total=${#all[@]}
     if (( total > keep )); then
         local to_remove=$(( total - keep ))
         log_info "Rotating backups: keeping $keep newest, pruning $to_remove older backup(s)..."
-        local old_backups=("${(@)all[1,to_remove]}")
-        for dir in "${old_backups[@]}"; do
-            if [[ "$DRY_RUN" == "true" ]]; then
-                echo "   [DRY-RUN] Would remove old backup: $dir"
-            else
-                rm -rf "$dir"
-                log_success "Pruned old backup: $(basename "$dir")"
-            fi
+        for dir in "${(@)all[1,to_remove]}"; do
+            run_cmd rm -rf "$dir"
+            log_success "Pruned old backup: $(basename "$dir")"
         done
     fi
 }
 
 init_backup_dir() {
     if [[ ! -d "$BACKUP_DIR" ]]; then
-        execute "mkdir -p '$BACKUP_DIR'"
+        run_cmd mkdir -p "$BACKUP_DIR"
         rotate_backups 5
     fi
 }
@@ -113,11 +86,8 @@ safe_append() {
     local line="$1"
     local file="$2"
     if [[ ! -f "$file" ]]; then
-        if [[ "$DRY_RUN" == "true" ]]; then
-            echo "   [DRY-RUN] Would create: $file"
-        else
-            execute "mkdir -p '$(dirname "$file")' && touch '$file'"
-        fi
+        run_cmd mkdir -p "$(dirname "$file")"
+        run_cmd touch "$file"
     fi
     if [[ -f "$file" ]] && grep -qsF "$line" "$file"; then
         log_success "Entry already exists in $(basename "$file")"
@@ -135,11 +105,8 @@ safe_prepend() {
     local line="$1"
     local file="$2"
     if [[ ! -f "$file" ]]; then
-        if [[ "$DRY_RUN" == "true" ]]; then
-            echo "   [DRY-RUN] Would create: $file"
-        else
-            execute "mkdir -p '$(dirname "$file")' && touch '$file'"
-        fi
+        run_cmd mkdir -p "$(dirname "$file")"
+        run_cmd touch "$file"
     fi
     if [[ -f "$file" ]] && grep -qxF "$line" "$file"; then
         log_success "Entry already exists in $(basename "$file")"
@@ -149,9 +116,7 @@ safe_prepend() {
         else
             local tmp_file
             tmp_file="$(mktemp "${file}.tmp.XXXXXX")"
-            if [[ "$file" == *"/ssh/"* ]]; then
-                chmod 600 "$tmp_file"
-            fi
+            [[ "$file" == *"/ssh/"* ]] && chmod 600 "$tmp_file"
             printf '%s\n' "$line" > "$tmp_file"
             [[ -f "$file" ]] && cat "$file" >> "$tmp_file"
             mv -f "$tmp_file" "$file"
@@ -163,143 +128,83 @@ safe_prepend() {
 safe_link() {
     local src="$1"
     local dest="$2"
-    if [[ -e "$src" ]]; then
-        local needs_link=false
-        local dest_dir="$(dirname "$dest")"
-        local bname="$(basename "$dest")"
-        execute "mkdir -p '$dest_dir'"
-        if [[ -e "$dest" && ! -L "$dest" ]]; then
-            init_backup_dir
-            log_warn "Existing file or directory found at $dest. Moving to backup."
-            execute "mv '$dest' '$BACKUP_DIR/$bname'"
-            needs_link=true
-        elif [[ -L "$dest" && "${dest:A}" != "${src:A}" ]]; then
-            log_warn "Broken or incorrect symlink at $dest. Re-linking."
-            execute "rm -f '$dest'"
-            needs_link=true
-        elif [[ ! -e "$dest" && ! -L "$dest" ]]; then
-            needs_link=true
-        fi
-        
-        if [[ "$needs_link" == "true" ]]; then
-            execute "ln -sfn '$src' '$dest'"
-            log_success "Linked $src to $dest"
-        else
-            log_success "$dest already correctly linked."
-        fi
+    [[ -e "$src" ]] || return 0
+
+    local needs_link=false
+    run_cmd mkdir -p "$(dirname "$dest")"
+
+    if [[ -e "$dest" && ! -L "$dest" ]]; then
+        init_backup_dir
+        log_warn "Existing file or directory found at $dest. Moving to backup."
+        run_cmd mv "$dest" "$BACKUP_DIR/$(basename "$dest")"
+        needs_link=true
+    elif [[ -L "$dest" && "${dest:A}" != "${src:A}" ]]; then
+        log_warn "Broken or incorrect symlink at $dest. Re-linking."
+        run_cmd rm -f "$dest"
+        needs_link=true
+    elif [[ ! -e "$dest" && ! -L "$dest" ]]; then
+        needs_link=true
+    fi
+
+    if [[ "$needs_link" == "true" ]]; then
+        run_cmd ln -sfn "$src" "$dest"
+        log_success "Linked $src to $dest"
+    else
+        log_success "$dest already correctly linked."
     fi
 }
 
 # --- Declarative Link Manifest ---
-# Format: "source_relative_to_dotfiles:destination_path:step_owner:platform"
+# Format: "source_relative_to_dotfiles:destination_path:step_owner"
 LINK_MANIFEST=(
-    "config/zsh/.zshrc:$HOME/.zshrc:setup_zsh:all"
-    "config/zsh/aliases.zsh:$HOME/.aliases.zsh:setup_zsh:all"
-    "config/vim/.vimrc:$HOME/.vimrc:setup_vim:all"
-    "config/vim/.vimrc:$HOME/.config/nvim/init.vim:setup_vim:all"
-    "config/tmux/.tmux.conf:$HOME/.tmux.conf:setup_tmux:all"
-    "bin:$HOME/.bin:setup_zsh:all"
-    "config/ai/AGENTS.md:$HOME/.gemini/config/GEMINI.md:setup_ai:all"
-    "config/ai/AGENTS.md:$HOME/.gemini/config/AGENTS.md:setup_ai:all"
-    "config/ai/AGENTS.md:$HOME/.claude/CLAUDE.md:setup_ai:all"
-    "config/ai/AGENTS.md:$HOME/.cursorrules:setup_ai:all"
-    "config/ai/AGENTS.md:$HOME/.clinerules:setup_ai:all"
-    "config/ai/settings.json:$HOME/.gemini/settings.json:setup_ai:all"
-    "config/ai/mcp_config.json:$HOME/.gemini/config/mcp_config.json:setup_ai:all"
-    "config/ai/skills:$HOME/.gemini/config/skills:setup_ai:all"
+    "config/zsh/.zshrc:$HOME/.zshrc:setup_zsh"
+    "config/zsh/aliases.zsh:$HOME/.aliases.zsh:setup_zsh"
+    "config/vim/.vimrc:$HOME/.vimrc:setup_vim"
+    "config/vim/.vimrc:$HOME/.config/nvim/init.vim:setup_vim"
+    "config/tmux/.tmux.conf:$HOME/.tmux.conf:setup_tmux"
+    "config/ai/AGENTS.md:$HOME/.gemini/config/GEMINI.md:setup_ai"
+    "config/ai/AGENTS.md:$HOME/.gemini/config/AGENTS.md:setup_ai"
+    "config/ai/AGENTS.md:$HOME/.claude/CLAUDE.md:setup_ai"
+    "config/ai/settings.json:$HOME/.gemini/settings.json:setup_ai"
+    "config/ai/mcp_config.json:$HOME/.gemini/config/mcp_config.json:setup_ai"
+    "config/ai/skills:$HOME/.gemini/config/skills:setup_ai"
 )
 
 setup_links() {
     local target_step="${1:-}"
-    if [[ -z "$target_step" ]]; then
-        log_info "Step 2: Linking configurations (Declarative Manifest)..."
-    fi
     for entry in "${LINK_MANIFEST[@]}"; do
         local src_rel="${entry%%:*}"
         local rest="${entry#*:}"
         local dest="${rest%%:*}"
-        rest="${rest#*:}"
-        local step_owner="${rest%%:*}"
-        local platform="${rest#*:}"
+        local step_owner="${rest#*:}"
 
-        # If a specific step was requested, filter by it
-        if [[ -n "$target_step" && "$step_owner" != "$target_step" ]]; then
-            continue
-        fi
-
-        # Skip link if its owning step is in SKIP_STEPS
-        if [[ " ${SKIP_STEPS[*]} " == *" $step_owner "* ]]; then
-            continue
-        fi
-
-        # Platform filter
-        if [[ "$platform" == "macos" && "$WORK_MODE" != "macos" ]]; then
-            continue
-        elif [[ "$platform" == "linux" && "$WORK_MODE" == "macos" ]]; then
-            continue
-        fi
-
+        [[ -n "$target_step" && "$step_owner" != "$target_step" ]] && continue
         safe_link "$DOTFILES_DIR/$src_rel" "$dest"
     done
-    if [[ -z "$target_step" ]]; then
-        log_success "Manifest symlinks processed."
-    fi
 }
 
 prune_dead_symlinks() {
     log_info "Scanning for dead dotfiles symlinks..."
+    local canon_dotfiles="${DOTFILES_DIR:A}"
     local dead_links=()
-    local link
+    local link target
 
-    # 1. Check destinations in LINK_MANIFEST
-    for entry in "${LINK_MANIFEST[@]}"; do
-        local rest="${entry#*:}"
-        local dest="${rest%%:*}"
-        if [[ -L "$dest" && ! -e "$dest" ]]; then
-            dead_links+=("$dest")
+    for link in "$HOME"/*(-@N) "$HOME"/.*(-@N) "$HOME/.config"/**/*(-@N); do
+        target="$(readlink "$link" 2>/dev/null || true)"
+        if [[ "$target" == "$DOTFILES_DIR"* || "$target" == "$canon_dotfiles"* ]]; then
+            dead_links+=("$link")
         fi
     done
 
-    # 2. Check broken symlinks in $HOME, $HOME/.config, and $HOME/.bin pointing to $DOTFILES_DIR
-    local search_dirs=("$HOME")
-    [[ -d "$HOME/.config" ]] && search_dirs+=("$HOME/.config")
-    [[ -d "$HOME/.bin" ]] && search_dirs+=("$HOME/.bin")
-
-    local canon_dotfiles="${DOTFILES_DIR:A}"
-
-    for dir in "${search_dirs[@]}"; do
-        for link in "$dir"/*(@N) "$dir"/.*(@N); do
-            [[ "$(basename "$link")" == "." || "$(basename "$link")" == ".." ]] && continue
-            if [[ -L "$link" && ! -e "$link" ]]; then
-                local target
-                target="$(readlink "$link" 2>/dev/null || true)"
-                local abs_target="$target"
-                if [[ "$target" != /* ]]; then
-                    local link_dir
-                    link_dir="$(cd "$(dirname "$link")" 2>/dev/null && pwd)"
-                    abs_target="$(cd "$link_dir/$(dirname "$target")" 2>/dev/null && pwd)/$(basename "$target")"
-                fi
-                if [[ "$abs_target" == "$DOTFILES_DIR"* || "$abs_target" == "$canon_dotfiles"* ]]; then
-                    if [[ ! " ${dead_links[*]} " == *" $link "* ]]; then
-                        dead_links+=("$link")
-                    fi
-                fi
-            fi
-        done
-    done
-
-    if [[ ${#dead_links[@]} -eq 0 ]]; then
+    if (( ${#dead_links[@]} == 0 )); then
         log_success "No dead dotfiles symlinks found."
-    else
-        for link in "${dead_links[@]}"; do
-            if [[ "$DRY_RUN" == "true" ]]; then
-                echo "   [DRY-RUN] Would remove dead symlink: $link"
-            else
-                rm -f "$link"
-                log_success "Removed dead symlink: $link"
-            fi
-        done
+        return 0
     fi
+
+    for link in "${dead_links[@]}"; do
+        run_cmd rm -f "$link"
+        log_success "Removed dead symlink: $link"
+    done
 }
 
 clean_dotfiles() {
@@ -309,41 +214,41 @@ clean_dotfiles() {
     log_success "Cleanup complete."
 }
 
-# --- Functions ---
+# --- Setup Steps ---
 
 check_dependencies() {
-    log_info "Step 0: Checking dependencies..."
+    log_info "Checking dependencies..."
     local deps=("git" "curl" "vim" "zsh")
     local missing=()
-    
+
     for dep in "${deps[@]}"; do
-        if ! command -v "$dep" >/dev/null 2>&1; then
-            missing+=("$dep")
-        fi
+        command -v "$dep" >/dev/null 2>&1 || missing+=("$dep")
     done
 
-    if [ ${#missing[@]} -ne 0 ]; then
-        if [ "$AUTO_INSTALL_DEPS" = true ]; then
+    if (( ${#missing[@]} > 0 )); then
+        if [[ "$AUTO_INSTALL_DEPS" == "true" ]]; then
             if command -v apt-get >/dev/null 2>&1; then
-                log_info "Attempting to auto-install missing packages via apt-get: ${missing[*]}..."
-                execute "sudo apt-get update && sudo apt-get install -y ${missing[*]}" true
+                log_info "Installing missing packages via apt-get: ${missing[*]}..."
+                run_cmd sudo apt-get update
+                run_cmd sudo apt-get install -y "${missing[@]}"
             elif command -v brew >/dev/null 2>&1; then
-                log_info "Attempting to auto-install missing packages via brew: ${missing[*]}..."
-                execute "brew install ${missing[*]}" true
+                log_info "Installing missing packages via brew: ${missing[*]}..."
+                run_cmd brew install "${missing[@]}"
             fi
             missing=()
-            for dep in "${deps[@]}"; do
-                command -v "$dep" >/dev/null 2>&1 || missing+=("$dep")
-            done
+            if [[ "$DRY_RUN" != "true" ]]; then
+                for dep in "${deps[@]}"; do
+                    command -v "$dep" >/dev/null 2>&1 || missing+=("$dep")
+                done
+            fi
         fi
-        if [ ${#missing[@]} -ne 0 ]; then
+        if (( ${#missing[@]} > 0 )); then
             log_error "Missing required dependencies: ${missing[*]}"
             log_error "Run dot.sh with --install-deps to permit automated package installation."
             exit 1
         fi
     fi
 
-    # Check for iTerm2 on macOS (non-blocking warning; installed via Brewfile when --install-deps is set)
     if [[ "$OSTYPE" == "darwin"* && "$GITHUB_ACTIONS" != "true" && ! -d "/Applications/iTerm.app" ]]; then
         log_warn "iTerm2 (/Applications/iTerm.app) not found. Run with --install-deps to install via Homebrew bundle."
     fi
@@ -352,165 +257,109 @@ check_dependencies() {
 }
 
 setup_packages() {
-    log_info "Step 1.5: Verifying package manager bundle..."
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        local BREWFILE="$DOTFILES_DIR/config/brew/Brewfile"
-        if command -v brew >/dev/null 2>&1 && [ -f "$BREWFILE" ]; then
-            if [ "$AUTO_INSTALL_DEPS" = true ]; then
-                log_info "Homebrew found and --install-deps enabled. Installing brew bundle..."
-                if [ "$DRY_RUN" = true ]; then
-                    echo "   [DRY-RUN] Would execute: brew bundle --file='$BREWFILE'"
-                else
-                    brew bundle --file="$BREWFILE" || log_warn "Some brew packages could not be installed."
-                fi
-                log_success "Homebrew bundle installed."
-            else
-                log_info "Homebrew found. Checking bundle dependencies (read-only)..."
-                if [ "$DRY_RUN" = true ]; then
-                    echo "   [DRY-RUN] Would check: brew bundle check --file='$BREWFILE'"
-                else
-                    if brew bundle check --file="$BREWFILE" >/dev/null 2>&1; then
-                        log_success "Homebrew bundle packages already satisfied."
-                    else
-                        log_warn "Some Homebrew bundle packages are not installed."
-                        log_warn "Run dot.sh with --install-deps to permit installing Homebrew formulas & casks."
-                    fi
-                fi
-            fi
-        fi
+    [[ "$OSTYPE" == "darwin"* ]] || return 0
+    local brewfile="$DOTFILES_DIR/config/brew/Brewfile"
+    command -v brew >/dev/null 2>&1 && [[ -f "$brewfile" ]] || return 0
+
+    log_info "Verifying Homebrew bundle..."
+    if [[ "$AUTO_INSTALL_DEPS" == "true" ]]; then
+        run_cmd brew bundle --file="$brewfile" || log_warn "Some brew packages could not be installed."
+        log_success "Homebrew bundle installed."
+    elif [[ "$DRY_RUN" == "true" ]]; then
+        echo "   [DRY-RUN] Would check: brew bundle check --file=$brewfile"
+    elif brew bundle check --file="$brewfile" >/dev/null 2>&1; then
+        log_success "Homebrew bundle packages already satisfied."
+    else
+        log_warn "Some Homebrew bundle packages are not installed. Run with --install-deps to install."
     fi
 }
 
 download_assets() {
-    log_info "Step 1: Downloading dotfiles archive..."
-    if [ -d "$DOTFILES_DIR/.git" ]; then
-        log_info "Git repository found. Pulling latest changes..."
-        execute "git -C '$DOTFILES_DIR' pull --rebase" true
+    log_info "Syncing dotfiles repository..."
+    if [[ -d "$DOTFILES_DIR/.git" ]]; then
+        run_cmd git -C "$DOTFILES_DIR" pull --rebase
     else
-        local TARBALL_URL="https://github.com/$GITHUB_USER/$REPO_NAME/archive/refs/heads/main.tar.gz"
-        [ ! -d "$DOTFILES_DIR" ] && execute "mkdir -p '$DOTFILES_DIR'" true
-        execute "curl -fsSL '$TARBALL_URL' | tar -xzp -C '$DOTFILES_DIR' --strip-components=1" true
+        local tarball_url="https://github.com/$GITHUB_USER/$REPO_NAME/archive/refs/heads/main.tar.gz"
+        [[ -d "$DOTFILES_DIR" ]] || run_cmd mkdir -p "$DOTFILES_DIR"
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "   [DRY-RUN] Would execute: curl -fsSL '$tarball_url' | tar -xzp -C '$DOTFILES_DIR' --strip-components=1"
+        else
+            curl -fsSL "$tarball_url" | tar -xzp -C "$DOTFILES_DIR" --strip-components=1
+        fi
     fi
     log_success "Assets synced to $DOTFILES_DIR"
 }
 
-install_zsh_plugins() {
-    local ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+setup_zsh() {
+    log_info "Configuring Zsh..."
+
+    if [[ "$GITHUB_ACTIONS" != "true" && ! -d "$HOME/.oh-my-zsh" ]]; then
+        if [[ "$AUTO_INSTALL_DEPS" == "true" ]]; then
+            log_info "Installing Oh My Zsh (--install-deps permitted)..."
+            if [[ "$DRY_RUN" == "true" ]]; then
+                echo "   [DRY-RUN] Would install Oh My Zsh"
+            else
+                sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended --keep-zshrc
+            fi
+        else
+            log_warn "Oh My Zsh not installed at $HOME/.oh-my-zsh. Run with --install-deps to install."
+        fi
+    fi
+
+    local zsh_custom="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
     local plugins=(
         "zsh-autosuggestions:https://github.com/zsh-users/zsh-autosuggestions"
         "zsh-syntax-highlighting:https://github.com/zsh-users/zsh-syntax-highlighting"
     )
-
     for plugin_pair in "${plugins[@]}"; do
         local name="${plugin_pair%%:*}"
         local url="${plugin_pair#*:}"
-        if [ ! -d "$ZSH_CUSTOM/plugins/$name" ]; then
-            if [ "$AUTO_INSTALL_DEPS" = true ]; then
-                log_info "Cloning $name (--install-deps permitted)..."
-                execute "git clone --depth=1 '$url' '$ZSH_CUSTOM/plugins/$name'"
+        if [[ ! -d "$zsh_custom/plugins/$name" ]]; then
+            if [[ "$AUTO_INSTALL_DEPS" == "true" ]]; then
+                run_cmd git clone --depth=1 "$url" "$zsh_custom/plugins/$name"
             else
                 log_warn "Zsh plugin '$name' not found. Run with --install-deps to clone."
             fi
         fi
     done
-}
 
-setup_zsh() {
-    log_info "Step 2: Configuring Zsh & Oh My Zsh..."
-    
-    # 1. Install Oh My Zsh
-    if [[ "$GITHUB_ACTIONS" != "true" && ! -d "$HOME/.oh-my-zsh" ]]; then
-        if [ "$AUTO_INSTALL_DEPS" = true ]; then
-            log_info "Installing Oh My Zsh (--install-deps permitted)..."
-            execute "sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended --keep-zshrc"
-            log_success "Oh My Zsh installed."
-        else
-            log_warn "Oh My Zsh is not installed at $HOME/.oh-my-zsh."
-            log_warn "Run dot.sh with --install-deps to permit downloading and installing Oh My Zsh."
-        fi
+    local iterm_int="$HOME/.iterm2_shell_integration.zsh"
+    if [[ ! -f "$iterm_int" && "$AUTO_INSTALL_DEPS" == "true" ]]; then
+        run_cmd curl -fsSL https://iterm2.com/shell_integration/zsh -o "$iterm_int"
     fi
 
-    # 2. Install Custom Plugins
-    install_zsh_plugins
-
-    # 3. iTerm2 Shell Integration
-    local ITERM_SHELL_INT="$HOME/.iterm2_shell_integration.zsh"
-    if [ ! -f "$ITERM_SHELL_INT" ]; then
-        if [ "$AUTO_INSTALL_DEPS" = true ]; then
-            log_info "Downloading iTerm2 shell integration (--install-deps permitted)..."
-            execute "curl -fsSL https://iterm2.com/shell_integration/zsh -o '$ITERM_SHELL_INT'"
-        else
-            log_warn "iTerm2 shell integration not found. Run with --install-deps to download."
-        fi
+    if [[ "$SHELL" != *"zsh"* && "$GITHUB_ACTIONS" != "true" ]] && command -v zsh >/dev/null 2>&1; then
+        run_cmd chsh -s "$(command -v zsh)"
     fi
 
-    # 4. Change Default Shell
-    if [[ "$SHELL" != *"zsh"* && "$GITHUB_ACTIONS" != "true" ]]; then
-        if command -v zsh >/dev/null 2>&1; then
-            local zsh_path
-            zsh_path="$(command -v zsh)"
-            log_info "Changing default shell to $zsh_path (may prompt for password)."
-            execute "chsh -s '$zsh_path'"
-        fi
-    fi
-
-    # 4. Link Configurations
     setup_links "setup_zsh"
-
-    # 5. Missing .local template auto-generator
-    local zsh_local="$HOME/.zshrc.local"
-    if [[ ! -f "$zsh_local" ]]; then
-        log_info "Generating starter $zsh_local template..."
-        if [[ "$DRY_RUN" == "true" ]]; then
-            echo "   [DRY-RUN] Would create starter $zsh_local"
-        else
-            cat << 'EOF' > "$zsh_local"
-# ~/.zshrc.local — Machine-specific shell configuration & private environment
-# Loaded at the end of ~/.zshrc and ignored in git.
-
-# export WORK_ENV="development"
-# export PATH="$HOME/.local/bin:$PATH"
-EOF
-            log_success "Created starter template at $zsh_local"
-        fi
-    fi
-    
     log_success "Zsh environment ready."
 }
 
 setup_vim() {
-    log_info "Step 3: Setting up Vim..."
-    local PLUG_URL="https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim"
-    local PLUG_DEST="$HOME/.vim/autoload/plug.vim"
-    
-    setup_links "setup_vim"
-    execute "mkdir -p '$HOME/.vim/undo'"
+    log_info "Setting up Vim & Neovim..."
+    local plug_url="https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim"
+    local plug_dest="$HOME/.vim/autoload/plug.vim"
 
-    if [ "$AUTO_INSTALL_DEPS" = true ]; then
-        if [ ! -f "$PLUG_DEST" ]; then
-            execute "curl -fLo '$PLUG_DEST' --create-dirs '$PLUG_URL'" true
-            log_success "Vim-Plug installed."
-        fi
-        log_info "Installing Vim plugins..."
-        DOTFILES_INSTALL_DEPS=true execute "vim +PlugInstall +qall!"
-    else
-        if [ ! -f "$PLUG_DEST" ]; then
-            log_warn "Vim-Plug not found at $PLUG_DEST. Run with --install-deps to download and install Vim plugins."
-        else
-            log_info "Skipping external plugin installation (pass --install-deps to run PlugInstall)."
-        fi
+    setup_links "setup_vim"
+    run_cmd mkdir -p "$HOME/.vim/undo"
+
+    if [[ "$AUTO_INSTALL_DEPS" == "true" ]]; then
+        [[ -f "$plug_dest" ]] || run_cmd curl -fLo "$plug_dest" --create-dirs "$plug_url"
+        DOTFILES_INSTALL_DEPS=true run_cmd vim +PlugInstall +qall!
+    elif [[ ! -f "$plug_dest" ]]; then
+        log_warn "Vim-Plug not found at $plug_dest. Run with --install-deps to install plugins."
     fi
     log_success "Vim & Neovim ready."
 }
 
 setup_tmux() {
-    log_info "Step 4: Setting up Tmux..."
-    local TPM_DIR="$HOME/.tmux/plugins/tpm"
-    if [ ! -d "$TPM_DIR" ]; then
-        if [ "$AUTO_INSTALL_DEPS" = true ]; then
-            execute "mkdir -p '$(dirname "$TPM_DIR")'"
-            execute "git clone https://github.com/tmux-plugins/tpm '$TPM_DIR'"
-            log_success "TPM installed."
+    log_info "Setting up Tmux..."
+    local tpm_dir="$HOME/.tmux/plugins/tpm"
+    if [[ ! -d "$tpm_dir" ]]; then
+        if [[ "$AUTO_INSTALL_DEPS" == "true" ]]; then
+            run_cmd mkdir -p "$(dirname "$tpm_dir")"
+            run_cmd git clone https://github.com/tmux-plugins/tpm "$tpm_dir"
         else
             log_warn "Tmux Plugin Manager (TPM) not found. Run with --install-deps to clone."
         fi
@@ -520,198 +369,137 @@ setup_tmux() {
 }
 
 setup_git() {
-    log_info "Step 5: Configuring Git..."
-    local GIT_CONF_SRC="$DOTFILES_DIR/config/git/.gitconfig"
-    local GIT_CONF_DEST="$HOME/.gitconfig"
+    log_info "Configuring Git..."
+    local git_conf_src="$DOTFILES_DIR/config/git/.gitconfig"
+    local git_conf_dest="$HOME/.gitconfig"
 
-    # 1. Missing .local template auto-generator
-    local git_local="$DOTFILES_DIR/config/git/.gitconfig.local"
-    if [[ ! -f "$git_local" ]]; then
-        log_info "Creating initial $git_local from template..."
-        local user_name user_email
-        user_name="$(git config --global user.name 2>/dev/null || true)"
-        user_email="$(git config --global user.email 2>/dev/null || true)"
-        [[ -z "$user_name" ]] && user_name="Your Name"
-        [[ -z "$user_email" ]] && user_email="you@example.com"
-        if [[ "$DRY_RUN" == "true" ]]; then
-            echo "   [DRY-RUN] Would create $git_local with name: $user_name, email: $user_email"
-        else
-            cat << EOF > "$git_local"
-# config/git/.gitconfig.local — personal identity (gitignored)
-[user]
-	name = $user_name
-	email = $user_email
-EOF
-            log_success "Generated $git_local"
-        fi
-    fi
-
-    # 2. Link Global Git Config
-    if [ -f "$GIT_CONF_SRC" ]; then
-        if ! grep -q "path = $GIT_CONF_SRC" "$GIT_CONF_DEST" 2>/dev/null; then
-            execute "git config --global include.path '$GIT_CONF_SRC'"
+    if [[ -f "$git_conf_src" ]]; then
+        if ! grep -q "path = $git_conf_src" "$git_conf_dest" 2>/dev/null; then
+            run_cmd git config --global include.path "$git_conf_src"
             log_success "Git config linked."
         else
             log_success "Git config already linked."
         fi
     fi
 
-    # 3. Pre-commit Hooks Configuration
-    if [ -d "$DOTFILES_DIR/.git" ] && [ -d "$DOTFILES_DIR/.githooks" ]; then
-        execute "git -C '$DOTFILES_DIR' config core.hooksPath .githooks"
+    if [[ -d "$DOTFILES_DIR/.git" && -d "$DOTFILES_DIR/.githooks" ]]; then
+        run_cmd git -C "$DOTFILES_DIR" config core.hooksPath .githooks
         log_success "Git pre-commit hooks configured (.githooks)."
     fi
 }
 
 setup_ssh() {
-    log_info "Step 6: Configuring SSH (Mode: $WORK_MODE)..."
-    execute "mkdir -p '$HOME/.ssh' && chmod 700 '$HOME/.ssh'"
-    
-    local SSH_FILENAME="linux.config"
-    [[ "$WORK_MODE" == "macos" ]] && SSH_FILENAME="macos.config"
-    local GIT_SSH_CONF="$DOTFILES_DIR/config/ssh/$SSH_FILENAME"
-    local LOCAL_SSH_CONF="$HOME/.ssh/config"
-    
-    if [ -f "$GIT_SSH_CONF" ]; then
-        execute "chmod 600 '$GIT_SSH_CONF'"
-        
-        # 1. Remove the other platform's include if it exists (avoids "vice versa" confusion)
-        local OTHER_FILENAME="macos.config"
-        [[ "$SSH_FILENAME" == "macos.config" ]] && OTHER_FILENAME="linux.config"
-        local OTHER_GIT_SSH_CONF="$DOTFILES_DIR/config/ssh/$OTHER_FILENAME"
-        
-        if [ -f "$LOCAL_SSH_CONF" ] && grep -qF "Include $OTHER_GIT_SSH_CONF" "$LOCAL_SSH_CONF"; then
-            log_info "Cleaning up old $OTHER_FILENAME include from $LOCAL_SSH_CONF..."
-            if [ "$DRY_RUN" = true ]; then
-                echo "   [DRY-RUN] Would remove old include $OTHER_GIT_SSH_CONF from $LOCAL_SSH_CONF"
-            else
+    log_info "Configuring SSH (Mode: $WORK_MODE)..."
+    run_cmd mkdir -p "$HOME/.ssh"
+    run_cmd chmod 700 "$HOME/.ssh"
+
+    local ssh_filename="linux.config"
+    [[ "$WORK_MODE" == "macos" ]] && ssh_filename="macos.config"
+    local git_ssh_conf="$DOTFILES_DIR/config/ssh/$ssh_filename"
+    local local_ssh_conf="$HOME/.ssh/config"
+
+    if [[ -f "$git_ssh_conf" ]]; then
+        run_cmd chmod 600 "$git_ssh_conf"
+
+        local other_filename="macos.config"
+        [[ "$ssh_filename" == "macos.config" ]] && other_filename="linux.config"
+        local other_ssh_conf="$DOTFILES_DIR/config/ssh/$other_filename"
+
+        if [[ -f "$local_ssh_conf" ]] && grep -qF "Include $other_ssh_conf" "$local_ssh_conf"; then
+            if [[ "$DRY_RUN" == "false" ]]; then
                 local tmp_conf
-                tmp_conf="$(mktemp "${LOCAL_SSH_CONF}.tmp.XXXXXX")"
+                tmp_conf="$(mktemp "${local_ssh_conf}.tmp.XXXXXX")"
                 chmod 600 "$tmp_conf"
-                grep -vF "Include $OTHER_GIT_SSH_CONF" "$LOCAL_SSH_CONF" > "$tmp_conf" || true
-                mv -f "$tmp_conf" "$LOCAL_SSH_CONF"
+                grep -vF "Include $other_ssh_conf" "$local_ssh_conf" > "$tmp_conf" || true
+                mv -f "$tmp_conf" "$local_ssh_conf"
             fi
         fi
 
-        # 2. Add the correct include
-        safe_prepend "Include $GIT_SSH_CONF" "$LOCAL_SSH_CONF"
-        execute "chmod 600 '$LOCAL_SSH_CONF'"
+        safe_prepend "Include $git_ssh_conf" "$local_ssh_conf"
+        run_cmd chmod 600 "$local_ssh_conf"
     fi
 
     if [[ "$WORK_MODE" == "linux-server" ]]; then
-        local GIT_AUTH_KEYS="$DOTFILES_DIR/config/ssh/authorized_keys"
-        [[ -f "$DOTFILES_DIR/config/ssh/authorized_keys.local" ]] && GIT_AUTH_KEYS="$DOTFILES_DIR/config/ssh/authorized_keys.local"
-        local LOCAL_AUTH_KEYS="$HOME/.ssh/authorized_keys"
-        if [ -f "$GIT_AUTH_KEYS" ]; then
+        local git_auth_keys="$DOTFILES_DIR/config/ssh/authorized_keys"
+        [[ -f "$DOTFILES_DIR/config/ssh/authorized_keys.local" ]] && git_auth_keys="$DOTFILES_DIR/config/ssh/authorized_keys.local"
+        local local_auth_keys="$HOME/.ssh/authorized_keys"
+        if [[ -f "$git_auth_keys" ]]; then
             while IFS= read -r key; do
                 [[ -z "$key" || "$key" =~ ^# ]] && continue
-                safe_append "$key" "$LOCAL_AUTH_KEYS"
-            done < "$GIT_AUTH_KEYS"
-            execute "chmod 600 '$LOCAL_AUTH_KEYS'"
-            log_success "Authorized keys imported from $(basename "$GIT_AUTH_KEYS")."
+                safe_append "$key" "$local_auth_keys"
+            done < "$git_auth_keys"
+            run_cmd chmod 600 "$local_auth_keys"
+            log_success "Authorized keys imported from $(basename "$git_auth_keys")."
         fi
     fi
 }
 
 setup_iterm2() {
-    if [[ "$OSTYPE" != "darwin"* || "$WORK_MODE" != "macos" ]]; then return; fi
-    log_info "Step 7: Configuring iTerm2..."
+    [[ "$OSTYPE" == "darwin"* && "$WORK_MODE" == "macos" ]] || return 0
+    log_info "Configuring iTerm2..."
 
-    local ITERM_DIR="$DOTFILES_DIR/config/iterm2"
-    if [ -f "$ITERM_DIR/com.googlecode.iterm2.plist" ]; then
-        log_info "Linking iTerm2 preferences..."
-        if [ "$DRY_RUN" = false ]; then
-            sed -i.bak "s|/Users/[^<\"/ ]*|$HOME|g" "$ITERM_DIR/com.googlecode.iterm2.plist" && rm -f "$ITERM_DIR/com.googlecode.iterm2.plist.bak"
-            if [ -d "$DOTFILES_DIR/.git" ]; then
+    local iterm_dir="$DOTFILES_DIR/config/iterm2"
+    if [[ -f "$iterm_dir/com.googlecode.iterm2.plist" ]]; then
+        if [[ "$DRY_RUN" == "false" ]]; then
+            sed -i.bak "s|/Users/[^<\"/ ]*|$HOME|g" "$iterm_dir/com.googlecode.iterm2.plist" && rm -f "$iterm_dir/com.googlecode.iterm2.plist.bak"
+            if [[ -d "$DOTFILES_DIR/.git" ]]; then
                 git -C "$DOTFILES_DIR" update-index --assume-unchanged "config/iterm2/com.googlecode.iterm2.plist" 2>/dev/null || true
             fi
         fi
-        execute "defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true"
-        execute "defaults write com.googlecode.iterm2 PrefsCustomFolder -string '$ITERM_DIR'"
-        execute "defaults write com.googlecode.iterm2 NoSyncNeverRemindPrefsChangesLostForFile -bool true"
-    else
-        log_warn "No iTerm2 plist found in $ITERM_DIR. Skipping sync."
+        run_cmd defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
+        run_cmd defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$iterm_dir"
+        run_cmd defaults write com.googlecode.iterm2 NoSyncNeverRemindPrefsChangesLostForFile -bool true
     fi
 
-    log_info "Applying iTerm2 optimizations..."
-    execute "defaults write com.googlecode.iterm2 GPU -bool true"
-    execute "defaults write com.googlecode.iterm2 CopySelection -bool true"
-    execute "defaults write com.googlecode.iterm2 PromptOnQuit -bool false"
-    execute "defaults write com.googlecode.iterm2 MaxPasteHistoryEntries -int 50"
-    execute "defaults write com.googlecode.iterm2 AutohideTmuxClientSession -bool true"
-    execute "defaults write com.googlecode.iterm2 OpenTmuxWindowsAs -int 0"
-    execute "defaults write com.googlecode.iterm2 OpenTmuxDashboardIfMoreThanXWindows -int 999"
-    
+    run_cmd defaults write com.googlecode.iterm2 GPU -bool true
+    run_cmd defaults write com.googlecode.iterm2 CopySelection -bool true
+    run_cmd defaults write com.googlecode.iterm2 PromptOnQuit -bool false
+    run_cmd defaults write com.googlecode.iterm2 MaxPasteHistoryEntries -int 50
+    run_cmd defaults write com.googlecode.iterm2 AutohideTmuxClientSession -bool true
+    run_cmd defaults write com.googlecode.iterm2 OpenTmuxWindowsAs -int 0
+    run_cmd defaults write com.googlecode.iterm2 OpenTmuxDashboardIfMoreThanXWindows -int 999
     log_success "iTerm2 complete."
 }
 
 setup_macos() {
-    if [[ "$OSTYPE" != "darwin"* || "$WORK_MODE" != "macos" ]]; then return; fi
-    log_info "Step 8: Applying macOS Defaults & Fonts..."
+    [[ "$OSTYPE" == "darwin"* && "$WORK_MODE" == "macos" ]] || return 0
+    log_info "Applying macOS Defaults & Fonts..."
 
-    local FONT_DEST="$HOME/Library/Fonts/MesloLGS NF Regular.ttf"
-    if [ ! -f "$FONT_DEST" ]; then
-        if [ "$AUTO_INSTALL_DEPS" = true ]; then
-            log_info "Downloading MesloLGS NF font (--install-deps permitted)..."
-            execute "mkdir -p '$HOME/Library/Fonts'"
-            execute "curl -fLo '$FONT_DEST' 'https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf'" true
-            log_success "MesloLGS NF font installed."
-        else
-            log_warn "Nerd Font not found at $FONT_DEST."
-            log_warn "Run dot.sh with --install-deps to permit downloading the font."
-        fi
+    local font_dest="$HOME/Library/Fonts/MesloLGS NF Regular.ttf"
+    if [[ ! -f "$font_dest" && "$AUTO_INSTALL_DEPS" == "true" ]]; then
+        run_cmd mkdir -p "$HOME/Library/Fonts"
+        run_cmd curl -fLo "$font_dest" "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf"
     fi
-    
-    execute "defaults write NSGlobalDomain KeyRepeat -int 1"
-    execute "defaults write NSGlobalDomain InitialKeyRepeat -int 15"
-    execute "defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true"
-    execute "defaults write com.apple.finder AppleShowAllExtensions -bool true"
-    execute "defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false"
-    execute "defaults write com.apple.dock autohide -bool true"
-    execute "defaults write com.apple.dock autohide-delay -float 0"
-    execute "defaults write com.apple.dock tilesize -int 48"
 
-    if [ "$DRY_RUN" = false ]; then
-        killall Finder Dock > /dev/null 2>&1 || true
-    fi
+    run_cmd defaults write NSGlobalDomain KeyRepeat -int 1
+    run_cmd defaults write NSGlobalDomain InitialKeyRepeat -int 15
+    run_cmd defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
+    run_cmd defaults write com.apple.finder AppleShowAllExtensions -bool true
+    run_cmd defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
+    run_cmd defaults write com.apple.dock autohide -bool true
+    run_cmd defaults write com.apple.dock autohide-delay -float 0
+    run_cmd defaults write com.apple.dock tilesize -int 48
+
+    [[ "$DRY_RUN" == "false" ]] && { killall Finder Dock >/dev/null 2>&1 || true; }
     log_success "macOS complete."
 }
 
 setup_ai() {
-    log_info "Step 9: Setting up AI Agents (Gemini, Claude, Cursor, Cline)..."
+    log_info "Setting up AI Agents (Gemini & Claude)..."
     setup_links "setup_ai"
     log_success "AI agents configuration complete."
-}
-
-setup_gemini() {
-    setup_ai "$@"
-}
-
-run_smoke_tests() {
-    log_info "🧪 Running Post-Install Verification..."
-    run_doctor
 }
 
 run_doctor() {
     log_info "🩺 Starting Dotfiles Diagnostic..."
     local errors=0
 
-    # 1. Symlink Checks (Declarative Manifest)
     for entry in "${LINK_MANIFEST[@]}"; do
         local src_rel="${entry%%:*}"
         local rest="${entry#*:}"
         local dest="${rest%%:*}"
-        rest="${rest#*:}"
-        local step_owner="${rest%%:*}"
-        local platform="${rest#*:}"
-
-        if [[ "$platform" == "macos" && "$WORK_MODE" != "macos" ]]; then
-            continue
-        elif [[ "$platform" == "linux" && "$WORK_MODE" == "macos" ]]; then
-            continue
-        fi
-
         local src="$DOTFILES_DIR/$src_rel"
+
         if [[ -L "$dest" && "${dest:A}" == "${src:A}" ]]; then
             log_success "Link OK: $(basename "$dest")"
         else
@@ -720,7 +508,6 @@ run_doctor() {
         fi
     done
 
-    # 1.3 Git Config Check
     local git_conf="$HOME/.gitconfig"
     if grep -q "path = $DOTFILES_DIR/config/git/.gitconfig" "$git_conf" 2>/dev/null; then
         log_success "Git: Include directive present in $git_conf"
@@ -729,122 +516,48 @@ run_doctor() {
         errors=$((errors + 1))
     fi
 
-    # 1.4 Git Local Identity & Hooks Check
-    local git_local="$DOTFILES_DIR/config/git/.gitconfig.local"
-    if [[ -f "$git_local" ]]; then
-        log_success "Git: Local identity file (.gitconfig.local) present"
-    else
-        log_warn "Git: Local identity file (.gitconfig.local) missing (run dot.sh to generate)"
-    fi
-
-    if [[ -d "$DOTFILES_DIR/.git" ]]; then
-        local hooks_path
-        hooks_path="$(git -C "$DOTFILES_DIR" config core.hooksPath 2>/dev/null || true)"
-        if [[ "$hooks_path" == ".githooks" ]]; then
-            log_success "Git: Pre-commit hooks active (.githooks)"
-        else
-            log_warn "Git: Pre-commit hooks not configured (run dot.sh to configure)"
-        fi
-    fi
-
-    # 1.5 SSH Inclusion Check
     local ssh_conf="$HOME/.ssh/config"
-    local SSH_FILENAME="linux.config"
-    [[ "$WORK_MODE" == "macos" ]] && SSH_FILENAME="macos.config"
-    if [[ -f "$ssh_conf" ]] && grep -q "Include $DOTFILES_DIR/config/ssh/$SSH_FILENAME" "$ssh_conf"; then
+    local ssh_filename="linux.config"
+    [[ "$WORK_MODE" == "macos" ]] && ssh_filename="macos.config"
+    if [[ -f "$ssh_conf" ]] && grep -q "Include $DOTFILES_DIR/config/ssh/$ssh_filename" "$ssh_conf"; then
         log_success "SSH: Include directive present in $ssh_conf"
     else
         log_error "SSH: Include directive MISSING in $ssh_conf"
         errors=$((errors + 1))
     fi
 
-    # 2. SSH Agent Check
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        if [[ -S "$SSH_AUTH_SOCK" ]]; then
-            log_success "SSH Agent: Active agent found ($SSH_AUTH_SOCK)"
-        else
-            log_warn "SSH Agent: No active agent found in environment."
-        fi
-    else
-        if [[ -S "$SSH_AUTH_SOCK" ]]; then
-            log_success "SSH Agent: Forwarded agent found."
-        elif [[ "$GITHUB_ACTIONS" == "true" ]]; then
-            log_success "SSH Agent: Skipping check in CI."
-        else
-            log_warn "SSH Agent: No active agent found (Ensure SSH agent forwarding is active)."
-        fi
-    fi
-
-    # 3. iTerm2 Sync Check
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        local pref_folder=$(defaults read com.googlecode.iterm2 PrefsCustomFolder 2>/dev/null)
-        if [[ "$pref_folder" == "$DOTFILES_DIR/config/iterm2" ]]; then
-            log_success "iTerm2: Preferences correctly linked."
-        else
-            log_warn "iTerm2: Preferences pointing to $pref_folder (not $DOTFILES_DIR/config/iterm2)"
-        fi
-    fi
-
-    # 4. Repo Health
-    if [ -z "$(git -C "$DOTFILES_DIR" status --porcelain)" ]; then
-        log_success "Repo: Workspace is clean."
-    else
-        log_warn "Repo: You have uncommitted changes in $DOTFILES_DIR"
-    fi
-
-    echo "\n--- Diagnostic Summary ---"
     if [[ $errors -eq 0 ]]; then
-        log_success "All systems operational. Your environment is healthy!"
+        log_success "All systems operational!"
         return 0
     else
-        log_error "Detected $errors issues. Run dot.sh to repair."
+        log_error "Detected $errors issue(s). Run dot.sh to repair."
         return 1
     fi
 }
 
 # --- Main Execution ---
-
 main() {
-    if [ "$CLEAN_MODE" = true ]; then
+    if [[ "$CLEAN_MODE" == "true" ]]; then
         clean_dotfiles
         exit 0
     fi
 
-    if [ "$RUN_DOCTOR" = true ]; then
+    if [[ "$RUN_DOCTOR" == "true" ]]; then
         run_doctor
         exit $?
     fi
 
-    if [ "$UPDATE_MODE" = true ]; then
-        log_info "🔄 Running self-update..."
-        if [ -d "$DOTFILES_DIR/.git" ]; then
-            execute "git -C '$DOTFILES_DIR' pull --rebase"
-            log_success "Update complete. Restarting script..."
-            local remaining_args=()
-            for arg in "${ORIGINAL_ARGS[@]}"; do
-                [[ "$arg" != "--update" ]] && remaining_args+=("$arg")
-            done
-            exec "$DOTFILES_DIR/dot.sh" "${remaining_args[@]}"
-        else
-            log_error "Cannot update: $DOTFILES_DIR is not a git repository."
-            exit 1
-        fi
-    fi
-
     check_dependencies
-    if [ "$REMOTE_MODE" = true ]; then 
+
+    if [[ "$REMOTE_MODE" == "true" ]]; then
         download_assets
-    else
-        if [ ! -d "$DOTFILES_DIR" ]; then
-            log_error "Dotfiles directory ($DOTFILES_DIR) not found."
-            log_error "Please clone the repository there or run the script with --remote."
-            exit 1
-        fi
+    elif [[ ! -d "$DOTFILES_DIR" ]]; then
+        log_error "Dotfiles directory ($DOTFILES_DIR) not found. Clone it or pass --remote."
+        exit 1
     fi
 
-    if [ -n "$ONLY_STEP" ]; then
-        if declare -f "$ONLY_STEP" > /dev/null; then
-            log_info "Running targeted step: $ONLY_STEP..."
+    if [[ -n "$ONLY_STEP" ]]; then
+        if declare -f "$ONLY_STEP" >/dev/null; then
             "$ONLY_STEP"
             exit 0
         else
@@ -853,21 +566,12 @@ main() {
         fi
     fi
 
-    local steps=(setup_packages setup_links setup_zsh setup_vim setup_tmux setup_git setup_ssh setup_iterm2 setup_macos setup_ai)
+    local steps=(setup_packages setup_zsh setup_vim setup_tmux setup_git setup_ssh setup_iterm2 setup_macos setup_ai)
     for step in "${steps[@]}"; do
-        if [[ " ${SKIP_STEPS[*]} " == *" $step "* ]]; then
-            log_warn "Skipping $step"
-        else
-            "$step"
-        fi
+        "$step"
     done
 
-    if [ "$RUN_TESTS" = true ]; then
-        run_smoke_tests
-        exit $?
-    else
-        echo "\n✨ Setup complete! Run with --doctor or --test to verify integrity."
-    fi
+    echo "\n✨ Setup complete! Run with --doctor to verify integrity."
 }
 
-main "${ORIGINAL_ARGS[@]}"
+main
