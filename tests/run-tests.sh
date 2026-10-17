@@ -426,16 +426,20 @@ else
   fail "AI Agent symlinks" "Expected symlinks for Gemini and Claude"
 fi
 
-mkdir -p "$HOME/.ssh"
-ln -sf "/tmp/nonexistent_test_socket_$$" "$HOME/.ssh/ssh_auth_sock"
-zsh -c "
-  export HOME='$HOME'
-  export SSH_AUTH_SOCK='$HOME/.ssh/ssh_auth_sock'
-  source '$DOTFILES_DIR/config/zsh/.zshrc'
-" >/dev/null 2>&1
-[[ ! -L "$HOME/.ssh/ssh_auth_sock" ]] \
-  && pass "SSH Agent: .zshrc prunes dangling socket symlinks on startup" \
-  || fail "SSH Agent dangling symlink" "Expected dead symlink to be pruned"
+if [[ "$OSTYPE" != "darwin"* ]]; then
+  mkdir -p "$HOME/.ssh"
+  ln -sf "/tmp/nonexistent_test_socket_$$" "$HOME/.ssh/ssh_auth_sock"
+  zsh -c "
+    export HOME='$HOME'
+    export SSH_AUTH_SOCK='$HOME/.ssh/ssh_auth_sock'
+    source '$DOTFILES_DIR/config/zsh/.zshrc'
+  " >/dev/null 2>&1
+  [[ ! -L "$HOME/.ssh/ssh_auth_sock" ]] \
+    && pass "SSH Agent: .zshrc prunes dangling socket symlinks on startup" \
+    || fail "SSH Agent dangling symlink" "Expected dead symlink to be pruned"
+else
+  echo "  ${YELLOW}[SKIP]${RESET} SSH Agent socket cleanup (Linux-only behavior)"
+fi
 
 if command -v strace >/dev/null 2>&1; then
   git_forks=$(strace -f -e trace=execve zsh -c "
