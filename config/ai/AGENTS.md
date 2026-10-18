@@ -47,4 +47,5 @@ Every code change must be accompanied by updates to at least two distinct types 
   - Execute commands directly via `run_cmd "$@"` rather than `eval` string concatenation.
   - Maintain a 3-field `LINK_MANIFEST` (`src_rel:dest:step_owner`) targeting only **Gemini** (`~/.gemini/...`) and **Claude** (`~/.claude/CLAUDE.md`) for AI configurations.
   - Use Zsh's native `(-@N)` broken-symlink glob qualifier in `prune_dead_symlinks` rather than spawning external `find` loops.
+  - Prefer Zsh native path modifiers (`${path:h}` and `${path:t}`) over external `dirname` and `basename` child process forks in loops and helpers.
   - Never auto-generate dummy `.local` override files with placeholder identities (e.g. `you@example.com` in `.gitconfig.local`); `.local` files are optional user-managed overrides.

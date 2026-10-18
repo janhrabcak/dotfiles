@@ -70,7 +70,7 @@ rotate_backups() {
         log_info "Rotating backups: keeping $keep newest, pruning $to_remove older backup(s)..."
         for dir in "${(@)all[1,to_remove]}"; do
             run_cmd rm -rf "$dir"
-            log_success "Pruned old backup: $(basename "$dir")"
+            log_success "Pruned old backup: ${dir:t}"
         done
     fi
 }
@@ -86,18 +86,18 @@ safe_append() {
     local line="$1"
     local file="$2"
     if [[ ! -f "$file" ]]; then
-        run_cmd mkdir -p "$(dirname "$file")"
+        [[ -d "${file:h}" ]] || run_cmd mkdir -p "${file:h}"
         run_cmd touch "$file"
     fi
     if [[ -f "$file" ]] && grep -qsF "$line" "$file"; then
-        log_success "Entry already exists in $(basename "$file")"
+        log_success "Entry already exists in ${file:t}"
     else
         if [[ "$DRY_RUN" == "true" ]]; then
             echo "   [DRY-RUN] Would append to $file: $line"
         else
             printf '%s\n' "$line" >> "$file"
         fi
-        log_success "Updated $(basename "$file") (appended)"
+        log_success "Updated ${file:t} (appended)"
     fi
 }
 
@@ -105,11 +105,11 @@ safe_prepend() {
     local line="$1"
     local file="$2"
     if [[ ! -f "$file" ]]; then
-        run_cmd mkdir -p "$(dirname "$file")"
+        [[ -d "${file:h}" ]] || run_cmd mkdir -p "${file:h}"
         run_cmd touch "$file"
     fi
     if [[ -f "$file" ]] && grep -qxF "$line" "$file"; then
-        log_success "Entry already exists in $(basename "$file")"
+        log_success "Entry already exists in ${file:t}"
     else
         if [[ "$DRY_RUN" == "true" ]]; then
             echo "   [DRY-RUN] Would prepend to $file: $line"
@@ -121,7 +121,7 @@ safe_prepend() {
             [[ -f "$file" ]] && cat "$file" >> "$tmp_file"
             mv -f "$tmp_file" "$file"
         fi
-        log_success "Updated $(basename "$file") (prepended)"
+        log_success "Updated ${file:t} (prepended)"
     fi
 }
 
@@ -131,12 +131,12 @@ safe_link() {
     [[ -e "$src" ]] || return 0
 
     local needs_link=false
-    run_cmd mkdir -p "$(dirname "$dest")"
+    [[ -d "${dest:h}" ]] || run_cmd mkdir -p "${dest:h}"
 
     if [[ -e "$dest" && ! -L "$dest" ]]; then
         init_backup_dir
         log_warn "Existing file or directory found at $dest. Moving to backup."
-        run_cmd mv "$dest" "$BACKUP_DIR/$(basename "$dest")"
+        run_cmd mv "$dest" "$BACKUP_DIR/${dest:t}"
         needs_link=true
     elif [[ -L "$dest" && "${dest:A}" != "${src:A}" ]]; then
         log_warn "Broken or incorrect symlink at $dest. Re-linking."
@@ -358,7 +358,7 @@ setup_tmux() {
     local tpm_dir="$HOME/.tmux/plugins/tpm"
     if [[ ! -d "$tpm_dir" ]]; then
         if [[ "$AUTO_INSTALL_DEPS" == "true" ]]; then
-            run_cmd mkdir -p "$(dirname "$tpm_dir")"
+            [[ -d "${tpm_dir:h}" ]] || run_cmd mkdir -p "${tpm_dir:h}"
             run_cmd git clone https://github.com/tmux-plugins/tpm "$tpm_dir"
         else
             log_warn "Tmux Plugin Manager (TPM) not found. Run with --install-deps to clone."
@@ -429,7 +429,7 @@ setup_ssh() {
                 safe_append "$key" "$local_auth_keys"
             done < "$git_auth_keys"
             run_cmd chmod 600 "$local_auth_keys"
-            log_success "Authorized keys imported from $(basename "$git_auth_keys")."
+            log_success "Authorized keys imported from ${git_auth_keys:t}."
         fi
     fi
 }
@@ -501,9 +501,9 @@ run_doctor() {
         local src="$DOTFILES_DIR/$src_rel"
 
         if [[ -L "$dest" && "${dest:A}" == "${src:A}" ]]; then
-            log_success "Link OK: $(basename "$dest")"
+            log_success "Link OK: ${dest:t}"
         else
-            log_error "Link BROKEN: $(basename "$dest") -> expected $src"
+            log_error "Link BROKEN: ${dest:t} -> expected $src"
             errors=$((errors + 1))
         fi
     done
@@ -557,7 +557,7 @@ main() {
     fi
 
     if [[ -n "$ONLY_STEP" ]]; then
-        if declare -f "$ONLY_STEP" >/dev/null; then
+        if (( $+functions[$ONLY_STEP] )); then
             "$ONLY_STEP"
             exit 0
         else

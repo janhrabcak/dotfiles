@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
   - Simplified `LINK_MANIFEST` to a 3-field format (`src:dest:step`) targeting **Gemini** and **Claude** AI agents.
   - Replaced external `find` loop in `prune_dead_symlinks` with native Zsh `(-@N)` broken-symlink globbing.
   - Eliminated double symlink execution in `main()` and removed dummy `.local` file auto-generators (`you@example.com` placeholder identity).
+  - Replaced external `basename` and `dirname` subshell forks across `safe_link`, `safe_append`, `safe_prepend`, and `run_doctor` with native Zsh path modifiers (`${path:h}` and `${path:t}`), guarding parent directory creation.
 - **Zsh Configuration**: Guarded the Oh My Zsh `macos` plugin to load conditionally only on Darwin (`$OSTYPE == darwin*`), avoiding extraneous shell startup execution on Linux.
 - **Prompt Performance (`vcs_info`)**: Replaced Oh My Zsh's multi-fork `prompt_git` implementation with Zsh's native `vcs_info` module in `config/zsh/.zshrc`. Hooks into `precmd` to eliminate 10–15 child `git` processes per prompt evaluation while preserving the Agnoster theme Powerline aesthetics (branch glyph, clean/dirty colors, staged/unstaged badges, and action formats). Fixed `add-zsh-hook` function shadowing.
 
