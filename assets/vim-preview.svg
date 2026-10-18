@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 360" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #002b36; }
+      .header { fill: #073642; }
+      .title { fill: #839496; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; font-size: 13px; font-weight: 600; text-anchor: middle; }
+      .code-text { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13.5px; }
+      .lineno { fill: #586e75; text-anchor: end; }
+      .keyword { fill: #859900; font-weight: bold; }
+      .type { fill: #b58900; }
+      .ident { fill: #268bd2; }
+      .string { fill: #2aa198; }
+      .punct { fill: #93a1a1; }
+      .tilde { fill: #073642; font-weight: bold; }
+      .bar-normal { fill: #859900; }
+      .bar-normal-text { fill: #002b36; font-weight: bold; font-size: 12px; }
+      .bar-mid { fill: #073642; }
+      .bar-mid-text { fill: #93a1a1; font-size: 12px; }
+      .bar-right-text { fill: #586e75; font-size: 12px; }
+    </style>
+  </defs>
+
+  <!-- Window Container -->
+  <rect width="850" height="360" rx="10" ry="10" class="bg" />
+  
+  <!-- Titlebar -->
+  <path d="M 0,10 C 0,4.48 4.48,0 10,0 L 840,0 C 845.52,0 850,4.48 850,10 L 850,38 L 0,38 Z" class="header" />
+  <circle cx="22" cy="19" r="6" fill="#ff5f56" />
+  <circle cx="42" cy="19" r="6" fill="#ffbd2e" />
+  <circle cx="62" cy="19" r="6" fill="#27c93f" />
+  <text x="425" y="24" class="title">main.go — ~/.dotfiles (vim)</text>
+
+  <!-- Code Buffer -->
+  <g class="code-text" transform="translate(0, 68)">
+    <!-- Line 1 -->
+    <text x="40" y="0" class="lineno">1</text>
+    <text x="65" y="0"><tspan class="keyword">package</tspan> <tspan class="ident">main</tspan></text>
+
+    <!-- Line 2 -->
+    <text x="40" y="26" class="lineno">2</text>
+
+    <!-- Line 3 -->
+    <text x="40" y="52" class="lineno">3</text>
+    <text x="65" y="52"><tspan class="keyword">import</tspan> <tspan class="punct">(</tspan></text>
+
+    <!-- Line 4 -->
+    <text x="40" y="78" class="lineno">4</text>
+    <text x="95" y="78"><tspan class="string">"fmt"</tspan></text>
+
+    <!-- Line 5 -->
+    <text x="40" y="104" class="lineno">5</text>
+    <text x="65" y="104"><tspan class="punct">)</tspan></text>
+
+    <!-- Line 6 -->
+    <text x="40" y="130" class="lineno">6</text>
+
+    <!-- Line 7 -->
+    <text x="40" y="156" class="lineno">7</text>
+    <text x="65" y="156"><tspan class="keyword">func</tspan> <tspan class="ident">main</tspan><tspan class="punct">() {</tspan></text>
+
+    <!-- Line 8 -->
+    <text x="40" y="182" class="lineno">8</text>
+    <text x="95" y="182"><tspan class="ident">fmt</tspan><tspan class="punct">.</tspan><tspan class="ident">Println</tspan><tspan class="punct">(</tspan><tspan class="string">"✨ Dotfiles verified &amp; operational!"</tspan><tspan class="punct">)</tspan></text>
+
+    <!-- Line 9 -->
+    <text x="40" y="208" class="lineno">9</text>
+    <text x="65" y="208"><tspan class="punct">}</tspan></text>
+
+    <!-- Empty lines tildes -->
+    <text x="25" y="234" class="tilde">~</text>
+  </g>
+
+  <!-- Lightline Statusline -->
+  <g transform="translate(0, 328)">
+    <!-- Full background bar -->
+    <rect width="850" height="26" class="bar-mid" />
+
+    <!-- Mode Badge (NORMAL) -->
+    <rect width="80" height="26" class="bar-normal" />
+    <text x="14" y="17" class="bar-normal-text code-text">NORMAL</text>
+    <!-- Chevron right from mode to file -->
+    <polygon points="80,0 95,13 80,26" class="bar-normal" />
+
+    <!-- File segment -->
+    <text x="108" y="17" class="bar-mid-text code-text">main.go</text>
+    <polygon points="175,0 188,13 175,26" fill="#002b36" />
+    <polygon points="174,0 187,13 174,26" class="bar-mid" />
+
+    <!-- Format & Type segment -->
+    <text x="198" y="17" class="bar-right-text code-text">utf-8 [unix]</text>
+
+    <!-- Right-aligned segments -->
+    <!-- Go type badge -->
+    <polygon points="685,13 700,0 700,26" fill="#002b36" />
+    <text x="712" y="17" class="bar-mid-text code-text">go</text>
+
+    <!-- Position Badge -->
+    <polygon points="745,13 760,0 760,26" class="bar-normal" />
+    <rect x="760" y="0" width="90" height="26" class="bar-normal" />
+    <text x="770" y="17" class="bar-normal-text code-text">100%  8:1</text>
+  </g>
+</svg>

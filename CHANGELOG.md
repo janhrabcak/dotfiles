@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **Global Gitignore (`config/git/.gitignore_global`)**: Added universal gitignore linked to `~/.gitignore_global` via `LINK_MANIFEST` and configured in `.gitconfig` via `core.excludesfile`. Filters out OS noise (`.DS_Store`, `Thumbs.db`), editor swap files (`*.swp`), and IDE directories (`.idea/`, `.vscode/*`).
 - **Dev Container & Codespaces Sandbox (`.devcontainer/`)**: Added `.devcontainer/devcontainer.json` configuration for running and testing dotfiles inside an isolated Docker container with Ubuntu 24.04, Zsh, Vim, and Tmux.
-- **Visual Showcase in `README.md`**: Added a crisp vector SVG terminal preview (`assets/terminal-preview.svg`) rendering across all GitHub themes and replaced non-standard Powerline PUA font glyphs with web-safe Unicode to eliminate browser missing-glyph tofu boxes (`□`).
+- **Visual Showcase in `README.md`**: Added dedicated vector SVG previews for Zsh terminal diagnostics (`assets/terminal-preview.svg`), Vim/Neovim Lightline buffer (`assets/vim-preview.svg`), and Tmux native status bar (`assets/tmux-preview.svg`) rendering crisply across all GitHub themes without font dependencies.
 
 ### Security
 - **AI Command Auto-Approval Hardening**: Restricted bash auto-approve patterns in `config/ai/settings.json` with strict character-set bounds (`[a-zA-Z0-9_./@~:= -]`) and end-anchors (`^...$`). Prevents command chaining (`;`, `&&`, `||`, `|`, `$()`, backticks), disables arbitrary container execution via `docker exec`, and removes unconstrained `curl` exfiltration risks.

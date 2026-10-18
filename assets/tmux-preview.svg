@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 360" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #002b36; }
+      .header { fill: #073642; }
+      .title { fill: #839496; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; font-size: 13px; font-weight: 600; text-anchor: middle; }
+      .term-text { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13.5px; }
+      .prompt-user { fill: #b58900; font-weight: bold; }
+      .prompt-host { fill: #268bd2; font-weight: bold; }
+      .prompt-dir { fill: #2aa198; }
+      .prompt-git { fill: #859900; font-weight: bold; }
+      .txt-white { fill: #93a1a1; }
+      .txt-mute { fill: #586e75; }
+      .txt-cyan { fill: #2aa198; }
+      .txt-green { fill: #859900; }
+      .cmd { fill: #fdf6e3; font-weight: 600; }
+      .divider { stroke: #073642; stroke-width: 2; }
+      .tmux-bar { fill: #073642; }
+      .tmux-active-tab { fill: #2aa198; font-weight: bold; }
+      .tmux-inactive-tab { fill: #586e75; }
+      .tmux-session { fill: #859900; font-weight: bold; }
+      .tmux-right { fill: #839496; text-anchor: end; }
+    </style>
+  </defs>
+
+  <!-- Window Container -->
+  <rect width="850" height="360" rx="10" ry="10" class="bg" />
+  
+  <!-- Titlebar -->
+  <path d="M 0,10 C 0,4.48 4.48,0 10,0 L 840,0 C 845.52,0 850,4.48 850,10 L 850,38 L 0,38 Z" class="header" />
+  <circle cx="22" cy="19" r="6" fill="#ff5f56" />
+  <circle cx="42" cy="19" r="6" fill="#ffbd2e" />
+  <circle cx="62" cy="19" r="6" fill="#27c93f" />
+  <text x="425" y="24" class="title">tmux (dev-box) — 3 windows [Control Mode -CC]</text>
+
+  <!-- Left Pane Content -->
+  <g class="term-text" transform="translate(25, 68)">
+    <text y="0">
+      <tspan class="prompt-user">jh@workstation</tspan><tspan class="txt-mute">:</tspan><tspan class="prompt-dir">~/.dotfiles</tspan>
+      <tspan class="txt-mute"> (</tspan><tspan class="prompt-git">git:main</tspan><tspan class="txt-mute">)</tspan>
+      <tspan class="txt-white"> $ </tspan><tspan class="cmd">tcc</tspan>
+    </text>
+    <text y="26" class="txt-mute"># Reattached to session [0] with iTerm2 integration</text>
+
+    <text y="64">
+      <tspan class="prompt-user">jh@workstation</tspan><tspan class="txt-mute">:</tspan><tspan class="prompt-dir">~/.dotfiles</tspan>
+      <tspan class="txt-mute"> (</tspan><tspan class="prompt-git">git:main</tspan><tspan class="txt-mute">)</tspan>
+      <tspan class="txt-white"> $ </tspan><tspan class="cmd">gl -n 3</tspan>
+    </text>
+    <text y="90">
+      <tspan class="txt-green">* 789ab3c</tspan> <tspan class="txt-white">(HEAD -&gt; main) feat: add global gitignore &amp; devcontainer</tspan>
+    </text>
+    <text y="114">
+      <tspan class="txt-cyan">* c6fee66</tspan> <tspan class="txt-white">perf: eliminate subshell forks in dot.sh</tspan>
+    </text>
+    <text y="138">
+      <tspan class="txt-mute">* ba0c249</tspan> <tspan class="txt-white">fix(security): harden AI command whitelist, pin MCP packages</tspan>
+    </text>
+
+    <text y="176">
+      <tspan class="prompt-user">jh@workstation</tspan><tspan class="txt-mute">:</tspan><tspan class="prompt-dir">~/.dotfiles</tspan>
+      <tspan class="txt-mute"> (</tspan><tspan class="prompt-git">git:main</tspan><tspan class="txt-mute">)</tspan>
+      <tspan class="txt-white"> $ </tspan><tspan class="cmd">_</tspan>
+    </text>
+  </g>
+
+  <!-- Tmux Statusbar -->
+  <g transform="translate(0, 332)">
+    <rect width="850" height="28" class="tmux-bar" />
+    <text x="16" y="19" class="term-text">
+      <tspan class="tmux-session">[0]</tspan>
+      <tspan class="tmux-active-tab"> 0:zsh* </tspan>
+      <tspan class="tmux-inactive-tab"> 1:vim- </tspan>
+      <tspan class="tmux-inactive-tab"> 2:server </tspan>
+    </text>
+    <text x="834" y="19" class="term-text tmux-right">
+      <tspan class="txt-mute">"dev-box" </tspan><tspan class="txt-white">21:30 17-Oct-26</tspan>
+    </text>
+  </g>
+</svg>

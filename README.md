@@ -28,40 +28,23 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 
 ## 🎨 Visual Showcase
 
-<p align="center">
-  <img src="assets/terminal-preview.svg" alt="Terminal Diagnostic & Prompt Preview" width="100%">
-</p>
-
 ### 🖥️ 1. Agnoster Powerline Zsh Terminal
 High-performance prompt driven by native Zsh `vcs_info` (zero child `git` process forks per prompt):
-```console
-jh@google:~/.dotfiles (git:main ✚±) $ gs
-On branch main
-Your branch is up to date with 'origin/main'.
-Changes to be committed:
-  (use "git restore --staged <file>..." to unstage)
-	modified:   config/git/.gitconfig
-```
+<p align="center">
+  <img src="assets/terminal-preview.svg" alt="Agnoster Powerline Zsh Terminal Preview" width="100%">
+</p>
 
 ### 📝 2. Vim & Neovim Power Pack
 Unified `.vimrc` with Solarized Dark aesthetics, Lightline statusline, and FZF:
-```go
-  1 package main
-  2 
-  3 import "fmt"
-  4 
-  5 func main() {
-  6     fmt.Println("Dotfiles verified & operational!")
-  7 }
-~                                                           
-[NORMAL] > main.go > utf-8 [unix] > go < 100% : 6:1 
-```
+<p align="center">
+  <img src="assets/vim-preview.svg" alt="Vim and Neovim Lightline Preview" width="100%">
+</p>
 
 ### 🪟 3. Tmux Native Control Mode (`-CC`)
 Runs tmux sessions natively inside macOS iTerm2 tabs or standard terminal multiplexer windows:
-```console
-[0] 0:zsh* 1:vim- 2:server                                              "dev-box" 21:15 17-Oct-26
-```
+<p align="center">
+  <img src="assets/tmux-preview.svg" alt="Tmux Native Control Mode Preview" width="100%">
+</p>
 
 ---
 
