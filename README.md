@@ -26,6 +26,42 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 
 ---
 
+## 🎨 Visual Showcase
+
+### 🖥️ 1. Agnoster Powerline Zsh Terminal
+High-performance prompt driven by native Zsh `vcs_info` (zero child `git` process forks per prompt):
+```text
+╭─  Google Identity  ~/.../dotfiles   main ✚ ± 
+╰─ gs
+On branch main
+Your branch is up to date with 'origin/main'.
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   config/git/.gitconfig
+```
+
+### 📝 2. Vim & Neovim Power Pack
+Unified `.vimrc` with Solarized Dark aesthetics, Lightline statusline, and FZF:
+```text
+  1 package main
+  2 
+  3 import "fmt"
+  4 
+  5 func main() {
+  6     fmt.Println("Dotfiles verified & operational!")
+  7 }
+~                                                           
+[NORMAL]  main.go  utf-8 [unix]  go  100%  6:1 
+```
+
+### 🪟 3. Tmux Native Control Mode (`-CC`)
+Runs tmux sessions natively inside macOS iTerm2 tabs or standard terminal multiplexer windows:
+```text
+[0] 0:zsh* 1:vim- 2:server                                              "dev-box" 21:15 17-Oct-26
+```
+
+---
+
 ## 🛠️ Feature Breakdown
 
 ### 🐚 Shell Environment (Zsh)
@@ -43,6 +79,11 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 *   **Productivity**: **FZF** integration for ultra-fast file finding (`Ctrl + p`).
 *   **UX**: Persistent undo history, relative line numbers, and smart-case search.
 *   **Go Development**: Pre-configured `vim-go` with leader shortcuts.
+
+### 🔧 Git & Global Excludes
+*   **Global Gitignore**: Pre-configured `config/git/.gitignore_global` linked to `~/.gitignore_global` and active via `core.excludesfile`, filtering out OS clutter (`.DS_Store`, `Thumbs.db`), editor swap files (`*.swp`), and IDE folders (`.idea/`, `.vscode/*`).
+*   **Identity Management**: Local identity template (`config/git/.gitconfig.local.example`) kept out of version control.
+*   **Tracked Hooks**: Enforces pre-commit checks automatically through `core.hooksPath = .githooks`.
 
 ### 📦 Package Management (Homebrew & Linux)
 *   **Homebrew Bundle**: Declares essential CLI tools (`ripgrep`, `fzf`, `tmux`, `gh`, `neovim`) and casks in `config/brew/Brewfile`. Automatically verified during bootstrap.
@@ -63,6 +104,12 @@ The script applies professional defaults for high-performance workflows:
 *   **Global MCP Servers**: Model Context Protocol integration (`mcp_config.json`) pre-configured for persistent memory graph (`@modelcontextprotocol/server-memory`), GitHub API integration (`@modelcontextprotocol/server-github`), and Markdown web scraping (`mcp-fetch-server`).
 *   **Custom Global Skills**: Progressive-disclosure playbooks for `conventional-release` (automated SemVer bumps, changelog updates, and release tagging) and Sentry `code-review` (Sentry engineering practices, runtime/ORM optimization, and empathy guidelines).
 *   **Dual-Audience Documentation**: Mandates that code modifications update both human-facing documentation (README, guides, changelogs) and agent-facing contextual memory (invariants, caveats, and architectural constraints in `AGENTS.md`).
+
+### 🐳 Isolated Dev Container & Codespaces
+Test and experiment with the dotfiles in a sandboxed Docker container without modifying your local system:
+*   **VS Code / Cursor**: Run **Remote-Containers: Reopen in Container** (`.devcontainer/devcontainer.json`).
+*   **GitHub Codespaces**: Create a Codespace on this repository to automatically provision a full Zsh, Vim, and Tmux environment.
+*   **Automated Bootstrap**: Automatically provisions `linux-client` mode and links the workspace on container startup.
 
 ---
 

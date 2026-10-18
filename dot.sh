@@ -161,6 +161,7 @@ LINK_MANIFEST=(
     "config/zsh/aliases.zsh:$HOME/.aliases.zsh:setup_zsh"
     "config/vim/.vimrc:$HOME/.vimrc:setup_vim"
     "config/vim/.vimrc:$HOME/.config/nvim/init.vim:setup_vim"
+    "config/git/.gitignore_global:$HOME/.gitignore_global:setup_git"
     "config/tmux/.tmux.conf:$HOME/.tmux.conf:setup_tmux"
     "config/ai/AGENTS.md:$HOME/.gemini/config/GEMINI.md:setup_ai"
     "config/ai/AGENTS.md:$HOME/.gemini/config/AGENTS.md:setup_ai"
@@ -372,6 +373,8 @@ setup_git() {
     log_info "Configuring Git..."
     local git_conf_src="$DOTFILES_DIR/config/git/.gitconfig"
     local git_conf_dest="$HOME/.gitconfig"
+
+    setup_links "setup_git"
 
     if [[ -f "$git_conf_src" ]]; then
         if ! grep -q "path = $git_conf_src" "$git_conf_dest" 2>/dev/null; then

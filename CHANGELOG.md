@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+### Added
+- **Global Gitignore (`config/git/.gitignore_global`)**: Added universal gitignore linked to `~/.gitignore_global` via `LINK_MANIFEST` and configured in `.gitconfig` via `core.excludesfile`. Filters out OS noise (`.DS_Store`, `Thumbs.db`), editor swap files (`*.swp`), and IDE directories (`.idea/`, `.vscode/*`).
+- **Dev Container & Codespaces Sandbox (`.devcontainer/`)**: Added `.devcontainer/devcontainer.json` configuration for running and testing dotfiles inside an isolated Docker container with Ubuntu 24.04, Zsh, Vim, and Tmux.
+- **Visual Showcase in `README.md`**: Added terminal UI previews illustrating the Agnoster Powerline prompt with git status badges, Vim Lightline statusbar, and Tmux Control Mode.
+
 ### Security
 - **AI Command Auto-Approval Hardening**: Restricted bash auto-approve patterns in `config/ai/settings.json` with strict character-set bounds (`[a-zA-Z0-9_./@~:= -]`) and end-anchors (`^...$`). Prevents command chaining (`;`, `&&`, `||`, `|`, `$()`, backticks), disables arbitrary container execution via `docker exec`, and removes unconstrained `curl` exfiltration risks.
 - **MCP Package Pinning**: Pinned exact semantic versions for NPX-executed MCP servers in `config/ai/mcp_config.json` (`@modelcontextprotocol/server-memory@1.0.0`, `@modelcontextprotocol/server-github@2025.4.8`, `mcp-fetch-server@1.1.2`) to prevent supply-chain dependency confusion.

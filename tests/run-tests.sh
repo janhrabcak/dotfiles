@@ -136,10 +136,10 @@ else
   fail "iTerm2 plist integrity" "com.googlecode.iterm2.plist failed to parse as valid plist"
 fi
 
-if python3 -c "import json; json.load(open('$REPO_ROOT/config/ai/settings.json')); json.load(open('$REPO_ROOT/config/ai/mcp_config.json'))" >/dev/null 2>&1; then
-  pass "AI configuration JSON syntax check (settings.json, mcp_config.json)"
+if python3 -c "import json; json.load(open('$REPO_ROOT/config/ai/settings.json')); json.load(open('$REPO_ROOT/config/ai/mcp_config.json')); json.load(open('$REPO_ROOT/.devcontainer/devcontainer.json'))" >/dev/null 2>&1; then
+  pass "Configuration JSON syntax check (settings.json, mcp_config.json, devcontainer.json)"
 else
-  fail "AI JSON syntax check" "Invalid JSON in config/ai/"
+  fail "Configuration JSON syntax check" "Invalid JSON in config/ai/ or .devcontainer/"
 fi
 
 # ------------------------------------------------------------------------------
@@ -370,6 +370,10 @@ hooks_path=$(git -C "$DOTFILES_DIR" config core.hooksPath 2>/dev/null || true)
 [[ "$hooks_path" == ".githooks" ]] \
   && pass "Git setup configures core.hooksPath to .githooks" \
   || fail "Git pre-commit hooks" "core.hooksPath is '$hooks_path', expected '.githooks'"
+
+[[ -L "$HOME/.gitignore_global" ]] \
+  && pass "Git setup symlinks global .gitignore (~/.gitignore_global)" \
+  || fail "Git global gitignore" "Expected symlink at $HOME/.gitignore_global"
 
 if "$REPO_ROOT/.githooks/pre-commit" >/dev/null 2>&1; then
   pass "Git pre-commit hook runs and passes validation"
