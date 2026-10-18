@@ -15,6 +15,12 @@ All notable changes to this project will be documented in this file.
   - Replaced external `find` loop in `prune_dead_symlinks` with native Zsh `(-@N)` broken-symlink globbing.
   - Eliminated double symlink execution in `main()` and removed dummy `.local` file auto-generators (`you@example.com` placeholder identity).
   - Replaced external `basename` and `dirname` subshell forks across `safe_link`, `safe_append`, `safe_prepend`, and `run_doctor` with native Zsh path modifiers (`${path:h}` and `${path:t}`), guarding parent directory creation.
+- **Zsh Readability & Cleanliness**:
+  - Replaced anonymous self-executing function in SSH agent persistence with a named helper (`_setup_ssh_agent`).
+  - Unpacked and documented the dynamic color distribution loop in `prompt_context`.
+  - Reordered `.zshrc` sections so Aliases and Local Overrides load cleanly as Section 6, with guaranteed exit code 0 on source.
+  - Replaced double-escaped `sed` pipeline in `alert` with a clean Zsh function using `${history[$HISTCMD]}`.
+  - Cleaned up temporary variable namespace leak (`_ls_flags`) and standardized `ssh-cc` function syntax.
 - **Zsh Configuration**: Guarded the Oh My Zsh `macos` plugin to load conditionally only on Darwin (`$OSTYPE == darwin*`), avoiding extraneous shell startup execution on Linux.
 - **Prompt Performance (`vcs_info`)**: Replaced Oh My Zsh's multi-fork `prompt_git` implementation with Zsh's native `vcs_info` module in `config/zsh/.zshrc`. Hooks into `precmd` to eliminate 10–15 child `git` processes per prompt evaluation while preserving the Agnoster theme Powerline aesthetics (branch glyph, clean/dirty colors, staged/unstaged badges, and action formats). Fixed `add-zsh-hook` function shadowing.
 

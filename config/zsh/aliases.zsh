@@ -17,6 +17,7 @@ alias sl="ls"
 alias s="ls"
 alias ..="cd .."
 alias ...="cd ../.."
+unset _ls_flags
 
 # --- Git ---
 alias gs="git status"
@@ -29,7 +30,7 @@ alias gl="git log --oneline --graph --decorate"
 alias tn="tmux new"
 alias ta="tmux attach"
 alias tcc="tmux -CC attach || tmux -CC new" # iTerm2 Control Mode
-function ssh-cc() { ssh -t "$@" 'tmux -CC attach || tmux -CC new'; }
+ssh-cc() { ssh -t "$@" 'tmux -CC attach || tmux -CC new'; }
 
 # --- SSH & Networking ---
 alias sshp="ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no"
@@ -47,8 +48,12 @@ fi
 alias objdump="command objdump -M intel"
 
 # --- Helpers ---
-# Desktop notification for long-running commands
-alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+# Desktop notification for long-running commands (notify-send)
+alert() {
+  local icon="terminal"
+  (( $? != 0 )) && icon="error"
+  command -v notify-send >/dev/null 2>&1 && notify-send --urgency=low -i "$icon" "Command completed" "${history[$HISTCMD]}"
+}
 
 # Manual prompt overrides (set to any non-empty value to activate Google prompt style)
 alias gprompt="export GOOGLE_PROMPT=1"

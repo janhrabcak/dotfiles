@@ -18,7 +18,7 @@ export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
 
 # SSH Agent Persistence (Linux/Remote only)
 if [[ "$OSTYPE" != "darwin"* ]]; then
-  () {
+  _setup_ssh_agent() {
     local auth_symlink="$HOME/.ssh/ssh_auth_sock"
     # 1. If we have a fresh agent, update the stable symlink (only fork ln if target changed)
     if [[ -n "$SSH_AUTH_SOCK" && -S "$SSH_AUTH_SOCK" && "$SSH_AUTH_SOCK" != "$auth_symlink" ]]; then
@@ -40,6 +40,8 @@ if [[ "$OSTYPE" != "darwin"* ]]; then
       [[ "$SSH_AUTH_SOCK" == "$auth_symlink" ]] && unset SSH_AUTH_SOCK
     fi
   }
+  _setup_ssh_agent
+  unfunction _setup_ssh_agent
 fi
 
 # --- 2. Oh My Zsh Settings ---
@@ -69,18 +71,23 @@ bindkey "^[[B" down-line-or-beginning-search
 # --- 4. Terminal Title & Hooks ---
 autoload -Uz add-zsh-hook vcs_info
 
-function set_terminal_title() {
+set_terminal_title() {
   local title="$1"
   [[ -n "$SSH_CLIENT" ]] && title="[REMOTE] $title"
-  case $TERM in
+  case "$TERM" in
     xterm*|rxvt*|alacritty|kitty|gnome*|screen*|tmux*)
       print -Pn "\e]2;${title}\a"
       ;;
   esac
 }
 
-_title_precmd()  { set_terminal_title "%n@%m: %~" }
-_title_preexec() { set_terminal_title "${1[(w)1]} | %~" }
+_title_precmd() {
+  set_terminal_title "%n@%m: %~"
+}
+
+_title_preexec() {
+  set_terminal_title "${1[(w)1]} | %~"
+}
 
 # Native Zsh VCS Info (replaces OMZ prompt_git to eliminate subshell forks)
 zstyle ':vcs_info:*' enable git
@@ -95,13 +102,7 @@ add-zsh-hook precmd _title_precmd
 add-zsh-hook precmd vcs_info
 add-zsh-hook preexec _title_preexec
 
-# --- 5. Final Inclusions & Visuals ---
-
-# Load Aliases & Local Overrides
-[[ -f "$HOME/.aliases.zsh" ]] && source "$HOME/.aliases.zsh"
-[[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
-
-# --- 6. Custom Agnoster Prompt Segments ---
+# --- 5. Custom Agnoster Prompt Segments ---
 
 # Context / Identity Segment (Unified Google & SSH Logic)
 prompt_context() {
@@ -112,7 +113,12 @@ prompt_context() {
   if [[ "$h" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
     local c=(33 160 220 33 64 160) # Google Blue, Red, Yellow, Blue, Green, Red
     local rb="%(!.%{%F{yellow}%}.)$USER@"
-    for (( i=1; i<=${#h}; i++ )); do rb+="%F{${c[((i-1)*6/${#h})+1]}}${h[$i]}%f"; done
+    local len=${#h}
+    # Distribute the 6 brand colors evenly across any hostname length
+    for (( i=1; i<=len; i++ )); do
+      local color_idx=$(( (i - 1) * 6 / len + 1 ))
+      rb+="%F{${c[color_idx]}}${h[$i]}%f"
+    done
     prompt_segment black default "$rb"
     return
   fi
@@ -151,3 +157,8 @@ build_prompt() {
   prompt_git
   prompt_end
 }
+
+# --- 6. Aliases & Local Overrides ---
+[[ -f "$HOME/.aliases.zsh" ]] && source "$HOME/.aliases.zsh"
+[[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
+:
