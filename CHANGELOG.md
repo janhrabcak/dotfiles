@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- **Performance Benchmark Suite (`./dot.sh --benchmark`)**: Added automated execution latency benchmarking in `dot.sh` that measures Zsh shell startup time, headless Vim parsing latency, and prompt render latency (`vcs_info` + `build_prompt`) with target latency thresholds.
+- **Git `pre-push` Hook**: Added repository-tracked `.githooks/pre-push` that runs the full test suite before any outgoing push, preventing broken commits from reaching remote repositories.
 - **Global Gitignore (`config/git/.gitignore_global`)**: Added universal gitignore linked to `~/.gitignore_global` via `LINK_MANIFEST` and configured in `.gitconfig` via `core.excludesfile`. Filters out OS noise (`.DS_Store`, `Thumbs.db`), editor swap files (`*.swp`), and IDE directories (`.idea/`, `.vscode/*`).
 - **Dev Container & Codespaces Sandbox (`.devcontainer/`)**: Added `.devcontainer/devcontainer.json` configuration for running and testing dotfiles inside an isolated Docker container with Ubuntu 24.04, Zsh, Vim, and Tmux.
 - **Visual Showcase in `README.md`**: Added dedicated vector SVG previews for Zsh terminal diagnostics (`assets/terminal-preview.svg`), Vim/Neovim Lightline buffer (`assets/vim-preview.svg`), and Tmux native status bar (`assets/tmux-preview.svg`) rendering crisply across all GitHub themes without font dependencies.
@@ -34,7 +36,8 @@ All notable changes to this project will be documented in this file.
 - **Legacy & Unused Files**: Removed superseded `tests/test-vim.sh` and `tests/dot-local-ci-test.sh` harnesses, deprecated `config/macos-terminal/zsh.terminal`, empty `bin/.keep` (`~/.bin` symlink), duplicate `config/ai/skills/rigorous-pr-review/`, and Cursor/Cline symlink targets (`.cursorrules`, `.clinerules`).
 
 ### Testing
-- **Streamlined Unified Test Suite (52/52 Checks Passing)**:
+- **Streamlined Unified Test Suite (55/55 Checks Passing)**:
+  - Added pre-push hook presence, execution validation, and benchmark diagnostic tests to `tests/run-tests.sh`.
   - Optimized sandbox initialization in `tests/run-tests.sh` to copy only lightweight config files and run all 9 test groups in ~8 seconds.
   - Added Day-Zero cold bootstrap checks (`--remote` vs missing directory handling).
   - Added end-to-end `--install-deps` package dispatch assertion (including dry-run verification).

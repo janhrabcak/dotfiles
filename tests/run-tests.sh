@@ -88,8 +88,9 @@ if zsh -n "$REPO_ROOT/dot.sh" \
    && zsh -n "$REPO_ROOT/config/zsh/.zshrc" \
    && zsh -n "$REPO_ROOT/config/zsh/aliases.zsh" \
    && zsh -n "$REPO_ROOT/.githooks/pre-commit" \
+   && zsh -n "$REPO_ROOT/.githooks/pre-push" \
    && zsh -n "$REPO_ROOT/tests/run-tests.sh"; then
-  pass "Zsh syntax check (dot.sh, .zshrc, aliases, pre-commit, run-tests)"
+  pass "Zsh syntax check (dot.sh, .zshrc, aliases, pre-commit, pre-push, run-tests)"
 else
   fail "Zsh syntax check" "Syntax error detected in shell scripts"
 fi
@@ -97,6 +98,10 @@ fi
 [[ -x "$REPO_ROOT/.githooks/pre-commit" ]] \
   && pass "Pre-commit hook is present and executable" \
   || fail "Pre-commit hook" ".githooks/pre-commit is missing or not executable"
+
+[[ -x "$REPO_ROOT/.githooks/pre-push" ]] \
+  && pass "Pre-push hook is present and executable" \
+  || fail "Pre-push hook" ".githooks/pre-push is missing or not executable"
 
 [[ -f "$REPO_ROOT/.github/dependabot.yml" ]] \
   && pass "Dependabot configuration present" \
@@ -391,6 +396,12 @@ else
   fail "Git pre-commit hook" ".githooks/pre-commit failed execution"
 fi
 
+if [[ -f "$DOTFILES_DIR/.githooks/pre-push" ]]; then
+  pass "Git pre-push hook installed in repository hooks"
+else
+  fail "Git pre-push hook" ".githooks/pre-push missing from dotfiles directory"
+fi
+
 cat << 'CONFIG_EOF' > "$DOTFILES_DIR/config/git/.gitconfig.local"
 [user]
 	name = Test Identity
@@ -521,6 +532,18 @@ set -e
 [[ $ssh_missing_code -ne 0 ]] \
   && pass "Doctor detects missing SSH include directive and exits non-zero" \
   || fail "Doctor SSH include detection" "Doctor returned 0 despite missing SSH include"
+
+# Benchmark validation
+zsh "$DOTFILES_DIR/dot.sh" --only setup_ssh >/dev/null 2>&1
+set +e
+bench_out=$(zsh "$DOTFILES_DIR/dot.sh" --benchmark 2>&1)
+bench_code=$?
+set -e
+if [[ $bench_code -eq 0 ]] && echo "$bench_out" | grep -q "Zsh startup latency" && echo "$bench_out" | grep -q "Vim startup latency"; then
+  pass "Benchmark reports latency diagnostics and exits cleanly"
+else
+  fail "Benchmark diagnostic" "Expected code 0 with benchmark metrics, got $bench_code"
+fi
 
 teardown_sandbox
 

@@ -11,6 +11,7 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 | **Remote Install** (No clone) | `/bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/janhrabcak/dotfiles/main/dot.sh)" -- --remote` |
 | **Local Install** (Clone first) | `git clone https://github.com/janhrabcak/dotfiles.git ~/.dotfiles && cd ~/.dotfiles && ./dot.sh` |
 | **Check Health** | `./dot.sh --doctor` |
+| **Run Benchmarks** | `./dot.sh --benchmark` |
 | **Prune & Rotate Backups** | `./dot.sh --clean` |
 | **Run Full Test Suite** | `tests/run-tests.sh` |
 | **Run Specific Step** | `./dot.sh --only setup_vim` |
@@ -19,6 +20,7 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 *   `--clean`: Prunes dead dotfiles symlinks across `$HOME`, `~/.config`, `~/.gemini`, and `~/.claude` and rotates backups (retains 5 most recent).
 *   `--remote`: Downloads the latest archive directly from GitHub.
 *   `--doctor`: Runs a deep diagnostic of the system health, git hooks, and symlinks.
+*   `--benchmark`: Measures and logs execution latency for Zsh startup, headless Vim parsing, and prompt rendering.
 *   `--only <step>`: Runs a specific setup function only (e.g., `setup_vim`).
 *   `--mode <mode>`: Overrides OS mode detection (`macos`, `linux-server`, `linux-client`).
 *   `--dry-run` (`-d`): Preview execution steps without modifying the system.
@@ -69,7 +71,7 @@ Runs tmux sessions natively inside macOS iTerm2 tabs or standard terminal multip
 ### 🔧 Git & Global Excludes
 *   **Global Gitignore**: Pre-configured `config/git/.gitignore_global` linked to `~/.gitignore_global` and active via `core.excludesfile`, filtering out OS clutter (`.DS_Store`, `Thumbs.db`), editor swap files (`*.swp`), and IDE folders (`.idea/`, `.vscode/*`).
 *   **Identity Management**: Local identity template (`config/git/.gitconfig.local.example`) kept out of version control.
-*   **Tracked Hooks**: Enforces pre-commit checks automatically through `core.hooksPath = .githooks`.
+*   **Tracked Hooks**: Enforces pre-commit and pre-push checks automatically through `core.hooksPath = .githooks`, preventing broken commits or unverified pushes to remote.
 
 ### 📦 Package Management (Homebrew & Linux)
 *   **Homebrew Bundle**: Declares essential CLI tools (`ripgrep`, `fzf`, `tmux`, `gh`, `neovim`) and casks in `config/brew/Brewfile`. Automatically verified during bootstrap.
@@ -135,7 +137,7 @@ The script uses specialized shell functions to ensure consistency:
 *   **Doctor Logic**: The `--doctor` flag performs deep physical path resolution (`:A`) to verify integrity even across symlinked directories.
 *   **Maintenance & Pruning**: Running `./dot.sh --clean` safely purges broken dotfiles symlinks and rotates snapshot backups.
 *   **Local Overrides**: Machine-specific identity and private shell settings are decoupled from version control via optional `.local` files (`config/git/.gitconfig.local`, `~/.zshrc.local`, and `config/ssh/authorized_keys.local`).
-*   **Git Pre-commit Hooks**: Tracked in `.githooks/` and active through `core.hooksPath = .githooks`, automatically enforcing shell, headless Vim, and isolated-socket (`-L`) Tmux syntax checks before commit without disturbing active user sessions.
+*   **Git Hooks (Pre-commit & Pre-push)**: Tracked in `.githooks/` and active through `core.hooksPath = .githooks`, automatically enforcing shell, headless Vim, and isolated-socket (`-L`) Tmux syntax checks before commit, and running the full 55-check test suite before any `git push`.
 *   **Dependabot**: Configured in `.github/dependabot.yml` for automated weekly updates of GitHub Actions dependencies.
 
 ### 2. SSH Agent Strategy

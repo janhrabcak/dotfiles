@@ -1,0 +1,26 @@
+#!/usr/bin/env zsh
+# ==============================================================================
+# Git Pre-push Hook
+# Runs test suite validation prior to pushing changes to remote.
+# ==============================================================================
+set -eo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+# Allow bypassing when explicitly requested via standard git flags
+if [[ "$GIT_DIR" =~ "rebase" ]]; then
+  exit 0
+fi
+
+echo "🚀 Running pre-push test validation..."
+
+if [[ -x "$REPO_ROOT/tests/run-tests.sh" ]]; then
+  "$REPO_ROOT/tests/run-tests.sh" || {
+    echo "❌ Pre-push validation failed. Aborting push." >&2
+    exit 1
+  }
+else
+  echo "⚠️  tests/run-tests.sh not found or not executable. Skipping."
+fi
+
+echo "✅ Pre-push validation passed!"

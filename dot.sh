@@ -16,6 +16,7 @@ REMOTE_MODE=false
 AUTO_INSTALL_DEPS=false
 CLEAN_MODE=false
 RUN_DOCTOR=false
+RUN_BENCHMARK=false
 ONLY_STEP=""
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -42,6 +43,7 @@ while [[ "$#" -gt 0 ]]; do
             [[ -z "${2:-}" || "${2:-}" == -* ]] && { log_error "Option --only requires a value."; exit 1; }
             ONLY_STEP="$2"; shift 2 ;;
         --doctor)       RUN_DOCTOR=true; shift ;;
+        --benchmark)    RUN_BENCHMARK=true; shift ;;
         --clean)        CLEAN_MODE=true; shift ;;
         --install-deps) AUTO_INSTALL_DEPS=true; export DOTFILES_INSTALL_DEPS=true; shift ;;
         *)              log_error "Unknown parameter: $1"; exit 1 ;;
@@ -389,7 +391,7 @@ setup_git() {
 
     if [[ -d "$DOTFILES_DIR/.git" && -d "$DOTFILES_DIR/.githooks" ]]; then
         run_cmd git -C "$DOTFILES_DIR" config core.hooksPath .githooks
-        log_success "Git pre-commit hooks configured (.githooks)."
+        log_success "Git pre-commit and pre-push hooks configured (.githooks)."
     fi
 }
 
@@ -540,6 +542,66 @@ run_doctor() {
     fi
 }
 
+run_benchmark() {
+    log_info "⚡ Running performance benchmarks..."
+    zmodload zsh/datetime 2>/dev/null || true
+
+    # 1. Zsh Startup Time
+    integer zsh_ms=0
+    if (( $+parameters[EPOCHREALTIME] )); then
+        float t0=$(( EPOCHREALTIME * 1000 ))
+        zsh -i -c exit >/dev/null 2>&1
+        float t1=$(( EPOCHREALTIME * 1000 ))
+        zsh_ms=$(( t1 - t0 ))
+    else
+        zsh_ms=$(python3 -c "import time, os; t0=time.perf_counter(); os.system('zsh -i -c exit >/dev/null 2>&1'); print(int((time.perf_counter()-t0)*1000))" 2>/dev/null || echo 0)
+    fi
+    if (( zsh_ms < 150 )); then
+        log_success "Zsh startup latency: ${zsh_ms}ms (target < 150ms)"
+    else
+        log_warn "Zsh startup latency: ${zsh_ms}ms (target < 150ms)"
+    fi
+
+    # 2. Vim Headless Startup Time
+    integer vim_ms=0
+    if command -v vim >/dev/null 2>&1; then
+        local vimrc="$DOTFILES_DIR/config/vim/.vimrc"
+        [[ -f "$HOME/.vimrc" ]] && vimrc="$HOME/.vimrc"
+        if (( $+parameters[EPOCHREALTIME] )); then
+            float vt0=$(( EPOCHREALTIME * 1000 ))
+            vim -u "$vimrc" -e -s -c "q" >/dev/null 2>&1
+            float vt1=$(( EPOCHREALTIME * 1000 ))
+            vim_ms=$(( vt1 - vt0 ))
+        else
+            vim_ms=$(python3 -c "import time, os; t0=time.perf_counter(); os.system('vim -u $vimrc -e -s -c q >/dev/null 2>&1'); print(int((time.perf_counter()-t0)*1000))" 2>/dev/null || echo 0)
+        fi
+        if (( vim_ms < 150 )); then
+            log_success "Vim startup latency: ${vim_ms}ms (target < 150ms)"
+        else
+            log_warn "Vim startup latency: ${vim_ms}ms (target < 150ms)"
+        fi
+    fi
+
+    # 3. Zsh Prompt Execution (vcs_info + build_prompt)
+    if [[ -f "$HOME/.zshrc" ]]; then
+        integer prompt_ms=$(zsh -c "
+            zmodload zsh/datetime 2>/dev/null || true
+            source '$HOME/.zshrc' >/dev/null 2>&1
+            float pt0=\$(( EPOCHREALTIME * 1000 ))
+            vcs_info >/dev/null 2>&1
+            build_prompt >/dev/null 2>&1
+            float pt1=\$(( EPOCHREALTIME * 1000 ))
+            integer p_diff=\$(( pt1 - pt0 ))
+            print \$p_diff
+        " 2>/dev/null || echo 0)
+        if (( prompt_ms < 50 )); then
+            log_success "Prompt render latency: ${prompt_ms}ms (target < 50ms)"
+        else
+            log_warn "Prompt render latency: ${prompt_ms}ms (target < 50ms)"
+        fi
+    fi
+}
+
 # --- Main Execution ---
 main() {
     if [[ "$CLEAN_MODE" == "true" ]]; then
@@ -550,6 +612,11 @@ main() {
     if [[ "$RUN_DOCTOR" == "true" ]]; then
         run_doctor
         exit $?
+    fi
+
+    if [[ "$RUN_BENCHMARK" == "true" ]]; then
+        run_benchmark
+        exit 0
     fi
 
     check_dependencies

@@ -26,6 +26,7 @@ jobs:
           zsh -n config/zsh/.zshrc
           zsh -n config/zsh/aliases.zsh
           zsh -n .githooks/pre-commit
+          zsh -n .githooks/pre-push
           zsh -n tests/run-tests.sh
 
       - name: Tmux Syntax Check
