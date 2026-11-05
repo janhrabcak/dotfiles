@@ -52,7 +52,7 @@
         "^docker-compose (ps|logs)(\\s+[a-zA-Z0-9_./@~:= -]+)*$",
         "^npm (test|run test)(\\s+[a-zA-Z0-9_./@~:= -]+)*$",
         "^go test(\\s+[a-zA-Z0-9_./@~:= -]+)*$",
-        "^\\./dot\\.sh (--doctor|--dry-run|--test)$"
+        "^\\./dot\\.sh (--doctor|--dry-run|--clean)$"
       ]
     }
   }

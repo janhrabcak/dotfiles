@@ -9,7 +9,7 @@ if has('nvim')
 endif
 
 if !filereadable(expand('~/.vim/autoload/plug.vim'))
-  if !has('batch') | echohl WarningMsg | echo "Vim-Plug not found. Run bootstrap.sh to install." | echohl None | endif
+  if !has('batch') | echohl WarningMsg | echo "Vim-Plug not found. Run dot.sh --install-deps to install." | echohl None | endif
 else
   call plug#begin('~/.vim/plugged')
   " Navigation & Productivity

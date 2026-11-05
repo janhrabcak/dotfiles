@@ -50,8 +50,9 @@ alias objdump="command objdump -M intel"
 # --- Helpers ---
 # Desktop notification for long-running commands (notify-send)
 alert() {
+  local rc=$?
   local icon="terminal"
-  (( $? != 0 )) && icon="error"
+  (( rc != 0 )) && icon="error"
   command -v notify-send >/dev/null 2>&1 && notify-send --urgency=low -i "$icon" "Command completed" "${history[$HISTCMD]}"
 }
 

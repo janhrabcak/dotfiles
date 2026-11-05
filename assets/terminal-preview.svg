@@ -1,111 +1,126 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 460" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 450" width="100%" height="100%">
   <defs>
+    <clipPath id="window-clip">
+      <rect width="850" height="450" rx="10" ry="10" />
+    </clipPath>
     <style>
       .bg { fill: #002b36; }
       .header { fill: #073642; }
       .title { fill: #839496; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; font-size: 13px; font-weight: 600; text-anchor: middle; }
-      .terminal-text { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13.5px; line-height: 1.5; }
-      .prompt-user { fill: #b58900; font-weight: bold; }
-      .prompt-host-g1 { fill: #268bd2; font-weight: bold; }
-      .prompt-host-g2 { fill: #dc322f; font-weight: bold; }
-      .prompt-host-g3 { fill: #b58900; font-weight: bold; }
-      .prompt-host-g4 { fill: #268bd2; font-weight: bold; }
-      .prompt-host-g5 { fill: #859900; font-weight: bold; }
-      .prompt-host-g6 { fill: #dc322f; font-weight: bold; }
-      .prompt-dir { fill: #268bd2; }
-      .prompt-git { fill: #859900; font-weight: bold; }
-      .prompt-dirty { fill: #b58900; }
+      .terminal-text { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; }
+      .seg-ctx { fill: #073642; }
+      .seg-dir { fill: #268bd2; }
+      .seg-git-dirty { fill: #b58900; }
+      .seg-git-clean { fill: #859900; }
+      .seg-text-dark { fill: #002b36; font-weight: 600; }
+      .prompt-user { fill: #93a1a1; font-weight: 600; }
+      .g1 { fill: #268bd2; font-weight: bold; }
+      .g2 { fill: #dc322f; font-weight: bold; }
+      .g3 { fill: #b58900; font-weight: bold; }
+      .g4 { fill: #268bd2; font-weight: bold; }
+      .g5 { fill: #859900; font-weight: bold; }
+      .g6 { fill: #dc322f; font-weight: bold; }
       .cmd { fill: #fdf6e3; font-weight: 600; }
-      .txt-info { fill: #268bd2; }
-      .txt-ok { fill: #859900; }
-      .txt-mute { fill: #586e75; }
+      .txt-info { fill: #268bd2; font-weight: 600; }
+      .txt-ok { fill: #859900; font-weight: 600; }
       .txt-white { fill: #93a1a1; }
-      .txt-cyan { fill: #2aa198; }
+      .txt-cyan { fill: #2aa198; font-weight: 600; }
       .cursor { fill: #2aa198; animation: blink 1s step-end infinite; }
       @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
     </style>
+    <!-- Vector Git Branch Icon (replaces PUA glyph) -->
+    <g id="git-icon">
+      <path d="M2,2 L2,12 M2,8 C2,6 6,6 6,4" stroke="#002b36" stroke-width="1.6" fill="none" stroke-linecap="round" />
+      <circle cx="2" cy="2.5" r="1.7" fill="#002b36" />
+      <circle cx="2" cy="11.5" r="1.7" fill="#002b36" />
+      <circle cx="6" cy="3.5" r="1.7" fill="#002b36" />
+    </g>
   </defs>
 
-  <!-- Window Container -->
-  <rect width="850" height="460" rx="10" ry="10" class="bg" />
-  
-  <!-- Window Titlebar -->
-  <path d="M 0,10 C 0,4.48 4.48,0 10,0 L 840,0 C 845.52,0 850,4.48 850,10 L 850,38 L 0,38 Z" class="header" />
-  
-  <!-- Window Controls (Traffic Lights) -->
-  <circle cx="22" cy="19" r="6" fill="#ff5f56" />
-  <circle cx="42" cy="19" r="6" fill="#ffbd2e" />
-  <circle cx="62" cy="19" r="6" fill="#27c93f" />
-  
-  <!-- Window Title -->
-  <text x="425" y="24" class="title">jh@workstation: ~/.dotfiles (zsh)</text>
+  <g clip-path="url(#window-clip)">
+    <!-- Window Background -->
+    <rect width="850" height="450" class="bg" />
 
-  <!-- Terminal Content -->
-  <g class="terminal-text" transform="translate(25, 68)">
-    <!-- Line 1: Prompt & Command -->
-    <text y="0">
-      <tspan class="prompt-user">jh@</tspan><tspan class="prompt-host-g1">g</tspan><tspan class="prompt-host-g2">o</tspan><tspan class="prompt-host-g3">o</tspan><tspan class="prompt-host-g4">g</tspan><tspan class="prompt-host-g5">l</tspan><tspan class="prompt-host-g6">e</tspan>
-      <tspan class="txt-mute">:</tspan>
-      <tspan class="prompt-dir">~/.dotfiles</tspan>
-      <tspan class="txt-mute"> (</tspan><tspan class="prompt-git">git:main</tspan> <tspan class="prompt-dirty">✚±</tspan><tspan class="txt-mute">)</tspan>
-      <tspan class="txt-white"> $ </tspan>
-      <tspan class="cmd">./dot.sh --doctor</tspan>
-    </text>
+    <!-- Window Titlebar -->
+    <rect width="850" height="38" class="header" />
+    <circle cx="22" cy="19" r="6" fill="#ff5f56" />
+    <circle cx="42" cy="19" r="6" fill="#ffbd2e" />
+    <circle cx="62" cy="19" r="6" fill="#27c93f" />
+    <text x="425" y="24" class="title">jh@google: ~/.dotfiles (zsh)</text>
 
-    <!-- Line 2: Diagnostic Banner -->
-    <text y="28">
-      <tspan class="txt-info">[INFO]</tspan>
-      <tspan class="txt-white">  🩺 Starting Dotfiles Diagnostic...</tspan>
-    </text>
+    <!-- Terminal Content -->
+    <g class="terminal-text" transform="translate(22, 56)">
+      <!-- Prompt 1: Agnoster Powerline (Dirty Git State) -->
+      <g transform="translate(0, 0)">
+        <!-- Context Segment: jh@google -->
+        <rect x="0" y="0" width="90" height="22" class="seg-ctx" />
+        <text x="8" y="15">
+          <tspan class="prompt-user">jh@</tspan><tspan class="g1">g</tspan><tspan class="g2">o</tspan><tspan class="g3">o</tspan><tspan class="g4">g</tspan><tspan class="g5">l</tspan><tspan class="g6">e</tspan>
+        </text>
+        <!-- Dir Segment: ~/.dotfiles -->
+        <rect x="90" y="0" width="112" height="22" class="seg-dir" />
+        <polygon points="90,0 100,11 90,22" class="seg-ctx" />
+        <text x="106" y="15" class="seg-text-dark">~/.dotfiles</text>
+        <!-- Git Segment (Dirty): main ✚± -->
+        <rect x="202" y="0" width="96" height="22" class="seg-git-dirty" />
+        <polygon points="202,0 212,11 202,22" class="seg-dir" />
+        <use href="#git-icon" x="218" y="4" />
+        <text x="230" y="15" class="seg-text-dark">main ✚±</text>
+        <polygon points="298,0 308,11 298,22" class="seg-git-dirty" />
+        <!-- Command -->
+        <text x="318" y="15" class="cmd">./dot.sh --doctor</text>
+      </g>
 
-    <!-- Line 3-8: Verified Links -->
-    <text y="54">
-      <tspan class="txt-ok">[OK]</tspan>
-      <tspan class="txt-white">    Link OK: .zshrc  &#8594; ~/.dotfiles/config/zsh/.zshrc</tspan>
-    </text>
-    <text y="78">
-      <tspan class="txt-ok">[OK]</tspan>
-      <tspan class="txt-white">    Link OK: .vimrc  &#8594; ~/.dotfiles/config/vim/.vimrc</tspan>
-    </text>
-    <text y="102">
-      <tspan class="txt-ok">[OK]</tspan>
-      <tspan class="txt-white">    Link OK: .tmux.conf  &#8594; ~/.dotfiles/config/tmux/.tmux.conf</tspan>
-    </text>
-    <text y="126">
-      <tspan class="txt-ok">[OK]</tspan>
-      <tspan class="txt-white">    Link OK: .gitignore_global  &#8594; ~/.dotfiles/config/git/.gitignore_global</tspan>
-    </text>
-    <text y="150">
-      <tspan class="txt-ok">[OK]</tspan>
-      <tspan class="txt-white">    Link OK: GEMINI.md &amp; CLAUDE.md (AI Developer Guidelines)</tspan>
-    </text>
-    <text y="174">
-      <tspan class="txt-ok">[OK]</tspan>
-      <tspan class="txt-white">    Link OK: settings.json (Hardened Command Whitelist)</tspan>
-    </text>
-    <text y="198">
-      <tspan class="txt-ok">[OK]</tspan>
-      <tspan class="txt-white">    Git: Include directive active in ~/.gitconfig</tspan>
-    </text>
-    <text y="222">
-      <tspan class="txt-ok">[OK]</tspan>
-      <tspan class="txt-white">    SSH: Platform include active in ~/.ssh/config (chmod 600)</tspan>
-    </text>
+      <!-- Diagnostic Output -->
+      <text y="46"><tspan class="txt-info">[INFO]</tspan><tspan class="txt-white">  🩺 Starting Dotfiles Diagnostic...</tspan></text>
+      <text y="70"><tspan class="txt-ok">[OK]</tspan><tspan class="txt-white">    Link OK: .zshrc &amp; .aliases.zsh</tspan></text>
+      <text y="94"><tspan class="txt-ok">[OK]</tspan><tspan class="txt-white">    Link OK: .vimrc &amp; init.vim (Neovim)</tspan></text>
+      <text y="118"><tspan class="txt-ok">[OK]</tspan><tspan class="txt-white">    Link OK: .gitignore_global &amp; .tmux.conf</tspan></text>
+      <text y="142"><tspan class="txt-ok">[OK]</tspan><tspan class="txt-white">    Link OK: GEMINI.md, AGENTS.md &amp; CLAUDE.md</tspan></text>
+      <text y="166"><tspan class="txt-ok">[OK]</tspan><tspan class="txt-white">    Link OK: settings.json, mcp_config.json &amp; skills</tspan></text>
+      <text y="190"><tspan class="txt-ok">[OK]</tspan><tspan class="txt-white">    Git: Include directive present in /home/jh/.gitconfig</tspan></text>
+      <text y="214"><tspan class="txt-ok">[OK]</tspan><tspan class="txt-white">    SSH: Include directive present in /home/jh/.ssh/config</tspan></text>
+      <text y="242"><tspan class="txt-ok">[OK]</tspan><tspan class="txt-cyan">    All systems operational!</tspan></text>
 
-    <!-- Line 9: Diagnostic Success -->
-    <text y="254">
-      <tspan class="txt-ok">[OK]</tspan>
-      <tspan class="txt-cyan" font-weight="bold">    ✨ All systems operational! 52 automated tests passing.</tspan>
-    </text>
+      <!-- Prompt 2: Agnoster Powerline (Clean Git State + Cursor) -->
+      <g transform="translate(0, 266)">
+        <rect x="0" y="0" width="90" height="22" class="seg-ctx" />
+        <text x="8" y="15">
+          <tspan class="prompt-user">jh@</tspan><tspan class="g1">g</tspan><tspan class="g2">o</tspan><tspan class="g3">o</tspan><tspan class="g4">g</tspan><tspan class="g5">l</tspan><tspan class="g6">e</tspan>
+        </text>
+        <rect x="90" y="0" width="112" height="22" class="seg-dir" />
+        <polygon points="90,0 100,11 90,22" class="seg-ctx" />
+        <text x="106" y="15" class="seg-text-dark">~/.dotfiles</text>
+        <rect x="202" y="0" width="70" height="22" class="seg-git-clean" />
+        <polygon points="202,0 212,11 202,22" class="seg-dir" />
+        <use href="#git-icon" x="218" y="4" />
+        <text x="230" y="15" class="seg-text-dark">main</text>
+        <polygon points="272,0 282,11 272,22" class="seg-git-clean" />
+        <text x="292" y="15" class="cmd">./tests/run-tests.sh</text>
+      </g>
 
-    <!-- Line 10: Next Prompt Ready -->
-    <text y="294">
-      <tspan class="prompt-user">jh@</tspan><tspan class="prompt-host-g1">g</tspan><tspan class="prompt-host-g2">o</tspan><tspan class="prompt-host-g3">o</tspan><tspan class="prompt-host-g4">g</tspan><tspan class="prompt-host-g5">l</tspan><tspan class="prompt-host-g6">e</tspan>
-      <tspan class="txt-mute">:</tspan>
-      <tspan class="prompt-dir">~/.dotfiles</tspan>
-      <tspan class="txt-mute"> (</tspan><tspan class="prompt-git">git:main</tspan><tspan class="txt-mute">)</tspan>
-      <tspan class="txt-white"> $ </tspan>
-      <tspan class="cursor">&#x2588;</tspan>
-    </text>
+      <text y="312"><tspan class="txt-white">Test Summary: Ran 52 tests | </tspan><tspan class="txt-ok">52 passed</tspan><tspan class="txt-white"> | 0 failed</tspan></text>
+      <text y="336"><tspan class="txt-ok">🎉 ALL TESTS PASSED!</tspan></text>
+
+      <!-- Prompt 3: Ready with Blinking Cursor -->
+      <g transform="translate(0, 354)">
+        <rect x="0" y="0" width="90" height="22" class="seg-ctx" />
+        <text x="8" y="15">
+          <tspan class="prompt-user">jh@</tspan><tspan class="g1">g</tspan><tspan class="g2">o</tspan><tspan class="g3">o</tspan><tspan class="g4">g</tspan><tspan class="g5">l</tspan><tspan class="g6">e</tspan>
+        </text>
+        <rect x="90" y="0" width="112" height="22" class="seg-dir" />
+        <polygon points="90,0 100,11 90,22" class="seg-ctx" />
+        <text x="106" y="15" class="seg-text-dark">~/.dotfiles</text>
+        <rect x="202" y="0" width="70" height="22" class="seg-git-clean" />
+        <polygon points="202,0 212,11 202,22" class="seg-dir" />
+        <use href="#git-icon" x="218" y="4" />
+        <text x="230" y="15" class="seg-text-dark">main</text>
+        <polygon points="272,0 282,11 272,22" class="seg-git-clean" />
+        <rect x="292" y="3" width="8.5" height="16" class="cursor" />
+      </g>
+    </g>
   </g>
+
+  <!-- Subtle Outer Frame Border -->
+  <rect width="849" height="449" x="0.5" y="0.5" rx="10" ry="10" fill="none" stroke="#586e75" stroke-opacity="0.35" />
 </svg>

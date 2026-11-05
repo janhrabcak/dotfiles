@@ -136,10 +136,18 @@ else
   fail "iTerm2 plist integrity" "com.googlecode.iterm2.plist failed to parse as valid plist"
 fi
 
-if python3 -c "import json; json.load(open('$REPO_ROOT/config/ai/settings.json')); json.load(open('$REPO_ROOT/config/ai/mcp_config.json')); json.load(open('$REPO_ROOT/.devcontainer/devcontainer.json'))" >/dev/null 2>&1; then
-  pass "Configuration JSON syntax check (settings.json, mcp_config.json, devcontainer.json)"
+if python3 -c "
+import json, xml.etree.ElementTree as ET, glob
+for p in ['config/ai/settings.json', 'config/ai/mcp_config.json', '.devcontainer/devcontainer.json']:
+    json.load(open('$REPO_ROOT/' + p))
+for svg in glob.glob('$REPO_ROOT/assets/*.svg'):
+    data = open(svg, encoding='utf-8').read()
+    ET.fromstring(data)
+    assert not any(0xE000 <= ord(c) <= 0xF8FF for c in data), f'PUA glyph in {svg}'
+" >/dev/null 2>&1; then
+  pass "Configuration JSON & SVG asset integrity check (valid syntax, zero PUA glyphs)"
 else
-  fail "Configuration JSON syntax check" "Invalid JSON in config/ai/ or .devcontainer/"
+  fail "Configuration JSON & SVG asset check" "Invalid JSON/SVG syntax or PUA glyph detected"
 fi
 
 # ------------------------------------------------------------------------------
@@ -210,18 +218,20 @@ else
   fail "--only flag targeted execution" "Targeted step failed or side-effect files created"
 fi
 
+mkdir -p "$HOME/.gemini/config"
 ln -s "$DOTFILES_DIR/nonexistent_test_dead" "$HOME/.dead_dotfile"
+ln -s "$DOTFILES_DIR/nonexistent_test_ai_dead" "$HOME/.gemini/config/dead_ai"
 ln -s "/nonexistent_external_target" "$HOME/.dead_external"
 zsh "$DOTFILES_DIR/dot.sh" --clean --dry-run >/dev/null 2>&1
-if [[ -L "$HOME/.dead_dotfile" && -L "$HOME/.dead_external" ]]; then
+if [[ -L "$HOME/.dead_dotfile" && -L "$HOME/.gemini/config/dead_ai" && -L "$HOME/.dead_external" ]]; then
   pass "--clean --dry-run leaves all symlinks untouched"
 else
   fail "--clean --dry-run" "Symlink was unexpectedly removed during dry run"
 fi
 
 zsh "$DOTFILES_DIR/dot.sh" --clean >/dev/null 2>&1
-if [[ ! -L "$HOME/.dead_dotfile" && -L "$HOME/.dead_external" ]]; then
-  pass "--clean prunes dead dotfiles symlinks while preserving external symlinks"
+if [[ ! -L "$HOME/.dead_dotfile" && ! -L "$HOME/.gemini/config/dead_ai" && -L "$HOME/.dead_external" ]]; then
+  pass "--clean prunes dead dotfiles symlinks (including ~/.gemini) while preserving external symlinks"
 else
   fail "--clean pruning" "Dead dotfiles symlink was not pruned or external symlink was removed"
 fi
@@ -411,6 +421,9 @@ alias_test=$(zsh -c "
   alias gl >/dev/null 2>&1 || exit 1
   alias v >/dev/null 2>&1 || exit 1
   functions ssh-cc >/dev/null 2>&1 || exit 1
+  notify-send() { echo \"\$*\"; }
+  [[ \"\$(false; alert)\" == *'-i error'* ]] || exit 1
+  [[ \"\$(true; alert)\" == *'-i terminal'* ]] || exit 1
   echo 'OK'
 " 2>/dev/null || echo "FAILED")
 

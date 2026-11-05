@@ -81,7 +81,7 @@ Check and update repository-specific metadata:
 
 1. Run the test suite and linters to ensure build correctness before committing:
    ```bash
-   # Execute relevant project tests (e.g., npm test, cargo test, ./dot.sh --test)
+   # Execute relevant project tests (e.g., npm test, cargo test, ./tests/run-tests.sh)
    ```
 2. Present a clean summary of:
    - Calculated version bump.

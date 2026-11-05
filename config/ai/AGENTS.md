@@ -41,13 +41,14 @@ Every code change must be accompanied by updates to at least two distinct types 
   - Prompt git segments must use Zsh's built-in `vcs_info` module (`add-zsh-hook precmd vcs_info`) rather than Oh My Zsh's default `prompt_git`, which forks 10–15 child `git` processes per prompt.
   - When configuring hooks with `add-zsh-hook`, never pass anonymous function syntax (`add-zsh-hook precmd () { ... }`); in Zsh this defines a function named `add-zsh-hook` and clobbers the utility itself. Always register named helper functions.
   - Sourced shell files (`.zshrc`, `aliases.zsh`) must guarantee a clean exit code 0 even when optional local overrides (`.zshrc.local`) are absent.
+  - In Zsh functions that inspect the previous command's exit status (`$?`, e.g. `alert()` in `aliases.zsh`), capture `local rc=$?` as the very first statement before any other `local` assignment, since `local` is a builtin that overwrites `$?` with `0`.
 - **Tmux Socket Isolation in Tests & Hooks**: Never run `tmux ... start-server \; kill-server` without an isolated socket flag (`-L "dotfiles-test-$$"`). Running `kill-server` without `-L` targets the user's default socket (`/tmp/tmux-$UID/default`), ignoring `-f` if a server is already running and terminating all active user `tmux` sessions.
 - **AI Command Whitelist Invariant (`settings.json`)**: Auto-approved command regex patterns must always be strictly anchored (`^...$`) and bound to safe argument characters (`[a-zA-Z0-9_./@~:= -]`). Never allow shell control operators (`;`, `&&`, `||`, `|`, `$()`, backticks) or arbitrary command execution wrappers (`docker exec`, `find -exec`, `curl`).
 - **MCP Version Pinning Invariant (`mcp_config.json`)**: All MCP servers invoked via `npx` must specify pinned semantic versions (`package@x.y.z`) to prevent unpinned execution and protect token secrets.
 - **Bootstrapper (`dot.sh`) Execution & Manifest Invariants**:
   - Execute commands directly via `run_cmd "$@"` rather than `eval` string concatenation.
   - Maintain a 3-field `LINK_MANIFEST` (`src_rel:dest:step_owner`) targeting only **Gemini** (`~/.gemini/...`) and **Claude** (`~/.claude/CLAUDE.md`) for AI configurations.
-  - Use Zsh's native `(-@N)` broken-symlink glob qualifier in `prune_dead_symlinks` rather than spawning external `find` loops.
+  - Use Zsh's native `(-@N)` broken-symlink glob qualifier in `prune_dead_symlinks` across all `LINK_MANIFEST` target trees (`$HOME`, `~/.config`, `~/.gemini`, `~/.claude`) rather than spawning external `find` loops.
   - Prefer Zsh native path modifiers (`${path:h}` and `${path:t}`) over external `dirname` and `basename` child process forks in loops and helpers.
   - Maintain global git exclusions via `config/git/.gitignore_global` linked to `~/.gitignore_global` and active through `core.excludesfile`.
   - Never auto-generate dummy `.local` override files with placeholder identities (e.g. `you@example.com` in `.gitconfig.local`); `.local` files are optional user-managed overrides.

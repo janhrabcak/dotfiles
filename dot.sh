@@ -76,6 +76,8 @@ rotate_backups() {
 }
 
 init_backup_dir() {
+    [[ "${BACKUP_INITIALIZED:-false}" == "true" ]] && return 0
+    BACKUP_INITIALIZED=true
     if [[ ! -d "$BACKUP_DIR" ]]; then
         run_cmd mkdir -p "$BACKUP_DIR"
         rotate_backups 5
@@ -190,7 +192,7 @@ prune_dead_symlinks() {
     local dead_links=()
     local link target
 
-    for link in "$HOME"/*(-@N) "$HOME"/.*(-@N) "$HOME/.config"/**/*(-@N); do
+    for link in "$HOME"/*(-@N) "$HOME"/.*(-@N) "$HOME/.config"/**/*(-@N) "$HOME/.gemini"/**/*(-@N) "$HOME/.claude"/**/*(-@N); do
         target="$(readlink "$link" 2>/dev/null || true)"
         if [[ "$target" == "$DOTFILES_DIR"* || "$target" == "$canon_dotfiles"* ]]; then
             dead_links+=("$link")

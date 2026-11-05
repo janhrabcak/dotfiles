@@ -16,7 +16,7 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 | **Run Specific Step** | `./dot.sh --only setup_vim` |
 
 ### Script Flags
-*   `--clean`: Prunes dead dotfiles symlinks in `$HOME` and rotates backups (retains 5 most recent).
+*   `--clean`: Prunes dead dotfiles symlinks across `$HOME`, `~/.config`, `~/.gemini`, and `~/.claude` and rotates backups (retains 5 most recent).
 *   `--remote`: Downloads the latest archive directly from GitHub.
 *   `--doctor`: Runs a deep diagnostic of the system health, git hooks, and symlinks.
 *   `--only <step>`: Runs a specific setup function only (e.g., `setup_vim`).
@@ -56,14 +56,14 @@ Runs tmux sessions natively inside macOS iTerm2 tabs or standard terminal multip
 *   **Identity**: Integrated **1Password SSH Agent** (macOS) and stable symlinks (Linux) via platform-specific SSH configurations (`macos.config`/`linux.config`).
 *   **Shortcuts**:
     *   **Git**: `gs` (status), `ga` (add), `gc` (commit), `gp` (push), `gl` (graph log).
-    *   **Tmux**: `tcc` (Control Mode), `tn` (new), `ta` (attach).
+    *   **Tmux**: `tcc` (Control Mode), `ssh-cc` (remote SSH into Control Mode), `tn` (new), `ta` (attach).
     *   **Editor**: `v` / `vim` auto-detecting Neovim when installed.
 
 ### 📝 Editor (Vim & Neovim - Power Pack)
 *   **Unified Config**: Shared `.vimrc` seamlessly linked to both `~/.vimrc` and `~/.config/nvim/init.vim`.
-*   **Visuals**: **Lightline** for a premium, themed status bar.
-*   **Productivity**: **FZF** integration for ultra-fast file finding (`Ctrl + p`).
-*   **UX**: Persistent undo history, relative line numbers, and smart-case search.
+*   **Visuals**: **Lightline** for a premium, themed status bar with Git branch integration (`FugitiveHead`).
+*   **Productivity**: **FZF** integration for ultra-fast file finding (`Ctrl + p`), buffer switching (`,b`), and Ripgrep search (`,f`).
+*   **UX**: Persistent undo history, hybrid relative line numbers, and smart-case search.
 *   **Go Development**: Pre-configured `vim-go` with leader shortcuts.
 
 ### 🔧 Git & Global Excludes
@@ -124,7 +124,7 @@ The `dot.sh` script is a robust, idempotent bootstrapper designed to configure a
 The script uses specialized shell functions to ensure consistency:
 *   `safe_link`: Creates symlinks while backing up existing files and repairing broken links.
 *   `safe_append/prepend`: Ensures specific configuration lines (like SSH `Include`) exist in files without creating duplicates.
-*   `prune_dead_symlinks`: Uses native Zsh `(-@N)` broken-symlink globbing to identify and remove dead symlinks in `$HOME` pointing into `$DOTFILES_DIR`.
+*   `prune_dead_symlinks`: Uses native Zsh `(-@N)` broken-symlink globbing to identify and remove dead symlinks across `$HOME`, `~/.config`, `~/.gemini`, and `~/.claude` pointing into `$DOTFILES_DIR`.
 *   `rotate_backups`: Automatically retains only the 5 most recent timestamped backup directories in `~/.dotfiles.backup/`.
 
 ---
@@ -142,5 +142,5 @@ The script uses specialized shell functions to ensure consistency:
 *   **Linux/Remote**: Uses a **Stable Symlink** at `~/.ssh/ssh_auth_sock`. The `.zshrc` updates this symlink on every fresh login and forces all sub-shells (including those inside tmux) to reference it. This prevents "Dead Agent" syndrome when re-attaching to old sessions.
 
 ### 3. iTerm2 Control Mode Hardening
-*   **Protocol Protection**: All background output (like TPM initialization) is redirected to `/dev/null` to prevent corrupting the `-CC` handshake.
+*   **Protocol Protection**: All background output (like TPM initialization) is redirected to `~/.tmux/tpm.log` to prevent corrupting the `-CC` handshake.
 

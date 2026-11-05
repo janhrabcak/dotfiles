@@ -14,17 +14,17 @@ All notable changes to this project will be documented in this file.
 - **Safe Link Execution**: Pre-computed path directories and basenames in `dot.sh`'s `safe_link` to eliminate nested subshell command string evaluations.
 
 ### Changed
-- **Bootstrapper Simplification (`dot.sh`)**: Streamlined `dot.sh` by ~35% (872 to 578 lines):
+- **Bootstrapper Simplification (`dot.sh`)**: Streamlined `dot.sh` by ~36% (872 to 561 lines):
   - Replaced `eval`-based `execute()` wrapper with direct array-based `run_cmd "$@"`.
   - Simplified `LINK_MANIFEST` to a 3-field format (`src:dest:step`) targeting **Gemini** and **Claude** AI agents.
-  - Replaced external `find` loop in `prune_dead_symlinks` with native Zsh `(-@N)` broken-symlink globbing.
+  - Replaced external `find` loop in `prune_dead_symlinks` with native Zsh `(-@N)` broken-symlink globbing across `$HOME`, `~/.config`, `~/.gemini`, and `~/.claude`, and guarded `init_backup_dir` against repeated execution during `--dry-run`.
   - Eliminated double symlink execution in `main()` and removed dummy `.local` file auto-generators (`you@example.com` placeholder identity).
   - Replaced external `basename` and `dirname` subshell forks across `safe_link`, `safe_append`, `safe_prepend`, and `run_doctor` with native Zsh path modifiers (`${path:h}` and `${path:t}`), guarding parent directory creation.
 - **Zsh Readability & Cleanliness**:
   - Replaced anonymous self-executing function in SSH agent persistence with a named helper (`_setup_ssh_agent`).
   - Unpacked and documented the dynamic color distribution loop in `prompt_context`.
   - Reordered `.zshrc` sections so Aliases and Local Overrides load cleanly as Section 6, with guaranteed exit code 0 on source.
-  - Replaced double-escaped `sed` pipeline in `alert` with a clean Zsh function using `${history[$HISTCMD]}`.
+  - Replaced double-escaped `sed` pipeline in `alert` with a clean Zsh function using `${history[$HISTCMD]}` and capturing `local rc=$?` prior to variable initialization so error icons trigger accurately.
   - Cleaned up temporary variable namespace leak (`_ls_flags`) and standardized `ssh-cc` function syntax.
 - **Zsh Configuration**: Guarded the Oh My Zsh `macos` plugin to load conditionally only on Darwin (`$OSTYPE == darwin*`), avoiding extraneous shell startup execution on Linux.
 - **Prompt Performance (`vcs_info`)**: Replaced Oh My Zsh's multi-fork `prompt_git` implementation with Zsh's native `vcs_info` module in `config/zsh/.zshrc`. Hooks into `precmd` to eliminate 10–15 child `git` processes per prompt evaluation while preserving the Agnoster theme Powerline aesthetics (branch glyph, clean/dirty colors, staged/unstaged badges, and action formats). Fixed `add-zsh-hook` function shadowing.
@@ -34,7 +34,7 @@ All notable changes to this project will be documented in this file.
 - **Legacy & Unused Files**: Removed superseded `tests/test-vim.sh` and `tests/dot-local-ci-test.sh` harnesses, deprecated `config/macos-terminal/zsh.terminal`, empty `bin/.keep` (`~/.bin` symlink), duplicate `config/ai/skills/rigorous-pr-review/`, and Cursor/Cline symlink targets (`.cursorrules`, `.clinerules`).
 
 ### Testing
-- **Streamlined Unified Test Suite (51/51 Checks Passing)**:
+- **Streamlined Unified Test Suite (52/52 Checks Passing)**:
   - Optimized sandbox initialization in `tests/run-tests.sh` to copy only lightweight config files and run all 9 test groups in ~8 seconds.
   - Added Day-Zero cold bootstrap checks (`--remote` vs missing directory handling).
   - Added end-to-end `--install-deps` package dispatch assertion (including dry-run verification).

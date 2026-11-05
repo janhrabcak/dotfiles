@@ -1,80 +1,144 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 360" width="100%" height="100%">
   <defs>
+    <clipPath id="window-clip">
+      <rect width="850" height="360" rx="10" ry="10" />
+    </clipPath>
     <style>
       .bg { fill: #002b36; }
       .header { fill: #073642; }
       .title { fill: #839496; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; font-size: 13px; font-weight: 600; text-anchor: middle; }
-      .term-text { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13.5px; }
-      .prompt-user { fill: #b58900; font-weight: bold; }
-      .prompt-host { fill: #268bd2; font-weight: bold; }
-      .prompt-dir { fill: #2aa198; }
-      .prompt-git { fill: #859900; font-weight: bold; }
+      .term-text { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; }
+      .seg-ctx { fill: #073642; }
+      .seg-dir { fill: #268bd2; }
+      .seg-git-clean { fill: #859900; }
+      .seg-text-dark { fill: #002b36; font-weight: 600; }
+      .prompt-user { fill: #93a1a1; font-weight: 600; }
+      .g1 { fill: #268bd2; font-weight: bold; }
+      .g2 { fill: #dc322f; font-weight: bold; }
+      .g3 { fill: #b58900; font-weight: bold; }
+      .g4 { fill: #268bd2; font-weight: bold; }
+      .g5 { fill: #859900; font-weight: bold; }
+      .g6 { fill: #dc322f; font-weight: bold; }
       .txt-white { fill: #93a1a1; }
       .txt-mute { fill: #586e75; }
       .txt-cyan { fill: #2aa198; }
       .txt-green { fill: #859900; }
       .cmd { fill: #fdf6e3; font-weight: 600; }
-      .divider { stroke: #073642; stroke-width: 2; }
-      .tmux-bar { fill: #073642; }
-      .tmux-active-tab { fill: #2aa198; font-weight: bold; }
-      .tmux-inactive-tab { fill: #586e75; }
-      .tmux-session { fill: #859900; font-weight: bold; }
-      .tmux-right { fill: #839496; text-anchor: end; }
+      .cursor { fill: #2aa198; animation: blink 1s step-end infinite; }
+      @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
     </style>
+    <g id="git-icon">
+      <path d="M2,2 L2,12 M2,8 C2,6 6,6 6,4" stroke="#002b36" stroke-width="1.6" fill="none" stroke-linecap="round" />
+      <circle cx="2" cy="2.5" r="1.7" fill="#002b36" />
+      <circle cx="2" cy="11.5" r="1.7" fill="#002b36" />
+      <circle cx="6" cy="3.5" r="1.7" fill="#002b36" />
+    </g>
   </defs>
 
-  <!-- Window Container -->
-  <rect width="850" height="360" rx="10" ry="10" class="bg" />
-  
-  <!-- Titlebar -->
-  <path d="M 0,10 C 0,4.48 4.48,0 10,0 L 840,0 C 845.52,0 850,4.48 850,10 L 850,38 L 0,38 Z" class="header" />
-  <circle cx="22" cy="19" r="6" fill="#ff5f56" />
-  <circle cx="42" cy="19" r="6" fill="#ffbd2e" />
-  <circle cx="62" cy="19" r="6" fill="#27c93f" />
-  <text x="425" y="24" class="title">tmux (dev-box) — 3 windows [Control Mode -CC]</text>
+  <g clip-path="url(#window-clip)">
+    <!-- Window Background -->
+    <rect width="850" height="360" class="bg" />
 
-  <!-- Left Pane Content -->
-  <g class="term-text" transform="translate(25, 68)">
-    <text y="0">
-      <tspan class="prompt-user">jh@workstation</tspan><tspan class="txt-mute">:</tspan><tspan class="prompt-dir">~/.dotfiles</tspan>
-      <tspan class="txt-mute"> (</tspan><tspan class="prompt-git">git:main</tspan><tspan class="txt-mute">)</tspan>
-      <tspan class="txt-white"> $ </tspan><tspan class="cmd">tcc</tspan>
-    </text>
-    <text y="26" class="txt-mute"># Reattached to session [0] with iTerm2 integration</text>
+    <!-- Window Titlebar -->
+    <rect width="850" height="38" class="header" />
+    <circle cx="22" cy="19" r="6" fill="#ff5f56" />
+    <circle cx="42" cy="19" r="6" fill="#ffbd2e" />
+    <circle cx="62" cy="19" r="6" fill="#27c93f" />
+    <text x="425" y="24" class="title">[REMOTE] jh@google: ~/.dotfiles — tmux (Control Mode -CC)</text>
 
-    <text y="64">
-      <tspan class="prompt-user">jh@workstation</tspan><tspan class="txt-mute">:</tspan><tspan class="prompt-dir">~/.dotfiles</tspan>
-      <tspan class="txt-mute"> (</tspan><tspan class="prompt-git">git:main</tspan><tspan class="txt-mute">)</tspan>
-      <tspan class="txt-white"> $ </tspan><tspan class="cmd">gl -n 3</tspan>
-    </text>
-    <text y="90">
-      <tspan class="txt-green">* 789ab3c</tspan> <tspan class="txt-white">(HEAD -&gt; main) feat: add global gitignore &amp; devcontainer</tspan>
-    </text>
-    <text y="114">
-      <tspan class="txt-cyan">* c6fee66</tspan> <tspan class="txt-white">perf: eliminate subshell forks in dot.sh</tspan>
-    </text>
-    <text y="138">
-      <tspan class="txt-mute">* ba0c249</tspan> <tspan class="txt-white">fix(security): harden AI command whitelist, pin MCP packages</tspan>
-    </text>
+    <!-- Terminal Content -->
+    <g class="term-text" transform="translate(22, 56)">
+      <!-- Prompt 1: ssh-cc / tcc -->
+      <g transform="translate(0, 0)">
+        <rect x="0" y="0" width="90" height="22" class="seg-ctx" />
+        <text x="8" y="15">
+          <tspan class="prompt-user">jh@</tspan><tspan class="g1">g</tspan><tspan class="g2">o</tspan><tspan class="g3">o</tspan><tspan class="g4">g</tspan><tspan class="g5">l</tspan><tspan class="g6">e</tspan>
+        </text>
+        <rect x="90" y="0" width="112" height="22" class="seg-dir" />
+        <polygon points="90,0 100,11 90,22" class="seg-ctx" />
+        <text x="106" y="15" class="seg-text-dark">~/.dotfiles</text>
+        <rect x="202" y="0" width="70" height="22" class="seg-git-clean" />
+        <polygon points="202,0 212,11 202,22" class="seg-dir" />
+        <use href="#git-icon" x="218" y="4" />
+        <text x="230" y="15" class="seg-text-dark">main</text>
+        <polygon points="272,0 282,11 272,22" class="seg-git-clean" />
+        <text x="292" y="15" class="cmd">tcc</text>
+      </g>
 
-    <text y="176">
-      <tspan class="prompt-user">jh@workstation</tspan><tspan class="txt-mute">:</tspan><tspan class="prompt-dir">~/.dotfiles</tspan>
-      <tspan class="txt-mute"> (</tspan><tspan class="prompt-git">git:main</tspan><tspan class="txt-mute">)</tspan>
-      <tspan class="txt-white"> $ </tspan><tspan class="cmd">_</tspan>
-    </text>
+      <text y="44" class="txt-mute"># Attached to session "dev-box" via iTerm2 Control Mode (-CC)</text>
+
+      <!-- Prompt 2: gl -n 3 -->
+      <g transform="translate(0, 64)">
+        <rect x="0" y="0" width="90" height="22" class="seg-ctx" />
+        <text x="8" y="15">
+          <tspan class="prompt-user">jh@</tspan><tspan class="g1">g</tspan><tspan class="g2">o</tspan><tspan class="g3">o</tspan><tspan class="g4">g</tspan><tspan class="g5">l</tspan><tspan class="g6">e</tspan>
+        </text>
+        <rect x="90" y="0" width="112" height="22" class="seg-dir" />
+        <polygon points="90,0 100,11 90,22" class="seg-ctx" />
+        <text x="106" y="15" class="seg-text-dark">~/.dotfiles</text>
+        <rect x="202" y="0" width="70" height="22" class="seg-git-clean" />
+        <polygon points="202,0 212,11 202,22" class="seg-dir" />
+        <use href="#git-icon" x="218" y="4" />
+        <text x="230" y="15" class="seg-text-dark">main</text>
+        <polygon points="272,0 282,11 272,22" class="seg-git-clean" />
+        <text x="292" y="15" class="cmd">gl -n 3</text>
+      </g>
+
+      <text y="110"><tspan class="txt-green">* fe40934</tspan> <tspan class="txt-white">(HEAD -&gt; main) docs: add SVG visual previews for Zsh, Vim &amp; Tmux</tspan></text>
+      <text y="134"><tspan class="txt-cyan">* 789ab3c</tspan> <tspan class="txt-white">feat: add global gitignore &amp; devcontainer sandbox</tspan></text>
+      <text y="158"><tspan class="txt-mute">* 9902900</tspan> <tspan class="txt-white">refactor(zsh): improve readability &amp; clean up namespace</tspan></text>
+
+      <!-- Prompt 3: Ready with Blinking Cursor -->
+      <g transform="translate(0, 182)">
+        <rect x="0" y="0" width="90" height="22" class="seg-ctx" />
+        <text x="8" y="15">
+          <tspan class="prompt-user">jh@</tspan><tspan class="g1">g</tspan><tspan class="g2">o</tspan><tspan class="g3">o</tspan><tspan class="g4">g</tspan><tspan class="g5">l</tspan><tspan class="g6">e</tspan>
+        </text>
+        <rect x="90" y="0" width="112" height="22" class="seg-dir" />
+        <polygon points="90,0 100,11 90,22" class="seg-ctx" />
+        <text x="106" y="15" class="seg-text-dark">~/.dotfiles</text>
+        <rect x="202" y="0" width="70" height="22" class="seg-git-clean" />
+        <polygon points="202,0 212,11 202,22" class="seg-dir" />
+        <use href="#git-icon" x="218" y="4" />
+        <text x="230" y="15" class="seg-text-dark">main</text>
+        <polygon points="272,0 282,11 272,22" class="seg-git-clean" />
+        <rect x="292" y="3" width="8.5" height="16" class="cursor" />
+      </g>
+    </g>
+
+    <!-- Tmux Statusbar (Matches config/tmux/.tmux.conf lines 75-90) -->
+    <g transform="translate(0, 334)" class="term-text">
+      <!-- status-style bg=colour234 -->
+      <rect width="850" height="26" fill="#073642" />
+
+      <!-- Window 0 (Active: bg=colour238, fg=colour81/255/50 bold) -->
+      <rect x="0" y="0" width="74" height="26" fill="#0d4654" />
+      <text x="10" y="17" font-weight="bold">
+        <tspan fill="#2aa198">0</tspan><tspan fill="#839496">:</tspan><tspan fill="#fdf6e3">zsh</tspan><tspan fill="#2aa198">*</tspan>
+      </text>
+
+      <!-- Window 1 (Inactive: bg=colour235) -->
+      <text x="86" y="17">
+        <tspan fill="#839496">1</tspan><tspan fill="#586e75">:</tspan><tspan fill="#93a1a1">vim</tspan><tspan fill="#586e75">-</tspan>
+      </text>
+
+      <!-- Window 2 (Inactive: bg=colour235) -->
+      <text x="150" y="17">
+        <tspan fill="#839496">2</tspan><tspan fill="#586e75">:</tspan><tspan fill="#93a1a1">server</tspan>
+      </text>
+
+      <!-- status-right: #[fg=colour231,bg=colour208,bold] #S #I:#P #[fg=colour233,bg=colour241,bold] %d/%m #[fg=colour233,bg=colour245,bold] %H:%M:%S -->
+      <rect x="598" y="0" width="110" height="26" fill="#cb4b16" />
+      <text x="610" y="17" fill="#fdf6e3" font-weight="bold">dev-box 0:0</text>
+
+      <rect x="708" y="0" width="60" height="26" fill="#586e75" />
+      <text x="719" y="17" fill="#002b36" font-weight="bold">05/11</text>
+
+      <rect x="768" y="0" width="82" height="26" fill="#93a1a1" />
+      <text x="777" y="17" fill="#002b36" font-weight="bold">11:00:00</text>
+    </g>
   </g>
 
-  <!-- Tmux Statusbar -->
-  <g transform="translate(0, 332)">
-    <rect width="850" height="28" class="tmux-bar" />
-    <text x="16" y="19" class="term-text">
-      <tspan class="tmux-session">[0]</tspan>
-      <tspan class="tmux-active-tab"> 0:zsh* </tspan>
-      <tspan class="tmux-inactive-tab"> 1:vim- </tspan>
-      <tspan class="tmux-inactive-tab"> 2:server </tspan>
-    </text>
-    <text x="834" y="19" class="term-text tmux-right">
-      <tspan class="txt-mute">"dev-box" </tspan><tspan class="txt-white">21:30 17-Oct-26</tspan>
-    </text>
-  </g>
+  <!-- Subtle Outer Frame Border -->
+  <rect width="849" height="359" x="0.5" y="0.5" rx="10" ry="10" fill="none" stroke="#586e75" stroke-opacity="0.35" />
 </svg>
