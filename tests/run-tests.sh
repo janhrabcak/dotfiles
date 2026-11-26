@@ -154,19 +154,24 @@ else
   fail "iTerm2 Dynamic Profiles integrity" "config/iterm2/profiles.json failed schema or portability check"
 fi
 
-check_assets_and_configs() {
-  setopt localoptions multibyte
-  local jfiles=(
-    "$REPO_ROOT/config/ai/settings.json"
-    "$REPO_ROOT/config/ai/mcp_config.json"
-    "$REPO_ROOT/.devcontainer/devcontainer.json"
-  )
-  if command -v jq >/dev/null 2>&1; then
-    jq empty "${jfiles[@]}" >/dev/null 2>&1 || return 1
-  elif command -v plutil >/dev/null 2>&1; then
-    plutil -lint -s "${jfiles[@]}" >/dev/null 2>&1 || return 1
+if command -v jq >/dev/null 2>&1; then
+  if jq empty "$REPO_ROOT/config/ai/settings.json" "$REPO_ROOT/config/ai/mcp_config.json" "$REPO_ROOT/.devcontainer/devcontainer.json" >/dev/null 2>&1; then
+    pass "Configuration JSON syntax check (jq)"
+  else
+    fail "Configuration JSON syntax check" "Invalid JSON in config/ai/ or .devcontainer/"
   fi
+elif command -v plutil >/dev/null 2>&1; then
+  if plutil -lint -s "$REPO_ROOT/config/ai/settings.json" "$REPO_ROOT/config/ai/mcp_config.json" "$REPO_ROOT/.devcontainer/devcontainer.json" >/dev/null 2>&1; then
+    pass "Configuration JSON syntax check (plutil)"
+  else
+    fail "Configuration JSON syntax check" "Invalid JSON in config/ai/ or .devcontainer/"
+  fi
+else
+  echo "  ${YELLOW}[SKIP]${RESET} Configuration JSON syntax check (neither jq nor plutil installed)"
+fi
 
+check_assets_and_skill_links() {
+  setopt localoptions multibyte
   local svg svg_data
   for svg in "$REPO_ROOT"/assets/*.svg(N); do
     svg_data="$(<"$svg")"
@@ -177,15 +182,23 @@ check_assets_and_configs() {
     xmllint --noout "$REPO_ROOT"/assets/*.svg >/dev/null 2>&1 || return 1
   fi
 
-  local skill_md line clean_line rest target rel_path in_fence
-  for skill_md in "$REPO_ROOT"/config/ai/skills/*/SKILL.md(N); do
-    in_fence=false
-    while IFS= read -r line; do
-      if [[ "$line" == '```'* ]]; then
-        [[ "$in_fence" == "true" ]] && in_fence=false || in_fence=true
+  local skill_md line clean_line rest target rel_path fence_char
+  integer fence_len=0
+  for skill_md in "$REPO_ROOT"/config/ai/skills/**/*.md(N); do
+    fence_char=""
+    fence_len=0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      if (( fence_len > 0 )); then
+        if [[ "$line" =~ "^[[:space:]]*${fence_char}{${fence_len},}[[:space:]]*$" ]]; then
+          fence_char=""
+          fence_len=0
+        fi
+        continue
+      elif [[ "$line" =~ '^[[:space:]]*(`{3,}|~{3,})' ]]; then
+        fence_char="${match[1][1]}"
+        fence_len=${#match[1]}
         continue
       fi
-      [[ "$in_fence" == "true" ]] && continue
       clean_line="$line"
       while [[ "$clean_line" =~ '`+[^`]+`+' ]]; do
         clean_line="${clean_line//$MATCH/}"
@@ -202,10 +215,10 @@ check_assets_and_configs() {
   done
 }
 
-if check_assets_and_configs; then
-  pass "Configuration JSON, SVG asset & AI skill link integrity check"
+if check_assets_and_skill_links; then
+  pass "SVG asset & AI skill Markdown link integrity check"
 else
-  fail "Configuration JSON, SVG & AI skill check" "Invalid JSON/SVG structure, PUA glyph, or broken skill link"
+  fail "SVG asset & AI skill link check" "Malformed SVG, PUA glyph, or broken relative Markdown link"
 fi
 
 # ------------------------------------------------------------------------------
@@ -279,19 +292,20 @@ fi
 mkdir -p "$HOME/.gemini/config"
 ln -s "$DOTFILES_DIR/nonexistent_test_dead" "$HOME/.dead_dotfile"
 ln -s "$DOTFILES_DIR/nonexistent_test_ai_dead" "$HOME/.gemini/config/dead_ai"
+ln -s "$HOME/.dotfiles.backup/nonexistent_backup_target" "$HOME/.dead_backup_sibling"
 ln -s "/nonexistent_external_target" "$HOME/.dead_external"
 zsh "$DOTFILES_DIR/dot.sh" --clean --dry-run >/dev/null 2>&1
-if [[ -L "$HOME/.dead_dotfile" && -L "$HOME/.gemini/config/dead_ai" && -L "$HOME/.dead_external" ]]; then
+if [[ -L "$HOME/.dead_dotfile" && -L "$HOME/.gemini/config/dead_ai" && -L "$HOME/.dead_backup_sibling" && -L "$HOME/.dead_external" ]]; then
   pass "--clean --dry-run leaves all symlinks untouched"
 else
   fail "--clean --dry-run" "Symlink was unexpectedly removed during dry run"
 fi
 
 zsh "$DOTFILES_DIR/dot.sh" --clean >/dev/null 2>&1
-if [[ ! -L "$HOME/.dead_dotfile" && ! -L "$HOME/.gemini/config/dead_ai" && -L "$HOME/.dead_external" ]]; then
-  pass "--clean prunes dead dotfiles symlinks (including ~/.gemini) while preserving external symlinks"
+if [[ ! -L "$HOME/.dead_dotfile" && ! -L "$HOME/.gemini/config/dead_ai" && -L "$HOME/.dead_backup_sibling" && -L "$HOME/.dead_external" ]]; then
+  pass "--clean prunes dead dotfiles symlinks while preserving sibling/external symlinks"
 else
-  fail "--clean pruning" "Dead dotfiles symlink was not pruned or external symlink was removed"
+  fail "--clean pruning" "Dead dotfiles symlink was not pruned or sibling/external symlink was removed"
 fi
 
 set +e
@@ -576,27 +590,27 @@ set -e
   && pass "Doctor detects broken symlink and exits with non-zero status" \
   || fail "Doctor broken symlink detection" "Doctor returned 0 despite broken symlink"
 
-# Repair symlink and test missing Git include directive
+# Repair symlink and test missing/commented Git include directive
 zsh "$DOTFILES_DIR/dot.sh" --only setup_vim >/dev/null 2>&1
-echo "# Empty gitconfig" > "$HOME/.gitconfig"
+printf '[include]\n\t# path = %s/config/git/.gitconfig\n' "$DOTFILES_DIR" > "$HOME/.gitconfig"
 set +e
 zsh "$DOTFILES_DIR/dot.sh" --doctor >/dev/null 2>&1
 git_missing_code=$?
 set -e
 [[ $git_missing_code -ne 0 ]] \
-  && pass "Doctor detects missing Git include directive and exits non-zero" \
-  || fail "Doctor Git include detection" "Doctor returned 0 despite missing Git include"
+  && pass "Doctor detects missing or commented-out Git include directive and exits non-zero" \
+  || fail "Doctor Git include detection" "Doctor returned 0 despite commented-out Git include"
 
-# Repair Git and test missing SSH include directive
+# Repair Git and test missing/commented SSH include directive
 zsh "$DOTFILES_DIR/dot.sh" --only setup_git >/dev/null 2>&1
-echo "# Empty ssh config" > "$HOME/.ssh/config"
+printf '# Include %s/config/ssh/linux.config\n# Include %s/config/ssh/macos.config\n' "$DOTFILES_DIR" "$DOTFILES_DIR" > "$HOME/.ssh/config"
 set +e
 zsh "$DOTFILES_DIR/dot.sh" --doctor >/dev/null 2>&1
 ssh_missing_code=$?
 set -e
 [[ $ssh_missing_code -ne 0 ]] \
-  && pass "Doctor detects missing SSH include directive and exits non-zero" \
-  || fail "Doctor SSH include detection" "Doctor returned 0 despite missing SSH include"
+  && pass "Doctor detects missing or commented-out SSH include directive and exits non-zero" \
+  || fail "Doctor SSH include detection" "Doctor returned 0 despite commented-out SSH include"
 
 # Benchmark validation
 zsh "$DOTFILES_DIR/dot.sh" --only setup_ssh >/dev/null 2>&1

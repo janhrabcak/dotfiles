@@ -56,6 +56,8 @@ if command -v jq >/dev/null 2>&1; then
   }
 elif command -v plutil >/dev/null 2>&1; then
   plutil -lint -s "${json_files[@]}"
+else
+  echo "  ⚠️  jq/plutil not installed; skipping strict JSON parse check."
 fi
 
 if grep -q '/Users/' "$REPO_ROOT/config/iterm2/profiles.json"; then
@@ -78,14 +80,21 @@ if command -v xmllint >/dev/null 2>&1; then
   xmllint --noout "$REPO_ROOT"/assets/*.svg >/dev/null
 fi
 
-for skill_md in "$REPO_ROOT"/config/ai/skills/*/SKILL.md(N); do
-  in_fence=false
-  while IFS= read -r line; do
-    if [[ "$line" == '```'* ]]; then
-      [[ "$in_fence" == "true" ]] && in_fence=false || in_fence=true
+for skill_md in "$REPO_ROOT"/config/ai/skills/**/*.md(N); do
+  fence_char=""
+  fence_len=0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if (( fence_len > 0 )); then
+      if [[ "$line" =~ "^[[:space:]]*${fence_char}{${fence_len},}[[:space:]]*$" ]]; then
+        fence_char=""
+        fence_len=0
+      fi
+      continue
+    elif [[ "$line" =~ '^[[:space:]]*(`{3,}|~{3,})' ]]; then
+      fence_char="${match[1][1]}"
+      fence_len=${#match[1]}
       continue
     fi
-    [[ "$in_fence" == "true" ]] && continue
     clean_line="$line"
     while [[ "$clean_line" =~ '`+[^`]+`+' ]]; do
       clean_line="${clean_line//$MATCH/}"

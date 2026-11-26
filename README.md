@@ -139,11 +139,11 @@ The script uses specialized shell functions to ensure consistency:
 *   **Doctor Logic**: The `--doctor` flag performs deep physical path resolution (`:A`) to verify integrity even across symlinked directories.
 *   **Maintenance & Pruning**: Running `./dot.sh --clean` safely purges broken dotfiles symlinks and rotates snapshot backups.
 *   **Local Overrides**: Machine-specific identity and private shell settings are decoupled from version control via optional `.local` files (`config/git/.gitconfig.local`, `~/.zshrc.local`, and `config/ssh/authorized_keys.local`).
-*   **Git Hooks (Pre-commit & Pre-push)**: Tracked in `.githooks/` and active through `core.hooksPath = .githooks`. `.githooks/pre-commit` serves as the single static/syntax validator across local commits and CI, while `.githooks/pre-push` fast-paths docs/SVG/skill-only pushes and runs the full 56-check sandboxed test suite whenever executable or config files change.
+*   **Git Hooks (Pre-commit & Pre-push)**: Tracked in `.githooks/` and active through `core.hooksPath = .githooks`. `.githooks/pre-commit` serves as the single static/syntax validator across local commits and CI, while `.githooks/pre-push` fast-paths docs/SVG/skill-only pushes and runs the full sandboxed test suite whenever executable or config files change.
 *   **Dependabot**: Configured in `.github/dependabot.yml` for automated weekly updates of GitHub Actions dependencies.
 
 ### 2. SSH Agent Strategy
-*   **Linux/Remote**: Uses a **Stable Symlink** at `~/.ssh/ssh_auth_sock`. The `.zshrc` updates this symlink on every fresh login and forces all sub-shells (including those inside tmux) to reference it. This prevents "Dead Agent" syndrome when re-attaching to old sessions.
+*   **Linux/Remote**: Uses a **Stable Symlink** at `~/.ssh/ssh_auth_sock`. Both `.zshrc` and `.tmux.conf` scope this symlink strictly to non-Darwin hosts so re-attached Linux tmux sessions keep a live forwarded agent while macOS tmux sessions retain their native `launchd` / 1Password `SSH_AUTH_SOCK`.
 
 ### 3. iTerm2 Control Mode Hardening
 *   **Protocol Protection**: All background output (like TPM initialization) is redirected to `~/.tmux/tpm.log` to prevent corrupting the `-CC` handshake.

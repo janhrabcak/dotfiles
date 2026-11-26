@@ -34,12 +34,18 @@ All notable changes to this project will be documented in this file.
 - **Zsh Configuration**: Guarded the Oh My Zsh `macos` plugin to load conditionally only on Darwin (`$OSTYPE == darwin*`), avoiding extraneous shell startup execution on Linux.
 - **Prompt Performance (`vcs_info`)**: Replaced Oh My Zsh's multi-fork `prompt_git` implementation with Zsh's native `vcs_info` module in `config/zsh/.zshrc`. Hooks into `precmd` to eliminate 10–15 child `git` processes per prompt evaluation while preserving the Agnoster theme Powerline aesthetics (branch glyph, clean/dirty colors, staged/unstaged badges, and action formats). Fixed `add-zsh-hook` function shadowing.
 
+### Fixed
+- **macOS Tmux `SSH_AUTH_SOCK` Preservation**: Scoped `set-environment -g SSH_AUTH_SOCK "$HOME/.ssh/ssh_auth_sock"` in `config/tmux/.tmux.conf` to non-Darwin platforms so local macOS tmux sessions keep their native `launchd` / 1Password agent socket.
+- **`prune_dead_symlinks` Path Boundary & macOS Scope**: Enforced a trailing `/` boundary (`"$DOTFILES_DIR/"*`) in `dot.sh` so broken symlinks pointing into sibling paths like `~/.dotfiles.backup` are never falsely pruned, and added `~/Library/Application Support/iTerm2/DynamicProfiles` to macOS cleanup scans.
+- **Comment-Safe Include Verification & Benchmark Hardening**: Replaced unanchored regex `grep` checks in `setup_git` and `run_doctor` with `git config --file ... --get-all include.path` and exact uncommented SSH `Include` line matching, and hardened `run_benchmark` against `set -eo pipefail` aborts and non-repo `$PWD` invocation.
+- **Markdown Fence & JSON Lint Accuracy**: Updated `.githooks/pre-commit` and `tests/run-tests.sh` to track indented and variable-length CommonMark code fences across all `config/ai/skills/**/*.md` files and explicitly report `[SKIP]` rather than a false `[PASS]` when neither `jq` nor `plutil` is installed.
+
 ### Removed
 - **Redundant CLI Flags**: Removed `--test` (consolidated into `--doctor`), `--update` (replaced by standard `git pull && ./dot.sh`), and `--skip` (`--only` covers targeted step runs).
 - **Legacy & Unused Files**: Removed superseded `tests/test-vim.sh` and `tests/dot-local-ci-test.sh` harnesses, deprecated `config/macos-terminal/zsh.terminal`, empty `bin/.keep` (`~/.bin` symlink), duplicate `config/ai/skills/rigorous-pr-review/`, and Cursor/Cline symlink targets (`.cursorrules`, `.clinerules`).
 
 ### Testing
-- **Streamlined Unified Test Suite (56/56 Checks Passing)**:
+- **Streamlined Unified Test Suite (57/57 Checks Passing)**:
   - Added pure-Zsh iTerm2 Dynamic Profiles JSON portability check, AI skill relative link validation, nested backup hierarchy preservation, pre-push hook checks, and benchmark diagnostic tests to `tests/run-tests.sh`.
   - Optimized sandbox initialization in `tests/run-tests.sh` to copy only lightweight config files and run all 9 test groups in ~8 seconds.
   - Added Day-Zero cold bootstrap checks (`--remote` vs missing directory handling).

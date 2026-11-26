@@ -195,12 +195,25 @@ setup_links() {
 prune_dead_symlinks() {
     log_info "Scanning for dead dotfiles symlinks..."
     local canon_dotfiles="${DOTFILES_DIR:A}"
+    local raw_prefix="${DOTFILES_DIR%/}/"
+    local canon_prefix="${canon_dotfiles%/}/"
     local dead_links=()
     local link target
 
-    for link in "$HOME"/*(-@N) "$HOME"/.*(-@N) "$HOME/.config"/**/*(-@N) "$HOME/.gemini"/**/*(-@N) "$HOME/.claude"/**/*(-@N); do
+    local scan_globs=(
+        "$HOME"/*(-@N)
+        "$HOME"/.*(-@N)
+        "$HOME/.config"/**/*(-@N)
+        "$HOME/.gemini"/**/*(-@N)
+        "$HOME/.claude"/**/*(-@N)
+    )
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        scan_globs+=("$HOME/Library/Application Support/iTerm2/DynamicProfiles"/*(-@N))
+    fi
+
+    for link in "${scan_globs[@]}"; do
         target="$(readlink "$link" 2>/dev/null || true)"
-        if [[ "$target" == "$DOTFILES_DIR"* || "$target" == "$canon_dotfiles"* ]]; then
+        if [[ "$target" == "$raw_prefix"* || "$target" == "$canon_prefix"* ]]; then
             dead_links+=("$link")
         fi
     done
@@ -411,6 +424,22 @@ setup_tmux() {
     log_success "Tmux ready."
 }
 
+has_git_include() {
+    local conf_file="$1" expected_path="$2"
+    [[ -f "$conf_file" ]] || return 1
+    git config --file "$conf_file" --get-all include.path 2>/dev/null | grep -qxF "$expected_path"
+}
+
+has_ssh_include() {
+    local conf_file="$1" expected_inc="Include $2" line trimmed
+    [[ -f "$conf_file" ]] || return 1
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        trimmed="${line#"${line%%[![:space:]]*}"}"
+        [[ "$trimmed" == "$expected_inc" ]] && return 0
+    done < "$conf_file"
+    return 1
+}
+
 setup_git() {
     log_info "Configuring Git..."
     local git_conf_src="$DOTFILES_DIR/config/git/.gitconfig"
@@ -419,8 +448,8 @@ setup_git() {
     setup_links "setup_git"
 
     if [[ -f "$git_conf_src" ]]; then
-        if ! grep -q "path = $git_conf_src" "$git_conf_dest" 2>/dev/null; then
-            run_cmd git config --global include.path "$git_conf_src"
+        if ! has_git_include "$git_conf_dest" "$git_conf_src"; then
+            run_cmd git config --global --add include.path "$git_conf_src"
             log_success "Git config linked."
         else
             log_success "Git config already linked."
@@ -450,12 +479,14 @@ setup_ssh() {
         [[ "$ssh_filename" == "macos.config" ]] && other_filename="linux.config"
         local other_ssh_conf="$DOTFILES_DIR/config/ssh/$other_filename"
 
-        if [[ -f "$local_ssh_conf" ]] && grep -qF "Include $other_ssh_conf" "$local_ssh_conf"; then
-            if [[ "$DRY_RUN" == "false" ]]; then
+        if has_ssh_include "$local_ssh_conf" "$other_ssh_conf"; then
+            if [[ "$DRY_RUN" == "true" ]]; then
+                echo "   [DRY-RUN] Would remove stale Include $other_ssh_conf from $local_ssh_conf"
+            else
                 local tmp_conf
                 tmp_conf="$(mktemp "${local_ssh_conf}.tmp.XXXXXX")"
                 chmod 600 "$tmp_conf"
-                grep -vF "Include $other_ssh_conf" "$local_ssh_conf" > "$tmp_conf" || true
+                grep -vxF "Include $other_ssh_conf" "$local_ssh_conf" > "$tmp_conf" || true
                 mv -f "$tmp_conf" "$local_ssh_conf"
             fi
         fi
@@ -552,7 +583,7 @@ run_doctor() {
     done
 
     local git_conf="$HOME/.gitconfig"
-    if grep -q "path = $DOTFILES_DIR/config/git/.gitconfig" "$git_conf" 2>/dev/null; then
+    if has_git_include "$git_conf" "$DOTFILES_DIR/config/git/.gitconfig"; then
         log_success "Git: Include directive present in $git_conf"
     else
         log_error "Git: Include directive MISSING in $git_conf"
@@ -562,7 +593,7 @@ run_doctor() {
     local ssh_conf="$HOME/.ssh/config"
     local ssh_filename="linux.config"
     [[ "$WORK_MODE" == "macos" ]] && ssh_filename="macos.config"
-    if [[ -f "$ssh_conf" ]] && grep -q "Include $DOTFILES_DIR/config/ssh/$ssh_filename" "$ssh_conf"; then
+    if has_ssh_include "$ssh_conf" "$DOTFILES_DIR/config/ssh/$ssh_filename"; then
         log_success "SSH: Include directive present in $ssh_conf"
     else
         log_error "SSH: Include directive MISSING in $ssh_conf"
@@ -592,51 +623,75 @@ run_doctor() {
 run_benchmark() {
     log_info "⚡ Running performance benchmarks..."
     zmodload zsh/datetime
+    local errors=0
 
     # 1. Zsh Startup Time
     float t0=$(( EPOCHREALTIME * 1000 ))
-    zsh -i -c exit >/dev/null 2>&1
-    float t1=$(( EPOCHREALTIME * 1000 ))
-    integer zsh_ms=$(( t1 - t0 ))
-    if (( zsh_ms < 150 )); then
-        log_success "Zsh startup latency: ${zsh_ms}ms (target < 150ms)"
+    if zsh -i -c exit >/dev/null 2>&1; then
+        float t1=$(( EPOCHREALTIME * 1000 ))
+        integer zsh_ms=$(( t1 - t0 ))
+        if (( zsh_ms < 150 )); then
+            log_success "Zsh startup latency: ${zsh_ms}ms (target < 150ms)"
+        else
+            log_warn "Zsh startup latency: ${zsh_ms}ms (target < 150ms)"
+        fi
     else
-        log_warn "Zsh startup latency: ${zsh_ms}ms (target < 150ms)"
+        log_error "Zsh interactive startup failed."
+        errors=$((errors + 1))
     fi
 
     # 2. Vim Headless Startup Time
     if command -v vim >/dev/null 2>&1; then
         local vimrc="$DOTFILES_DIR/config/vim/.vimrc"
         [[ -f "$HOME/.vimrc" ]] && vimrc="$HOME/.vimrc"
-        float vt0=$(( EPOCHREALTIME * 1000 ))
-        vim -u "$vimrc" -e -s -c "q" >/dev/null 2>&1
-        float vt1=$(( EPOCHREALTIME * 1000 ))
-        integer vim_ms=$(( vt1 - vt0 ))
-        if (( vim_ms < 150 )); then
-            log_success "Vim startup latency: ${vim_ms}ms (target < 150ms)"
+        if [[ -f "$vimrc" ]]; then
+            float vt0=$(( EPOCHREALTIME * 1000 ))
+            if vim -u "$vimrc" -e -s -c "q" >/dev/null 2>&1; then
+                float vt1=$(( EPOCHREALTIME * 1000 ))
+                integer vim_ms=$(( vt1 - vt0 ))
+                if (( vim_ms < 150 )); then
+                    log_success "Vim startup latency: ${vim_ms}ms (target < 150ms)"
+                else
+                    log_warn "Vim startup latency: ${vim_ms}ms (target < 150ms)"
+                fi
+            else
+                log_error "Vim startup check failed while loading $vimrc."
+                errors=$((errors + 1))
+            fi
         else
-            log_warn "Vim startup latency: ${vim_ms}ms (target < 150ms)"
+            log_warn "Vim config not found at $vimrc; skipping Vim benchmark."
         fi
     fi
 
-    # 3. Zsh Prompt Execution (vcs_info + build_prompt)
-    if [[ -f "$HOME/.zshrc" ]]; then
-        integer prompt_ms=$(zsh -c "
+    # 3. Zsh Prompt Execution (vcs_info + build_prompt inside repo context)
+    local zshrc="$DOTFILES_DIR/config/zsh/.zshrc"
+    [[ -f "$HOME/.zshrc" ]] && zshrc="$HOME/.zshrc"
+    if [[ -f "$zshrc" ]]; then
+        local prompt_raw
+        if prompt_raw=$(zsh -c "
+            [[ -d '$DOTFILES_DIR' ]] && cd '$DOTFILES_DIR'
             zmodload zsh/datetime
-            source '$HOME/.zshrc' >/dev/null 2>&1
+            source '$zshrc' >/dev/null 2>&1
             float pt0=\$(( EPOCHREALTIME * 1000 ))
             vcs_info >/dev/null 2>&1
             build_prompt >/dev/null 2>&1
             float pt1=\$(( EPOCHREALTIME * 1000 ))
             integer p_diff=\$(( pt1 - pt0 ))
             print \$p_diff
-        " 2>/dev/null || echo 0)
-        if (( prompt_ms < 50 )); then
-            log_success "Prompt render latency: ${prompt_ms}ms (target < 50ms)"
+        " 2>/dev/null); then
+            integer prompt_ms=${prompt_raw:-0}
+            if (( prompt_ms < 50 )); then
+                log_success "Prompt render latency: ${prompt_ms}ms (target < 50ms)"
+            else
+                log_warn "Prompt render latency: ${prompt_ms}ms (target < 50ms)"
+            fi
         else
-            log_warn "Prompt render latency: ${prompt_ms}ms (target < 50ms)"
+            log_error "Prompt render benchmark failed while sourcing $zshrc."
+            errors=$((errors + 1))
         fi
     fi
+
+    return $(( errors > 0 ? 1 : 0 ))
 }
 
 # --- Main Execution ---
@@ -653,7 +708,7 @@ main() {
 
     if [[ "$RUN_BENCHMARK" == "true" ]]; then
         run_benchmark
-        exit 0
+        exit $?
     fi
 
     check_dependencies
