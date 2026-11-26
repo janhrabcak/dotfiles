@@ -1,9 +1,10 @@
 #!/usr/bin/env zsh
 # ==============================================================================
 # Git Pre-commit Hook
-# Single source of truth for static syntax, schema, and asset integrity checks.
+# Single source of truth for pure-Zsh static syntax, JSON, SVG, and link checks.
 # ==============================================================================
 set -eo pipefail
+setopt multibyte
 
 REPO_ROOT="$(git -C "${0:A:h}" rev-parse --show-toplevel 2>/dev/null || echo "${0:A:h:h}")"
 
@@ -39,52 +40,68 @@ if command -v vim >/dev/null 2>&1; then
   rm -rf "$vim_tmp_home"
 fi
 
-# 4. JSON, iTerm2 Dynamic Profiles, SVG XML/PUA, Python AST & Skill Links
-if command -v python3 >/dev/null 2>&1; then
-  echo "  [4/4] Checking JSON schemas, SVG assets, and AI skill integrity..."
-  python3 - "$REPO_ROOT" << 'PYEOF'
-import ast
-import json
-import pathlib
-import re
-import sys
-import xml.etree.ElementTree as ET
-
-root = pathlib.Path(sys.argv[1])
-
-for rel_json in [
-    "config/ai/settings.json",
-    "config/ai/mcp_config.json",
-    ".devcontainer/devcontainer.json",
-    "config/iterm2/profiles.json",
-]:
-    p = root / rel_json
-    data = json.loads(p.read_text(encoding="utf-8"))
-    if rel_json == "config/iterm2/profiles.json":
-        profiles = data.get("Profiles", [])
-        assert len(profiles) >= 3, "Expected >=3 iTerm2 dynamic profiles"
-        assert "/Users/" not in p.read_text(encoding="utf-8"), "Hardcoded /Users/ path in profiles.json"
-
-for svg in sorted((root / "assets").glob("*.svg")):
-    raw = svg.read_text(encoding="utf-8")
-    ET.fromstring(raw)
-    assert not any(0xE000 <= ord(c) <= 0xF8FF for c in raw), f"PUA glyph in {svg.name}"
-
-for py_file in sorted((root / "config/ai/skills").rglob("*.py")):
-    ast.parse(py_file.read_text(encoding="utf-8"), filename=str(py_file))
-
-fence_re = re.compile(r"```.*?```", re.DOTALL)
-inline_re = re.compile(r"`+[^`]+`+")
-link_re = re.compile(r"\[[^\]]+\]\(([^)\s]+)\)")
-for skill_md in sorted((root / "config/ai/skills").rglob("SKILL.md")):
-    prose = inline_re.sub("", fence_re.sub("", skill_md.read_text(encoding="utf-8")))
-    for target in link_re.findall(prose):
-        if target.startswith("#") or re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", target):
-            continue
-        rel_path = target.split("#", 1)[0]
-        if rel_path and not (skill_md.parent / rel_path).exists():
-            raise AssertionError(f"Broken relative link in {skill_md}: {target}")
-PYEOF
+# 4. JSON schemas, iTerm2 Dynamic Profiles, SVG assets & AI Skill links
+echo "  [4/4] Checking JSON schemas, SVG assets, and AI skill links..."
+json_files=(
+  "$REPO_ROOT/config/ai/settings.json"
+  "$REPO_ROOT/config/ai/mcp_config.json"
+  "$REPO_ROOT/.devcontainer/devcontainer.json"
+  "$REPO_ROOT/config/iterm2/profiles.json"
+)
+if command -v jq >/dev/null 2>&1; then
+  jq empty "${json_files[@]}" >/dev/null
+  [[ "$(jq '.Profiles | length' "$REPO_ROOT/config/iterm2/profiles.json")" -ge 3 ]] || {
+    echo "❌ Expected >=3 profiles in config/iterm2/profiles.json" >&2
+    exit 1
+  }
+elif command -v plutil >/dev/null 2>&1; then
+  plutil -lint -s "${json_files[@]}"
 fi
+
+if grep -q '/Users/' "$REPO_ROOT/config/iterm2/profiles.json"; then
+  echo "❌ Hardcoded /Users/ path found in config/iterm2/profiles.json" >&2
+  exit 1
+fi
+
+for svg in "$REPO_ROOT"/assets/*.svg(N); do
+  svg_data="$(<"$svg")"
+  if [[ "$svg_data" != *"<svg"* || "$svg_data" != *"</svg>"* ]]; then
+    echo "❌ Malformed SVG container in ${svg:t}" >&2
+    exit 1
+  fi
+  if [[ "$svg_data" == *[$'\ue000'-$'\uf8ff']* ]]; then
+    echo "❌ Private Use Area glyph detected in ${svg:t}" >&2
+    exit 1
+  fi
+done
+if command -v xmllint >/dev/null 2>&1; then
+  xmllint --noout "$REPO_ROOT"/assets/*.svg >/dev/null
+fi
+
+for skill_md in "$REPO_ROOT"/config/ai/skills/*/SKILL.md(N); do
+  in_fence=false
+  while IFS= read -r line; do
+    if [[ "$line" == '```'* ]]; then
+      [[ "$in_fence" == "true" ]] && in_fence=false || in_fence=true
+      continue
+    fi
+    [[ "$in_fence" == "true" ]] && continue
+    clean_line="$line"
+    while [[ "$clean_line" =~ '`+[^`]+`+' ]]; do
+      clean_line="${clean_line//$MATCH/}"
+    done
+    rest="$clean_line"
+    while [[ "$rest" =~ '\[[^]]+\]\(([^)[:space:]]+)\)' ]]; do
+      target="${match[1]}"
+      rest="${rest#*$MATCH}"
+      [[ "${target[1]}" == "#" || "$target" =~ '^[a-zA-Z][a-zA-Z0-9+.-]*:' ]] && continue
+      rel_path="${target%%#*}"
+      if [[ -n "$rel_path" && ! -e "${skill_md:h}/$rel_path" ]]; then
+        echo "❌ Broken relative link in $skill_md: $target" >&2
+        exit 1
+      fi
+    done
+  done < "$skill_md"
+done
 
 echo "✅ All pre-commit checks passed!"

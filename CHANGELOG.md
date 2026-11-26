@@ -40,7 +40,7 @@ All notable changes to this project will be documented in this file.
 
 ### Testing
 - **Streamlined Unified Test Suite (56/56 Checks Passing)**:
-  - Added iTerm2 Dynamic Profiles JSON portability check, AI skill Python AST and relative link validation, nested backup hierarchy preservation, pre-push hook checks, and benchmark diagnostic tests to `tests/run-tests.sh`.
+  - Added pure-Zsh iTerm2 Dynamic Profiles JSON portability check, AI skill relative link validation, nested backup hierarchy preservation, pre-push hook checks, and benchmark diagnostic tests to `tests/run-tests.sh`.
   - Optimized sandbox initialization in `tests/run-tests.sh` to copy only lightweight config files and run all 9 test groups in ~8 seconds.
   - Added Day-Zero cold bootstrap checks (`--remote` vs missing directory handling).
   - Added end-to-end `--install-deps` package dispatch assertion (including dry-run verification).

@@ -17,7 +17,7 @@
 - **Push & Destructive Actions**: Never execute `git push`, branch deletion, or git history alteration without explicit user request.
 
 ## 3. Engineering & Tooling
-- **Minimal Dependencies**: Solve problems using standard libraries and existing project dependencies before suggesting new third-party packages.
+- **Minimal Dependencies**: Solve problems using standard libraries and existing project dependencies before suggesting new third-party packages. Keep `dot.sh`, `.githooks/*`, and `tests/run-tests.sh` pure Zsh + standard Unix CLI (`jq`, `plutil`, `grep`) without introducing Python or Node runtime dependencies.
 - **Verification First**: After writing or modifying code, proactively run relevant tests, linters, or type-checks to verify correctness before concluding.
 - **Shell & Tools**: Prefer fast, standard CLI utilities (`rg`, `fd`, `find`, `git`) for inspection. Ensure shell scripts remain POSIX or Zsh compatible.
 
@@ -44,7 +44,7 @@ Every code change must be accompanied by updates to at least two distinct types 
   - In Zsh functions that inspect the previous command's exit status (`$?`, e.g. `alert()` in `aliases.zsh`), capture `local rc=$?` as the very first statement before any other `local` assignment, since `local` is a builtin that overwrites `$?` with `0`.
   - Under `set -e`, never write `grep -c ... || echo "0"` (which outputs `$'0\n0'` when 0 lines match); always write `grep -c ... || true`.
 - **Tmux Socket Isolation & TPM Guard**: Never run `tmux ... start-server \; kill-server` without an isolated socket flag (`-L "dotfiles-test-$$"`). Guard TPM startup in `config/tmux/.tmux.conf` with `if-shell '[ -x ~/.tmux/plugins/tpm/tpm ]'` so hosts without `--install-deps` never flash exit-127 banners.
-- **Git Hook Invariants (`.githooks/`)**: Maintain repository-tracked hooks via `core.hooksPath = .githooks`. `.githooks/pre-commit` is the single source of truth for static syntax, JSON/SVG, and AI skill link/AST validation (invoked directly by CI and fast-path `pre-push`), while `.githooks/pre-push` runs `tests/run-tests.sh` whenever executable or config files change.
+- **Git Hook Invariants (`.githooks/`)**: Maintain repository-tracked hooks via `core.hooksPath = .githooks`. `.githooks/pre-commit` is the single source of truth for pure-Zsh static syntax, JSON/SVG, and AI skill link validation (invoked directly by CI and fast-path `pre-push`), while `.githooks/pre-push` runs `tests/run-tests.sh` whenever executable or config files change.
 - **iTerm2 Dynamic Profiles Invariant (`config/iterm2/profiles.json`)**: Manage iTerm2 profiles exclusively via portable JSON (`~` paths, zero `/Users/<name>` strings) symlinked to `~/Library/Application Support/iTerm2/DynamicProfiles/dotfiles.json`. Never track `com.googlecode.iterm2.plist` or mutate tracked files in place with `sed` + `git update-index --assume-unchanged`.
 - **AI Command Whitelist Invariant (`settings.json`)**: Auto-approved command regex patterns must always be strictly anchored (`^...$`) and bound to safe argument characters (`[a-zA-Z0-9_./@~:= -]`). Never allow shell control operators (`;`, `&&`, `||`, `|`, `$()`, backticks) or arbitrary command execution wrappers (`docker exec`, `find -exec`, `curl`).
 - **MCP Version Pinning Invariant (`mcp_config.json`)**: All MCP servers invoked via `npx` must specify pinned semantic versions (`package@x.y.z`) to prevent unpinned execution and protect token secrets.

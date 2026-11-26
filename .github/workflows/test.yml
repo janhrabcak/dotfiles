@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install Dependencies
-        run: sudo apt-get update && sudo apt-get install -y zsh vim tmux python3
+        run: sudo apt-get update && sudo apt-get install -y zsh vim tmux jq
 
       - name: Run Unified Static & Syntax Validator
         run: ./.githooks/pre-commit

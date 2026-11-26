@@ -135,44 +135,77 @@ else
   pass "Secret sanitization: no internal corporate hostnames in public config"
 fi
 
-if python3 -c "
-import json
-raw = open('$REPO_ROOT/config/iterm2/profiles.json', encoding='utf-8').read()
-data = json.loads(raw)
-profiles = data.get('Profiles', [])
-assert len(profiles) >= 3 and all('Guid' in p and 'Name' in p for p in profiles)
-assert '/Users/' not in raw
-" >/dev/null 2>&1; then
+check_iterm_profiles() {
+  local pfile="$REPO_ROOT/config/iterm2/profiles.json"
+  [[ -f "$pfile" ]] || return 1
+  ! grep -q '/Users/' "$pfile" || return 1
+  if command -v jq >/dev/null 2>&1; then
+    jq -e '(.Profiles | length >= 3) and (.Profiles | all(has("Guid") and has("Name")))' "$pfile" >/dev/null 2>&1 || return 1
+  elif command -v plutil >/dev/null 2>&1; then
+    plutil -lint -s "$pfile" >/dev/null 2>&1 || return 1
+  else
+    [[ "$(grep -c '"Guid"' "$pfile" || true)" -ge 3 ]] || return 1
+  fi
+}
+
+if check_iterm_profiles; then
   pass "iTerm2 Dynamic Profiles JSON integrity check (portable ~ paths)"
 else
   fail "iTerm2 Dynamic Profiles integrity" "config/iterm2/profiles.json failed schema or portability check"
 fi
 
-if python3 -c "
-import ast, glob, json, pathlib, re, xml.etree.ElementTree as ET
-root = pathlib.Path('$REPO_ROOT')
-for p in ['config/ai/settings.json', 'config/ai/mcp_config.json', '.devcontainer/devcontainer.json']:
-    json.loads((root / p).read_text(encoding='utf-8'))
-for svg in glob.glob('$REPO_ROOT/assets/*.svg'):
-    data = open(svg, encoding='utf-8').read()
-    ET.fromstring(data)
-    assert not any(0xE000 <= ord(c) <= 0xF8FF for c in data), f'PUA glyph in {svg}'
-for py in (root / 'config/ai/skills').rglob('*.py'):
-    ast.parse(py.read_text(encoding='utf-8'), filename=str(py))
-fence_re = re.compile(r'\`\`\`.*?\`\`\`', re.DOTALL)
-inline_re = re.compile(r'\`+[^\`]+\`+')
-link_re = re.compile(r'\[[^\]]+\]\(([^)\s]+)\)')
-for skill_md in (root / 'config/ai/skills').rglob('SKILL.md'):
-    prose = inline_re.sub('', fence_re.sub('', skill_md.read_text(encoding='utf-8')))
-    for target in link_re.findall(prose):
-        if target.startswith('#') or re.match(r'^[a-zA-Z][a-zA-Z0-9+.-]*:', target):
-            continue
-        rel = target.split('#', 1)[0]
-        assert not rel or (skill_md.parent / rel).exists(), f'Broken link {target} in {skill_md}'
-" >/dev/null 2>&1; then
-  pass "Configuration JSON, SVG asset & AI skill integrity check"
+check_assets_and_configs() {
+  setopt localoptions multibyte
+  local jfiles=(
+    "$REPO_ROOT/config/ai/settings.json"
+    "$REPO_ROOT/config/ai/mcp_config.json"
+    "$REPO_ROOT/.devcontainer/devcontainer.json"
+  )
+  if command -v jq >/dev/null 2>&1; then
+    jq empty "${jfiles[@]}" >/dev/null 2>&1 || return 1
+  elif command -v plutil >/dev/null 2>&1; then
+    plutil -lint -s "${jfiles[@]}" >/dev/null 2>&1 || return 1
+  fi
+
+  local svg svg_data
+  for svg in "$REPO_ROOT"/assets/*.svg(N); do
+    svg_data="$(<"$svg")"
+    [[ "$svg_data" == *"<svg"* && "$svg_data" == *"</svg>"* ]] || return 1
+    [[ "$svg_data" != *[$'\ue000'-$'\uf8ff']* ]] || return 1
+  done
+  if command -v xmllint >/dev/null 2>&1; then
+    xmllint --noout "$REPO_ROOT"/assets/*.svg >/dev/null 2>&1 || return 1
+  fi
+
+  local skill_md line clean_line rest target rel_path in_fence
+  for skill_md in "$REPO_ROOT"/config/ai/skills/*/SKILL.md(N); do
+    in_fence=false
+    while IFS= read -r line; do
+      if [[ "$line" == '```'* ]]; then
+        [[ "$in_fence" == "true" ]] && in_fence=false || in_fence=true
+        continue
+      fi
+      [[ "$in_fence" == "true" ]] && continue
+      clean_line="$line"
+      while [[ "$clean_line" =~ '`+[^`]+`+' ]]; do
+        clean_line="${clean_line//$MATCH/}"
+      done
+      rest="$clean_line"
+      while [[ "$rest" =~ '\[[^]]+\]\(([^)[:space:]]+)\)' ]]; do
+        target="${match[1]}"
+        rest="${rest#*$MATCH}"
+        [[ "${target[1]}" == "#" || "$target" =~ '^[a-zA-Z][a-zA-Z0-9+.-]*:' ]] && continue
+        rel_path="${target%%#*}"
+        [[ -z "$rel_path" || -e "${skill_md:h}/$rel_path" ]] || return 1
+      done
+    done < "$skill_md"
+  done
+}
+
+if check_assets_and_configs; then
+  pass "Configuration JSON, SVG asset & AI skill link integrity check"
 else
-  fail "Configuration JSON, SVG & AI skill check" "Invalid JSON/SVG/Python syntax, PUA glyph, or broken skill link"
+  fail "Configuration JSON, SVG & AI skill check" "Invalid JSON/SVG structure, PUA glyph, or broken skill link"
 fi
 
 # ------------------------------------------------------------------------------

@@ -591,18 +591,13 @@ run_doctor() {
 
 run_benchmark() {
     log_info "⚡ Running performance benchmarks..."
-    zmodload zsh/datetime 2>/dev/null || true
+    zmodload zsh/datetime
 
     # 1. Zsh Startup Time
-    integer zsh_ms=0
-    if (( $+parameters[EPOCHREALTIME] )); then
-        float t0=$(( EPOCHREALTIME * 1000 ))
-        zsh -i -c exit >/dev/null 2>&1
-        float t1=$(( EPOCHREALTIME * 1000 ))
-        zsh_ms=$(( t1 - t0 ))
-    else
-        zsh_ms=$(python3 -c "import time, os; t0=time.perf_counter(); os.system('zsh -i -c exit >/dev/null 2>&1'); print(int((time.perf_counter()-t0)*1000))" 2>/dev/null || echo 0)
-    fi
+    float t0=$(( EPOCHREALTIME * 1000 ))
+    zsh -i -c exit >/dev/null 2>&1
+    float t1=$(( EPOCHREALTIME * 1000 ))
+    integer zsh_ms=$(( t1 - t0 ))
     if (( zsh_ms < 150 )); then
         log_success "Zsh startup latency: ${zsh_ms}ms (target < 150ms)"
     else
@@ -610,18 +605,13 @@ run_benchmark() {
     fi
 
     # 2. Vim Headless Startup Time
-    integer vim_ms=0
     if command -v vim >/dev/null 2>&1; then
         local vimrc="$DOTFILES_DIR/config/vim/.vimrc"
         [[ -f "$HOME/.vimrc" ]] && vimrc="$HOME/.vimrc"
-        if (( $+parameters[EPOCHREALTIME] )); then
-            float vt0=$(( EPOCHREALTIME * 1000 ))
-            vim -u "$vimrc" -e -s -c "q" >/dev/null 2>&1
-            float vt1=$(( EPOCHREALTIME * 1000 ))
-            vim_ms=$(( vt1 - vt0 ))
-        else
-            vim_ms=$(python3 -c "import time, os; t0=time.perf_counter(); os.system('vim -u $vimrc -e -s -c q >/dev/null 2>&1'); print(int((time.perf_counter()-t0)*1000))" 2>/dev/null || echo 0)
-        fi
+        float vt0=$(( EPOCHREALTIME * 1000 ))
+        vim -u "$vimrc" -e -s -c "q" >/dev/null 2>&1
+        float vt1=$(( EPOCHREALTIME * 1000 ))
+        integer vim_ms=$(( vt1 - vt0 ))
         if (( vim_ms < 150 )); then
             log_success "Vim startup latency: ${vim_ms}ms (target < 150ms)"
         else
@@ -632,7 +622,7 @@ run_benchmark() {
     # 3. Zsh Prompt Execution (vcs_info + build_prompt)
     if [[ -f "$HOME/.zshrc" ]]; then
         integer prompt_ms=$(zsh -c "
-            zmodload zsh/datetime 2>/dev/null || true
+            zmodload zsh/datetime
             source '$HOME/.zshrc' >/dev/null 2>&1
             float pt0=\$(( EPOCHREALTIME * 1000 ))
             vcs_info >/dev/null 2>&1
