@@ -99,7 +99,7 @@
         <text x="292" y="15" class="cmd">./tests/run-tests.sh</text>
       </g>
 
-      <text y="312"><tspan class="txt-white">Test Summary: Ran 52 tests | </tspan><tspan class="txt-ok">52 passed</tspan><tspan class="txt-white"> | 0 failed</tspan></text>
+      <text y="312"><tspan class="txt-white">Test Summary: Ran 57 tests | </tspan><tspan class="txt-ok">57 passed</tspan><tspan class="txt-white"> | 0 failed</tspan></text>
       <text y="336"><tspan class="txt-ok">🎉 ALL TESTS PASSED!</tspan></text>
 
       <!-- Prompt 3: Ready with Blinking Cursor -->

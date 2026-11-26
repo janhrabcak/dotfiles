@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+
+## [v3.8.0] - 2026-11-26
+### Breaking Changes
+- Removed redundant `dot.sh` CLI flags (`--test`, `--update`, `--skip`) in favor of `--doctor`, `git pull && ./dot.sh`, and `--only`.
+- Removed Cursor (`.cursorrules`), Cline (`.clinerules`), and `~/.bin` symlink targets from `LINK_MANIFEST`.
+- Replaced `config/iterm2/com.googlecode.iterm2.plist` (`LoadPrefsFromCustomFolder`) with portable Dynamic Profiles JSON (`config/iterm2/profiles.json`) symlinked to `~/Library/Application Support/iTerm2/DynamicProfiles/dotfiles.json`.
+
 ### Added
 - **External Interview Bank Skill (`config/ai/skills/interview-banks-external/`)**: Added multi-stage authoring and deterministic verification skill (`verify_external_banks.py`, `verify_public_specs.py`) for GFM/MkDocs technical interview banks grounded in primary IETF RFC and MITRE CVE specifications.
 - **iTerm2 Dynamic Profiles Migration (`config/iterm2/profiles.json`)**: Replaced the monolithic 3,609-line `com.googlecode.iterm2.plist` (`sed` + `--assume-unchanged` workaround) with a portable Dynamic Profiles JSON linked into `~/Library/Application Support/iTerm2/DynamicProfiles/dotfiles.json`.
@@ -19,42 +26,36 @@ All notable changes to this project will be documented in this file.
 - **Safe Link Execution**: Pre-computed path directories and basenames in `dot.sh`'s `safe_link` to eliminate nested subshell command string evaluations.
 
 ### Changed
-- **Bootstrapper Simplification (`dot.sh`)**: Streamlined `dot.sh` by ~36% (872 to 561 lines):
-  - Replaced `eval`-based `execute()` wrapper with direct array-based `run_cmd "$@"`.
-  - Simplified `LINK_MANIFEST` to a 3-field format (`src:dest:step`) targeting **Gemini** and **Claude** AI agents.
-  - Replaced external `find` loop in `prune_dead_symlinks` with native Zsh `(-@N)` broken-symlink globbing across `$HOME`, `~/.config`, `~/.gemini`, and `~/.claude`, and guarded `init_backup_dir` against repeated execution during `--dry-run`.
-  - Eliminated double symlink execution in `main()` and removed dummy `.local` file auto-generators (`you@example.com` placeholder identity).
-  - Replaced external `basename` and `dirname` subshell forks across `safe_link`, `safe_append`, `safe_prepend`, and `run_doctor` with native Zsh path modifiers (`${path:h}` and `${path:t}`), guarding parent directory creation.
+- **Bootstrapper Simplification & Pure-Zsh Engine (`dot.sh`)**:
+  - Replaced `eval`-based `execute()` wrapper with direct array-based `run_cmd "$@"` and guarded the `main` entrypoint with `ZSH_EVAL_CONTEXT` for safe sourcing in tests.
+  - Simplified `LINK_MANIFEST` to a 3-field format (`src:dest:step`) targeting **Gemini** and **Claude** AI agents, and preserved relative `$HOME` subpaths inside `$BACKUP_DIR` during `safe_link` backups.
+  - Replaced external `find`, `basename`, and `dirname` subshell forks with native Zsh `(-@N)` globbing and `${path:h}`/`${path:t}` modifiers, and removed all Python dependencies from `dot.sh`, `.githooks/*`, CI, and `tests/run-tests.sh`.
+  - Switched `config/git/.gitconfig` local identity include to a relative `path = .gitconfig.local` and removed dummy `.local` file auto-generators.
 - **Zsh Readability & Cleanliness**:
-  - Replaced anonymous self-executing function in SSH agent persistence with a named helper (`_setup_ssh_agent`).
-  - Unpacked and documented the dynamic color distribution loop in `prompt_context`.
-  - Reordered `.zshrc` sections so Aliases and Local Overrides load cleanly as Section 6, with guaranteed exit code 0 on source.
+  - Replaced anonymous self-executing function in SSH agent persistence with a named helper (`_setup_ssh_agent`) and added lightweight fallback prompt stubs when Oh My Zsh is absent.
+  - Unpacked and documented the dynamic color distribution loop in `prompt_context`, added `$EUID -eq 0` detection for clean root shells, and reordered `.zshrc` with guaranteed exit code `0` on source.
   - Replaced double-escaped `sed` pipeline in `alert` with a clean Zsh function using `${history[$HISTCMD]}` and capturing `local rc=$?` prior to variable initialization so error icons trigger accurately.
   - Cleaned up temporary variable namespace leak (`_ls_flags`) and standardized `ssh-cc` function syntax.
 - **Zsh Configuration**: Guarded the Oh My Zsh `macos` plugin to load conditionally only on Darwin (`$OSTYPE == darwin*`), avoiding extraneous shell startup execution on Linux.
 - **Prompt Performance (`vcs_info`)**: Replaced Oh My Zsh's multi-fork `prompt_git` implementation with Zsh's native `vcs_info` module in `config/zsh/.zshrc`. Hooks into `precmd` to eliminate 10–15 child `git` processes per prompt evaluation while preserving the Agnoster theme Powerline aesthetics (branch glyph, clean/dirty colors, staged/unstaged badges, and action formats). Fixed `add-zsh-hook` function shadowing.
 
 ### Fixed
-- **macOS Tmux `SSH_AUTH_SOCK` Preservation**: Scoped `set-environment -g SSH_AUTH_SOCK "$HOME/.ssh/ssh_auth_sock"` in `config/tmux/.tmux.conf` to non-Darwin platforms so local macOS tmux sessions keep their native `launchd` / 1Password agent socket.
+- **macOS Tmux `SSH_AUTH_SOCK` Preservation & TPM Guard**: Scoped `set-environment -g SSH_AUTH_SOCK "$HOME/.ssh/ssh_auth_sock"` in `config/tmux/.tmux.conf` to non-Darwin platforms so local macOS tmux sessions keep their native `launchd` / 1Password agent socket, and guarded TPM startup with `if-shell '[ -x ~/.tmux/plugins/tpm/tpm ]'`.
+- **Tmux Socket Isolation**: Isolated tmux syntax-check servers with `-L` in hooks, tests, and CI so active user tmux sessions are never terminated.
 - **`prune_dead_symlinks` Path Boundary & macOS Scope**: Enforced a trailing `/` boundary (`"$DOTFILES_DIR/"*`) in `dot.sh` so broken symlinks pointing into sibling paths like `~/.dotfiles.backup` are never falsely pruned, and added `~/Library/Application Support/iTerm2/DynamicProfiles` to macOS cleanup scans.
 - **Comment-Safe Include Verification & Benchmark Hardening**: Replaced unanchored regex `grep` checks in `setup_git` and `run_doctor` with `git config --file ... --get-all include.path` and exact uncommented SSH `Include` line matching, and hardened `run_benchmark` against `set -eo pipefail` aborts and non-repo `$PWD` invocation.
 - **Markdown Fence & JSON Lint Accuracy**: Updated `.githooks/pre-commit`, `tests/run-tests.sh`, and `.github/workflows/test.yml` to track indented and variable-length CommonMark code fences across all `config/ai/skills/**/*.md` files, validate JSON with `jq` (avoiding macOS `plutil -lint`, which rejects JSON syntax), and emit `[SKIP]` when `jq` is not installed.
 
 ### Removed
 - **Redundant CLI Flags**: Removed `--test` (consolidated into `--doctor`), `--update` (replaced by standard `git pull && ./dot.sh`), and `--skip` (`--only` covers targeted step runs).
-- **Legacy & Unused Files**: Removed superseded `tests/test-vim.sh` and `tests/dot-local-ci-test.sh` harnesses, deprecated `config/macos-terminal/zsh.terminal`, empty `bin/.keep` (`~/.bin` symlink), duplicate `config/ai/skills/rigorous-pr-review/`, and Cursor/Cline symlink targets (`.cursorrules`, `.clinerules`).
+- **Legacy & Unused Files**: Removed superseded `tests/test-vim.sh` and `tests/dot-local-ci-test.sh` harnesses, deprecated `config/macos-terminal/zsh.terminal`, `config/iterm2/com.googlecode.iterm2.plist`, empty `bin/.keep` (`~/.bin` symlink), duplicate `config/ai/skills/rigorous-pr-review/`, and Cursor/Cline symlink targets (`.cursorrules`, `.clinerules`).
 
 ### Testing
 - **Streamlined Unified Test Suite (57/57 Checks Passing)**:
-  - Added pure-Zsh iTerm2 Dynamic Profiles JSON portability check, AI skill relative link validation, nested backup hierarchy preservation, pre-push hook checks, and benchmark diagnostic tests to `tests/run-tests.sh`.
+  - Added pure-Zsh iTerm2 Dynamic Profiles JSON portability check, `jq` JSON syntax check, AI skill relative link validation, nested backup hierarchy preservation, pre-push hook checks, and benchmark diagnostic tests to `tests/run-tests.sh`.
   - Optimized sandbox initialization in `tests/run-tests.sh` to copy only lightweight config files and run all 9 test groups in ~8 seconds.
-  - Added Day-Zero cold bootstrap checks (`--remote` vs missing directory handling).
-  - Added end-to-end `--install-deps` package dispatch assertion (including dry-run verification).
-  - Added SSH agent runtime lifecycle test verifying dead symlink pruning in `.zshrc`.
-  - Added prompt execution fork budget assertion (`git` subprocess forks $\le 10$).
-  - Added negative diagnostic detection tests for missing Git and SSH include directives in `--doctor`.
-  - Added cross-platform iTerm2 plist format integrity check and AI config JSON validation.
-  - Added `plutil -lint` verification to macOS CI workflow.
+  - Added Day-Zero cold bootstrap checks (`--remote` vs missing directory handling) and end-to-end `--install-deps` package dispatch assertions.
+  - Added SSH agent runtime lifecycle test verifying dead symlink pruning in `.zshrc`, prompt execution fork budget assertion (`git` subprocess forks <= 10), and negative diagnostic detection tests for missing or commented-out Git and SSH include directives in `--doctor`.
 
 ## [v3.7.0] - 2026-09-10
 ### Added
