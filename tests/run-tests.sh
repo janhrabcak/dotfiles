@@ -135,24 +135,44 @@ else
   pass "Secret sanitization: no internal corporate hostnames in public config"
 fi
 
-if python3 -c "import plistlib; plistlib.load(open('$REPO_ROOT/config/iterm2/com.googlecode.iterm2.plist', 'rb'))" >/dev/null 2>&1; then
-  pass "iTerm2 plist format integrity check"
+if python3 -c "
+import json
+raw = open('$REPO_ROOT/config/iterm2/profiles.json', encoding='utf-8').read()
+data = json.loads(raw)
+profiles = data.get('Profiles', [])
+assert len(profiles) >= 3 and all('Guid' in p and 'Name' in p for p in profiles)
+assert '/Users/' not in raw
+" >/dev/null 2>&1; then
+  pass "iTerm2 Dynamic Profiles JSON integrity check (portable ~ paths)"
 else
-  fail "iTerm2 plist integrity" "com.googlecode.iterm2.plist failed to parse as valid plist"
+  fail "iTerm2 Dynamic Profiles integrity" "config/iterm2/profiles.json failed schema or portability check"
 fi
 
 if python3 -c "
-import json, xml.etree.ElementTree as ET, glob
+import ast, glob, json, pathlib, re, xml.etree.ElementTree as ET
+root = pathlib.Path('$REPO_ROOT')
 for p in ['config/ai/settings.json', 'config/ai/mcp_config.json', '.devcontainer/devcontainer.json']:
-    json.load(open('$REPO_ROOT/' + p))
+    json.loads((root / p).read_text(encoding='utf-8'))
 for svg in glob.glob('$REPO_ROOT/assets/*.svg'):
     data = open(svg, encoding='utf-8').read()
     ET.fromstring(data)
     assert not any(0xE000 <= ord(c) <= 0xF8FF for c in data), f'PUA glyph in {svg}'
+for py in (root / 'config/ai/skills').rglob('*.py'):
+    ast.parse(py.read_text(encoding='utf-8'), filename=str(py))
+fence_re = re.compile(r'\`\`\`.*?\`\`\`', re.DOTALL)
+inline_re = re.compile(r'\`+[^\`]+\`+')
+link_re = re.compile(r'\[[^\]]+\]\(([^)\s]+)\)')
+for skill_md in (root / 'config/ai/skills').rglob('SKILL.md'):
+    prose = inline_re.sub('', fence_re.sub('', skill_md.read_text(encoding='utf-8')))
+    for target in link_re.findall(prose):
+        if target.startswith('#') or re.match(r'^[a-zA-Z][a-zA-Z0-9+.-]*:', target):
+            continue
+        rel = target.split('#', 1)[0]
+        assert not rel or (skill_md.parent / rel).exists(), f'Broken link {target} in {skill_md}'
 " >/dev/null 2>&1; then
-  pass "Configuration JSON & SVG asset integrity check (valid syntax, zero PUA glyphs)"
+  pass "Configuration JSON, SVG asset & AI skill integrity check"
 else
-  fail "Configuration JSON & SVG asset check" "Invalid JSON/SVG syntax or PUA glyph detected"
+  fail "Configuration JSON, SVG & AI skill check" "Invalid JSON/SVG/Python syntax, PUA glyph, or broken skill link"
 fi
 
 # ------------------------------------------------------------------------------
@@ -334,6 +354,17 @@ else
   fail "Safe backup" "Backup not found or content altered"
 fi
 
+mkdir -p "$HOME/.gemini/config" "$HOME/.claude"
+echo "GEMINI_BACKUP_TOKEN" > "$HOME/.gemini/config/AGENTS.md"
+echo "CLAUDE_BACKUP_TOKEN" > "$HOME/.claude/CLAUDE.md"
+zsh "$DOTFILES_DIR/dot.sh" --only setup_ai >/dev/null 2>&1
+if grep -rq "GEMINI_BACKUP_TOKEN" "$HOME/.dotfiles.backup"/*/.gemini/config/AGENTS.md 2>/dev/null \
+   && grep -rq "CLAUDE_BACKUP_TOKEN" "$HOME/.dotfiles.backup"/*/.claude/CLAUDE.md 2>/dev/null; then
+  pass "Nested files backed up preserving relative HOME directory hierarchy"
+else
+  fail "Nested backup hierarchy" "Relative directory hierarchy was not preserved in backup"
+fi
+
 for i in {1..8}; do
   mkdir -p "$HOME/.dotfiles.backup/2026010${i}_000000"
   touch "$HOME/.dotfiles.backup/2026010${i}_000000/test.txt"
@@ -471,11 +502,12 @@ fi
 
 if command -v strace >/dev/null 2>&1; then
   git_forks=$(strace -f -e trace=execve zsh -c "
+    cd '$DOTFILES_DIR'
     export HOME='$HOME'
     source '$DOTFILES_DIR/config/zsh/.zshrc' >/dev/null 2>&1
     vcs_info
-    build_prompt
-  " 2>&1 | grep -c 'execve("/.*git"' || echo "0")
+    build_prompt >/dev/null
+  " 2>&1 | grep -c 'execve("/.*git"' || true)
   [[ "$git_forks" -le 10 ]] \
     && pass "Prompt performance: build_prompt stays within fork budget (git forks: $git_forks <= 10)" \
     || fail "Prompt performance" "Excessive git subprocess forks: $git_forks (expected <= 10)"

@@ -104,6 +104,14 @@ add-zsh-hook preexec _title_preexec
 
 # --- 5. Custom Agnoster Prompt Segments ---
 
+# Fallback prompt helpers when Oh My Zsh / Agnoster is not installed
+if (( ! $+functions[prompt_segment] )); then
+  prompt_segment() { [[ -n "${3:-}" ]] && print -n "${3} "; }
+  prompt_status() { (( RETVAL != 0 )) && print -n "%F{red}✘%f "; }
+  prompt_virtualenv() { [[ -n "${VIRTUAL_ENV:-}" ]] && print -n "(${VIRTUAL_ENV:t}) "; }
+  prompt_end() { print -n "%# "; }
+fi
+
 # Context / Identity Segment (Unified Google & SSH Logic)
 prompt_context() {
   local h="${HOST:-$HOSTNAME}"
@@ -123,8 +131,8 @@ prompt_context() {
     return
   fi
 
-  # 2. Standard SSH / Non-Default User (Red)
-  if [[ "$USER" != "$DEFAULT_USER" || -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
+  # 2. Standard SSH / Root / Non-Default User (Red)
+  if [[ $EUID -eq 0 || "$USER" != "$DEFAULT_USER" || -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
     prompt_segment red black "%(!.%{%F{yellow}%}.)$USER@%M"
   fi
 }

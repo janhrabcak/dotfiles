@@ -1,14 +1,66 @@
 #!/usr/bin/env zsh
 # ==============================================================================
 # Git Pre-push Hook
-# Runs test suite validation prior to pushing changes to remote.
+# Runs fast static validation for docs/skills/SVG-only pushes and the full
+# sandboxed behavioral test suite whenever executable or config files change.
 # ==============================================================================
 set -eo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+REPO_ROOT="$(git -C "${0:A:h}" rev-parse --show-toplevel 2>/dev/null || echo "${0:A:h:h}")"
+zero_oid="0000000000000000000000000000000000000000"
+changed_files=()
+saw_ref_input=false
+needs_full_suite=false
 
-# Allow bypassing when explicitly requested via standard git flags
-if [[ "$GIT_DIR" =~ "rebase" ]]; then
+if [[ ! -t 0 ]]; then
+  while read -r local_ref local_oid remote_ref remote_oid; do
+    [[ -z "${local_oid:-}" ]] && continue
+    saw_ref_input=true
+    [[ "$local_oid" == "$zero_oid" ]] && continue
+
+    if [[ "$remote_oid" != "$zero_oid" ]] && git cat-file -e "${remote_oid}^{commit}" 2>/dev/null; then
+      changed_files+=("${(@f)$(git diff --name-only "$remote_oid" "$local_oid")}")
+    elif git rev-parse --verify origin/main >/dev/null 2>&1; then
+      base_oid="$(git merge-base origin/main "$local_oid" 2>/dev/null || true)"
+      if [[ -n "$base_oid" ]]; then
+        changed_files+=("${(@f)$(git diff --name-only "$base_oid" "$local_oid")}")
+      else
+        needs_full_suite=true
+      fi
+    else
+      needs_full_suite=true
+    fi
+  done
+else
+  if git rev-parse --verify "@{u}" >/dev/null 2>&1; then
+    saw_ref_input=true
+    changed_files+=("${(@f)$(git diff --name-only "@{u}" HEAD)}")
+  else
+    needs_full_suite=true
+  fi
+fi
+
+if [[ "$saw_ref_input" == "true" && "$needs_full_suite" == "false" ]]; then
+  non_empty=()
+  for f in "${changed_files[@]}"; do
+    [[ -n "$f" ]] && non_empty+=("$f")
+  done
+  if (( ${#non_empty[@]} == 0 )); then
+    echo "✅ Pre-push: no local file changes to validate."
+    exit 0
+  fi
+  for f in "${non_empty[@]}"; do
+    case "$f" in
+      *.md|assets/*.svg|config/ai/skills/*) ;;
+      *) needs_full_suite=true; break ;;
+    esac
+  done
+fi
+
+if [[ "$needs_full_suite" == "false" && "$saw_ref_input" == "true" ]]; then
+  echo "⚡ Pre-push: docs/skills/SVG-only changes detected — running fast static checks..."
+  "$REPO_ROOT/.githooks/pre-commit"
+  echo "✅ Pre-push fast validation passed!"
   exit 0
 fi
 

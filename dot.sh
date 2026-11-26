@@ -93,7 +93,7 @@ safe_append() {
         [[ -d "${file:h}" ]] || run_cmd mkdir -p "${file:h}"
         run_cmd touch "$file"
     fi
-    if [[ -f "$file" ]] && grep -qsF "$line" "$file"; then
+    if [[ -f "$file" ]] && grep -qxF "$line" "$file"; then
         log_success "Entry already exists in ${file:t}"
     else
         if [[ "$DRY_RUN" == "true" ]]; then
@@ -139,8 +139,12 @@ safe_link() {
 
     if [[ -e "$dest" && ! -L "$dest" ]]; then
         init_backup_dir
+        local rel_dest="${dest#$HOME/}"
+        [[ "$rel_dest" == "$dest" ]] && rel_dest="${dest:t}"
+        local backup_target="$BACKUP_DIR/$rel_dest"
+        [[ -d "${backup_target:h}" ]] || run_cmd mkdir -p "${backup_target:h}"
         log_warn "Existing file or directory found at $dest. Moving to backup."
-        run_cmd mv "$dest" "$BACKUP_DIR/${dest:t}"
+        run_cmd mv "$dest" "$backup_target"
         needs_link=true
     elif [[ -L "$dest" && "${dest:A}" != "${src:A}" ]]; then
         log_warn "Broken or incorrect symlink at $dest. Re-linking."
@@ -262,20 +266,53 @@ check_dependencies() {
 }
 
 setup_packages() {
-    [[ "$OSTYPE" == "darwin"* ]] || return 0
-    local brewfile="$DOTFILES_DIR/config/brew/Brewfile"
-    command -v brew >/dev/null 2>&1 && [[ -f "$brewfile" ]] || return 0
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        local brewfile="$DOTFILES_DIR/config/brew/Brewfile"
+        command -v brew >/dev/null 2>&1 && [[ -f "$brewfile" ]] || return 0
 
-    log_info "Verifying Homebrew bundle..."
-    if [[ "$AUTO_INSTALL_DEPS" == "true" ]]; then
-        run_cmd brew bundle --file="$brewfile" || log_warn "Some brew packages could not be installed."
-        log_success "Homebrew bundle installed."
-    elif [[ "$DRY_RUN" == "true" ]]; then
-        echo "   [DRY-RUN] Would check: brew bundle check --file=$brewfile"
-    elif brew bundle check --file="$brewfile" >/dev/null 2>&1; then
-        log_success "Homebrew bundle packages already satisfied."
+        log_info "Verifying Homebrew bundle..."
+        if [[ "$AUTO_INSTALL_DEPS" == "true" ]]; then
+            run_cmd brew bundle --file="$brewfile" || log_warn "Some brew packages could not be installed."
+            log_success "Homebrew bundle installed."
+        elif [[ "$DRY_RUN" == "true" ]]; then
+            echo "   [DRY-RUN] Would check: brew bundle check --file=$brewfile"
+        elif brew bundle check --file="$brewfile" >/dev/null 2>&1; then
+            log_success "Homebrew bundle packages already satisfied."
+        else
+            log_warn "Some Homebrew bundle packages are not installed. Run with --install-deps to install."
+        fi
+        return 0
+    fi
+
+    command -v apt-get >/dev/null 2>&1 || return 0
+    log_info "Verifying Linux CLI packages..."
+    local pkg_map=("tmux:tmux" "rg:ripgrep" "fzf:fzf" "nvim:neovim" "gh:gh")
+    local missing_pkgs=()
+    local pair bin pkg
+    for pair in "${pkg_map[@]}"; do
+        bin="${pair%%:*}"
+        pkg="${pair#*:}"
+        command -v "$bin" >/dev/null 2>&1 || missing_pkgs+=("$pkg")
+    done
+    if ! command -v fd >/dev/null 2>&1 && ! command -v fdfind >/dev/null 2>&1; then
+        missing_pkgs+=("fd-find")
+    fi
+
+    if (( ${#missing_pkgs[@]} > 0 )); then
+        if [[ "$AUTO_INSTALL_DEPS" == "true" ]]; then
+            log_info "Installing optional CLI packages via apt-get: ${missing_pkgs[*]}..."
+            run_cmd sudo apt-get update
+            run_cmd sudo apt-get install -y "${missing_pkgs[@]}" || log_warn "Some optional apt packages could not be installed."
+        else
+            log_warn "Optional CLI packages not installed (${missing_pkgs[*]}). Run with --install-deps to install."
+        fi
     else
-        log_warn "Some Homebrew bundle packages are not installed. Run with --install-deps to install."
+        log_success "Linux CLI packages already satisfied."
+    fi
+
+    if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then
+        [[ -d "$HOME/.local/bin" ]] || run_cmd mkdir -p "$HOME/.local/bin"
+        run_cmd ln -sfn "$(command -v fdfind)" "$HOME/.local/bin/fd"
     fi
 }
 
@@ -333,11 +370,12 @@ setup_zsh() {
         run_cmd curl -fsSL https://iterm2.com/shell_integration/zsh -o "$iterm_int"
     fi
 
-    if [[ "$SHELL" != *"zsh"* && "$GITHUB_ACTIONS" != "true" ]] && command -v zsh >/dev/null 2>&1; then
-        run_cmd chsh -s "$(command -v zsh)"
+    setup_links "setup_zsh"
+
+    if [[ "$SHELL" != *"zsh"* && "$GITHUB_ACTIONS" != "true" && -t 0 ]] && command -v zsh >/dev/null 2>&1; then
+        run_cmd chsh -s "$(command -v zsh)" || log_warn "chsh could not update login shell (e.g. LDAP/PAM policy); update manually if needed."
     fi
 
-    setup_links "setup_zsh"
     log_success "Zsh environment ready."
 }
 
@@ -443,28 +481,26 @@ setup_ssh() {
 
 setup_iterm2() {
     [[ "$OSTYPE" == "darwin"* && "$WORK_MODE" == "macos" ]] || return 0
-    log_info "Configuring iTerm2..."
+    log_info "Configuring iTerm2 Dynamic Profiles..."
 
-    local iterm_dir="$DOTFILES_DIR/config/iterm2"
-    if [[ -f "$iterm_dir/com.googlecode.iterm2.plist" ]]; then
-        if [[ "$DRY_RUN" == "false" ]]; then
-            sed -i.bak "s|/Users/[^<\"/ ]*|$HOME|g" "$iterm_dir/com.googlecode.iterm2.plist" && rm -f "$iterm_dir/com.googlecode.iterm2.plist.bak"
-            if [[ -d "$DOTFILES_DIR/.git" ]]; then
-                git -C "$DOTFILES_DIR" update-index --assume-unchanged "config/iterm2/com.googlecode.iterm2.plist" 2>/dev/null || true
-            fi
-        fi
-        run_cmd defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
-        run_cmd defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$iterm_dir"
-        run_cmd defaults write com.googlecode.iterm2 NoSyncNeverRemindPrefsChangesLostForFile -bool true
+    local iterm_profiles_src="$DOTFILES_DIR/config/iterm2/profiles.json"
+    local iterm_profiles_dest="$HOME/Library/Application Support/iTerm2/DynamicProfiles/dotfiles.json"
+    if [[ -f "$iterm_profiles_src" ]]; then
+        safe_link "$iterm_profiles_src" "$iterm_profiles_dest"
     fi
 
+    run_cmd defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool false
+    run_cmd defaults write com.googlecode.iterm2 "Default Bookmark Guid" -string "A8B35DB8-2639-4712-865E-53ADC0FA22BF"
+    run_cmd defaults write com.googlecode.iterm2 TmuxUsesDedicatedProfile -bool true
     run_cmd defaults write com.googlecode.iterm2 GPU -bool true
     run_cmd defaults write com.googlecode.iterm2 CopySelection -bool true
     run_cmd defaults write com.googlecode.iterm2 PromptOnQuit -bool false
     run_cmd defaults write com.googlecode.iterm2 MaxPasteHistoryEntries -int 50
     run_cmd defaults write com.googlecode.iterm2 AutohideTmuxClientSession -bool true
     run_cmd defaults write com.googlecode.iterm2 OpenTmuxWindowsAs -int 0
+    run_cmd defaults write com.googlecode.iterm2 OpenTmuxWindowsIn -int 1
     run_cmd defaults write com.googlecode.iterm2 OpenTmuxDashboardIfMoreThanXWindows -int 999
+    run_cmd defaults write com.googlecode.iterm2 SshIntegrationForURLs -bool true
     log_success "iTerm2 complete."
 }
 
@@ -531,6 +567,17 @@ run_doctor() {
     else
         log_error "SSH: Include directive MISSING in $ssh_conf"
         errors=$((errors + 1))
+    fi
+
+    if [[ "$OSTYPE" == "darwin"* && "$WORK_MODE" == "macos" ]]; then
+        local iterm_dyn="$HOME/Library/Application Support/iTerm2/DynamicProfiles/dotfiles.json"
+        local iterm_src="$DOTFILES_DIR/config/iterm2/profiles.json"
+        if [[ -L "$iterm_dyn" && "${iterm_dyn:A}" == "${iterm_src:A}" ]]; then
+            log_success "iTerm2: Dynamic Profile linked (${iterm_dyn:t})"
+        else
+            log_error "iTerm2: Dynamic Profile MISSING at $iterm_dyn"
+            errors=$((errors + 1))
+        fi
     fi
 
     if [[ $errors -eq 0 ]]; then
@@ -646,4 +693,6 @@ main() {
     echo "\n✨ Setup complete! Run with --doctor to verify integrity."
 }
 
-main
+if [[ "${ZSH_EVAL_CONTEXT:-}" != *:file* ]]; then
+    main
+fi

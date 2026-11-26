@@ -1,7 +1,7 @@
 # Personal identity lives in config/git/.gitconfig.local (gitignored).
 # Copy config/git/.gitconfig.local.example → config/git/.gitconfig.local and fill in your details.
 [include]
-	path = ~/.dotfiles/config/git/.gitconfig.local
+	path = .gitconfig.local
 
 [core]
 	editor = vim

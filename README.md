@@ -75,10 +75,12 @@ Runs tmux sessions natively inside macOS iTerm2 tabs or standard terminal multip
 
 ### 📦 Package Management (Homebrew & Linux)
 *   **Homebrew Bundle**: Declares essential CLI tools (`ripgrep`, `fzf`, `tmux`, `gh`, `neovim`) and casks in `config/brew/Brewfile`. Automatically verified during bootstrap.
+*   **Linux CLI Parity (`apt-get`)**: Verifies matching CLI productivity packages (`tmux`, `ripgrep`, `fzf`, `fd-find`, `gh`, `neovim`) on Debian/Ubuntu and links `~/.local/bin/fd` when `fdfind` is installed (gated strictly behind `--install-deps`).
 
 ### 💻 Terminal (iTerm2 & Tmux)
 *   **Native Windows**: Run tmux sessions as native iTerm2 windows/tabs via Control Mode (`-CC`).
-*   **Stability**: Strict resize-management and background redirection for handshake safety.
+*   **Portable Dynamic Profiles**: Symlinks `config/iterm2/profiles.json` into `~/Library/Application Support/iTerm2/DynamicProfiles/dotfiles.json` using portable `~` paths without mutating tracked plist state.
+*   **Stability**: Strict resize-management and guarded TPM log redirection (`~/.tmux/tpm.log`) for handshake safety.
 
 ### 🍎 macOS System Tweaks
 The script applies professional defaults for high-performance workflows:
@@ -90,7 +92,7 @@ The script applies professional defaults for high-performance workflows:
 *   **Universal Guidelines (`AGENTS.md`)**: Single source of truth in `config/ai/AGENTS.md` automatically symlinked to Gemini/Antigravity (`~/.gemini/config/GEMINI.md`, `~/.gemini/config/AGENTS.md`) and Claude Code (`~/.claude/CLAUDE.md`). Enforces concise technical explanations, Conventional Commits, proactive test verification, code integrity, and zero-secrets security.
 *   **Security & Command Whitelist**: Pre-approved non-destructive inspection commands (`rg`, `find`, `git status/diff/log/branch/show`, runtime version lookups, and test runners) in `settings.json` for seamless agent pair programming without confirmation popups.
 *   **Global MCP Servers**: Model Context Protocol integration (`mcp_config.json`) pre-configured for persistent memory graph (`@modelcontextprotocol/server-memory`), GitHub API integration (`@modelcontextprotocol/server-github`), and Markdown web scraping (`mcp-fetch-server`).
-*   **Custom Global Skills**: Progressive-disclosure playbooks for `conventional-release` (automated SemVer bumps, changelog updates, and release tagging) and Sentry `code-review` (Sentry engineering practices, runtime/ORM optimization, and empathy guidelines).
+*   **Custom Global Skills**: Progressive-disclosure playbooks for `conventional-release` (automated SemVer bumps, changelog updates, and release tagging), Sentry `code-review` (Sentry engineering practices, runtime/ORM optimization, and empathy guidelines), and `interview-banks-external` (primary-spec grounded technical interview bank authoring, GFM/code verification, and CVE/RFC validation).
 *   **Dual-Audience Documentation**: Mandates that code modifications update both human-facing documentation (README, guides, changelogs) and agent-facing contextual memory (invariants, caveats, and architectural constraints in `AGENTS.md`).
 
 ### 🐳 Isolated Dev Container & Codespaces
@@ -137,7 +139,7 @@ The script uses specialized shell functions to ensure consistency:
 *   **Doctor Logic**: The `--doctor` flag performs deep physical path resolution (`:A`) to verify integrity even across symlinked directories.
 *   **Maintenance & Pruning**: Running `./dot.sh --clean` safely purges broken dotfiles symlinks and rotates snapshot backups.
 *   **Local Overrides**: Machine-specific identity and private shell settings are decoupled from version control via optional `.local` files (`config/git/.gitconfig.local`, `~/.zshrc.local`, and `config/ssh/authorized_keys.local`).
-*   **Git Hooks (Pre-commit & Pre-push)**: Tracked in `.githooks/` and active through `core.hooksPath = .githooks`, automatically enforcing shell, headless Vim, and isolated-socket (`-L`) Tmux syntax checks before commit, and running the full 55-check test suite before any `git push`.
+*   **Git Hooks (Pre-commit & Pre-push)**: Tracked in `.githooks/` and active through `core.hooksPath = .githooks`. `.githooks/pre-commit` serves as the single static/syntax validator across local commits and CI, while `.githooks/pre-push` fast-paths docs/SVG/skill-only pushes and runs the full 56-check sandboxed test suite whenever executable or config files change.
 *   **Dependabot**: Configured in `.github/dependabot.yml` for automated weekly updates of GitHub Actions dependencies.
 
 ### 2. SSH Agent Strategy

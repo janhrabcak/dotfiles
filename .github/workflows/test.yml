@@ -18,27 +18,10 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install Dependencies
-        run: sudo apt-get update && sudo apt-get install -y zsh vim tmux
+        run: sudo apt-get update && sudo apt-get install -y zsh vim tmux python3
 
-      - name: Zsh Syntax Check
-        run: |
-          zsh -n dot.sh
-          zsh -n config/zsh/.zshrc
-          zsh -n config/zsh/aliases.zsh
-          zsh -n .githooks/pre-commit
-          zsh -n .githooks/pre-push
-          zsh -n tests/run-tests.sh
-
-      - name: Tmux Syntax Check
-        run: tmux -L "dotfiles-ci-$$" -f config/tmux/.tmux.conf start-server \; kill-server
-
-      - name: Vim Syntax Check
-        run: |
-          # Use -e (Ex mode) and -s (silent) to avoid hanging
-          # Mock home in a disposable temp dir to avoid polluting the repo root
-          VIM_TMP_HOME="$(mktemp -d)"
-          HOME="$VIM_TMP_HOME" vim -u config/vim/.vimrc -e -s -c "q"
-          rm -rf "$VIM_TMP_HOME"
+      - name: Run Unified Static & Syntax Validator
+        run: ./.githooks/pre-commit
 
   test:
     name: Test on ${{ matrix.os }} (${{ matrix.mode }})
@@ -103,7 +86,8 @@ jobs:
           [ -L ~/.gitignore_global ] || exit 1
           if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
             defaults read com.apple.finder AppleShowAllExtensions | grep "1"
-            plutil -lint config/iterm2/com.googlecode.iterm2.plist
+            [ -L "$HOME/Library/Application Support/iTerm2/DynamicProfiles/dotfiles.json" ] || exit 1
+            plutil -lint config/iterm2/profiles.json
           fi
 
       - name: Run Behavioral Test Suite
