@@ -54,10 +54,8 @@ if command -v jq >/dev/null 2>&1; then
     echo "❌ Expected >=3 profiles in config/iterm2/profiles.json" >&2
     exit 1
   }
-elif command -v plutil >/dev/null 2>&1; then
-  plutil -lint -s "${json_files[@]}"
 else
-  echo "  ⚠️  jq/plutil not installed; skipping strict JSON parse check."
+  echo "  ⚠️  jq not installed; skipping strict JSON parse check."
 fi
 
 if grep -q '/Users/' "$REPO_ROOT/config/iterm2/profiles.json"; then

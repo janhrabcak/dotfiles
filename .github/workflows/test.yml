@@ -87,7 +87,7 @@ jobs:
           if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
             defaults read com.apple.finder AppleShowAllExtensions | grep "1"
             [ -L "$HOME/Library/Application Support/iTerm2/DynamicProfiles/dotfiles.json" ] || exit 1
-            plutil -lint config/iterm2/profiles.json
+            jq empty config/iterm2/profiles.json
           fi
 
       - name: Run Behavioral Test Suite

@@ -141,8 +141,6 @@ check_iterm_profiles() {
   ! grep -q '/Users/' "$pfile" || return 1
   if command -v jq >/dev/null 2>&1; then
     jq -e '(.Profiles | length >= 3) and (.Profiles | all(has("Guid") and has("Name")))' "$pfile" >/dev/null 2>&1 || return 1
-  elif command -v plutil >/dev/null 2>&1; then
-    plutil -lint -s "$pfile" >/dev/null 2>&1 || return 1
   else
     [[ "$(grep -c '"Guid"' "$pfile" || true)" -ge 3 ]] || return 1
   fi
@@ -160,14 +158,8 @@ if command -v jq >/dev/null 2>&1; then
   else
     fail "Configuration JSON syntax check" "Invalid JSON in config/ai/ or .devcontainer/"
   fi
-elif command -v plutil >/dev/null 2>&1; then
-  if plutil -lint -s "$REPO_ROOT/config/ai/settings.json" "$REPO_ROOT/config/ai/mcp_config.json" "$REPO_ROOT/.devcontainer/devcontainer.json" >/dev/null 2>&1; then
-    pass "Configuration JSON syntax check (plutil)"
-  else
-    fail "Configuration JSON syntax check" "Invalid JSON in config/ai/ or .devcontainer/"
-  fi
 else
-  echo "  ${YELLOW}[SKIP]${RESET} Configuration JSON syntax check (neither jq nor plutil installed)"
+  echo "  ${YELLOW}[SKIP]${RESET} Configuration JSON syntax check (jq not installed)"
 fi
 
 check_assets_and_skill_links() {
