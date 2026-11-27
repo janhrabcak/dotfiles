@@ -56,6 +56,42 @@ alert() {
   command -v notify-send >/dev/null 2>&1 && notify-send --urgency=low -i "$icon" "Command completed" "${history[$HISTCMD]}"
 }
 
+# Update local dotfiles deployment (supports both Git clones and --remote tarball installs)
+dot-update() {
+  local dot="${DOT:-$HOME/.dotfiles}"
+  local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
+  if [[ ! -d "$dot" ]]; then
+    echo "[dotfiles] Directory not found: $dot" >&2
+    return 1
+  fi
+
+  if [[ -d "$dot/.git" ]]; then
+    if [[ -n "$(git -C "$dot" status --porcelain 2>/dev/null)" ]]; then
+      echo "[dotfiles] Uncommitted local changes in $dot — commit or stash before updating." >&2
+      return 1
+    fi
+    git -C "$dot" pull --ff-only || return $?
+    "$dot/dot.sh" "$@" || return $?
+  else
+    "$dot/dot.sh" --remote "$@" || return $?
+    if command -v curl >/dev/null 2>&1; then
+      local new_etag
+      new_etag="$(curl -fsSI --max-time 5 "https://api.github.com/repos/janhrabcak/dotfiles/commits/main" 2>/dev/null | awk 'tolower($1)=="etag:" {gsub(/\r/,""); print $2; exit}')"
+      if [[ -n "$new_etag" ]]; then
+        mkdir -p "$cache_dir"
+        printf '%s\n' "$new_etag" > "$cache_dir/remote.etag"
+      fi
+    fi
+  fi
+
+  "$dot/dot.sh" --doctor
+  local rc=$?
+  mkdir -p "$cache_dir"
+  rm -f "$cache_dir/update-available"
+  touch "$cache_dir/last-check"
+  return $rc
+}
+
 # Manual prompt overrides (set to any non-empty value to activate Google prompt style)
 alias gprompt="export GOOGLE_PROMPT=1"
 alias unprompt="unset GOOGLE_PROMPT"

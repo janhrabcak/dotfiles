@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+### Added
+- **Passive Update Check & `dot-update` Helper**: Added a zero-latency weekly background update check in `config/zsh/.zshrc` (using `zsh/stat` mtime checks; `git fetch` for Git clones and HTTP `If-None-Match` `ETag` checks for non-Git `--remote` tarball installs) and a `dot-update` function in `config/zsh/aliases.zsh` that refuses dirty Git trees, runs `git pull --ff-only` (or `dot.sh --remote`), re-applies symlinks, and verifies with `--doctor`.
 
 ## [v3.8.0] - 2026-11-26
 ### Breaking Changes

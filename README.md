@@ -11,6 +11,7 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 | **Remote Install** (No clone) | `/bin/zsh -c "$(curl -fsSL https://raw.githubusercontent.com/janhrabcak/dotfiles/main/dot.sh)" -- --remote` |
 | **Local Install** (Clone first) | `git clone https://github.com/janhrabcak/dotfiles.git ~/.dotfiles && cd ~/.dotfiles && ./dot.sh` |
 | **Check Health** | `./dot.sh --doctor` |
+| **Update Deployment** | `dot-update` |
 | **Run Benchmarks** | `./dot.sh --benchmark` |
 | **Prune & Rotate Backups** | `./dot.sh --clean` |
 | **Run Full Test Suite** | `tests/run-tests.sh` |
@@ -60,6 +61,7 @@ Runs tmux sessions natively inside macOS iTerm2 tabs or standard terminal multip
     *   **Git**: `gs` (status), `ga` (add), `gc` (commit), `gp` (push), `gl` (graph log).
     *   **Tmux**: `tcc` (Control Mode), `ssh-cc` (remote SSH into Control Mode), `tn` (new), `ta` (attach).
     *   **Editor**: `v` / `vim` auto-detecting Neovim when installed.
+    *   **Updates**: `dot-update` (safe fast-forward sync for Git clones or `--remote` tarball refresh for non-Git deploys) paired with a passive weekly background update check (`DOTFILES_UPDATE_DAYS=7`, opt out via `DOTFILES_AUTO_CHECK=0`).
 
 ### 📝 Editor (Vim & Neovim - Power Pack)
 *   **Unified Config**: Shared `.vimrc` seamlessly linked to both `~/.vimrc` and `~/.config/nvim/init.vim`.

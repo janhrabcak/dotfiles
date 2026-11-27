@@ -502,6 +502,7 @@ alias_test=$(zsh -c "
   alias gl >/dev/null 2>&1 || exit 1
   alias v >/dev/null 2>&1 || exit 1
   functions ssh-cc >/dev/null 2>&1 || exit 1
+  functions dot-update >/dev/null 2>&1 || exit 1
   notify-send() { echo \"\$*\"; }
   [[ \"\$(false; alert)\" == *'-i error'* ]] || exit 1
   [[ \"\$(true; alert)\" == *'-i terminal'* ]] || exit 1
@@ -509,8 +510,21 @@ alias_test=$(zsh -c "
 " 2>/dev/null || echo "FAILED")
 
 [[ "$alias_test" == "OK" ]] \
-  && pass "Git, editor, and tmux aliases/functions successfully defined" \
+  && pass "Git, editor, tmux, and dot-update aliases/functions successfully defined" \
   || fail "Zsh aliases" "One or more core aliases/functions missing"
+
+# dot-update safety: must refuse to overwrite dirty Git working tree
+echo "# dirty test" >> "$DOTFILES_DIR/dot.sh"
+set +e
+dirty_out=$(DOT="$DOTFILES_DIR" zsh -c "source '$DOTFILES_DIR/config/zsh/aliases.zsh'; dot-update" 2>&1)
+dirty_rc=$?
+set -e
+git -C "$DOTFILES_DIR" checkout -- dot.sh 2>/dev/null || cp "$REPO_ROOT/dot.sh" "$DOTFILES_DIR/dot.sh"
+if [[ $dirty_rc -ne 0 ]] && echo "$dirty_out" | grep -q "Uncommitted local changes"; then
+  pass "dot-update refuses to overwrite dirty Git working tree"
+else
+  fail "dot-update dirty guard" "Expected non-zero exit with dirty warning, got rc=$dirty_rc"
+fi
 
 zsh "$DOTFILES_DIR/dot.sh" --only setup_vim >/dev/null 2>&1
 [[ -L "$HOME/.config/nvim/init.vim" ]] \

@@ -166,7 +166,68 @@ build_prompt() {
   prompt_end
 }
 
-# --- 6. Aliases & Local Overrides ---
+# --- 6. Passive Update Check (Git & Non-Git ETag) ---
+_dotfiles_check_updates() {
+  [[ -o interactive && "${GITHUB_ACTIONS:-}" != "true" && "${DOTFILES_AUTO_CHECK:-1}" != "0" && -d "$DOT" ]] || return 0
+
+  local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
+  local stamp_file="$cache_dir/last-check"
+  local notice_file="$cache_dir/update-available"
+  local etag_file="$cache_dir/remote.etag"
+
+  if [[ -f "$notice_file" ]]; then
+    print -P "%F{yellow}[dotfiles]%f Update available — run %Bdot-update%b to sync."
+  fi
+
+  zmodload -F zsh/stat b:zstat 2>/dev/null || return 0
+  zmodload zsh/datetime 2>/dev/null || return 0
+
+  local interval=$(( ${DOTFILES_UPDATE_DAYS:-7} * 86400 ))
+  local last_check=0
+  [[ -f "$stamp_file" ]] && last_check=$(zstat +mtime "$stamp_file" 2>/dev/null || echo 0)
+  (( EPOCHSECONDS - last_check >= interval )) || return 0
+
+  [[ -d "$cache_dir" ]] || mkdir -p "$cache_dir"
+  touch "$stamp_file"
+
+  (
+    if [[ -d "$DOT/.git" ]]; then
+      git -C "$DOT" fetch -q --prune 2>/dev/null || exit 0
+      local local_sha remote_sha
+      local_sha="$(git -C "$DOT" rev-parse HEAD 2>/dev/null)" || exit 0
+      remote_sha="$(git -C "$DOT" rev-parse '@{u}' 2>/dev/null || git -C "$DOT" rev-parse origin/main 2>/dev/null)" || exit 0
+      if [[ "$local_sha" != "$remote_sha" ]] && git -C "$DOT" merge-base --is-ancestor "$local_sha" "$remote_sha" 2>/dev/null; then
+        touch "$notice_file"
+      else
+        rm -f "$notice_file"
+      fi
+    elif command -v curl >/dev/null 2>&1; then
+      local api_url="https://api.github.com/repos/janhrabcak/dotfiles/commits/main"
+      local saved_etag="" headers http_code new_etag
+      [[ -f "$etag_file" ]] && saved_etag="$(<"$etag_file")"
+      if [[ -n "$saved_etag" ]]; then
+        headers="$(curl -fsSI --max-time 5 -H "If-None-Match: $saved_etag" "$api_url" 2>/dev/null)" || exit 0
+      else
+        headers="$(curl -fsSI --max-time 5 "$api_url" 2>/dev/null)" || exit 0
+      fi
+      http_code="$(printf '%s\n' "$headers" | awk 'NR==1 {print $2}')"
+      new_etag="$(printf '%s\n' "$headers" | awk 'tolower($1)=="etag:" {gsub(/\r/,""); print $2; exit}')"
+      if [[ "$http_code" == "304" ]]; then
+        rm -f "$notice_file"
+      elif [[ "$http_code" == "200" && -n "$new_etag" ]]; then
+        if [[ -z "$saved_etag" ]]; then
+          printf '%s\n' "$new_etag" > "$etag_file"
+        elif [[ "$new_etag" != "$saved_etag" ]]; then
+          touch "$notice_file"
+        fi
+      fi
+    fi
+  ) </dev/null >/dev/null 2>&1 &!
+}
+_dotfiles_check_updates
+unfunction _dotfiles_check_updates
+
+# --- 7. Aliases & Local Overrides ---
 [[ -f "$HOME/.aliases.zsh" ]] && source "$HOME/.aliases.zsh"
 [[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
 :
