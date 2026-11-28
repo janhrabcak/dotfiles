@@ -7,7 +7,10 @@ set -eo pipefail
 setopt multibyte
 
 REPO_ROOT="$(git -C "${0:A:h}" rev-parse --show-toplevel 2>/dev/null || echo "${0:A:h:h}")"
+SECRETS_ONLY=false
+[[ "${1:-}" == "--secrets-only" ]] && SECRETS_ONLY=true
 
+if [[ "$SECRETS_ONLY" == "false" ]]; then
 echo "🔍 Running pre-commit validation..."
 
 # 1. Zsh syntax check
@@ -111,6 +114,7 @@ for skill_md in "$REPO_ROOT"/config/ai/skills/**/*.md(N); do
     done
   done < "$skill_md"
 done
+fi
 
 # 5. Pure-Zsh Secret & Internal Hostname Scanner (staged files or all tracked files)
 echo "  [5/5] Scanning for leaked secrets, private keys, and internal hostnames..."

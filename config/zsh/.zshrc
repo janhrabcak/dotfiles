@@ -46,9 +46,10 @@ fi
 
 # --- 2. Oh My Zsh Settings ---
 ZSH_THEME="agnoster"
+ZSH_DISABLE_COMPFIX="true"
 DISABLE_UPDATE_PROMPT="true"
 UPDATE_ZSH_DAYS=13
-plugins=(git colorize golang zsh-autosuggestions zsh-syntax-highlighting)
+plugins=(git golang zsh-autosuggestions zsh-syntax-highlighting)
 [[ "$OSTYPE" == darwin* ]] && plugins+=(macos)
 
 [[ -f "$OHMYZSH/oh-my-zsh.sh" ]] && source "$OHMYZSH/oh-my-zsh.sh"
@@ -114,8 +115,8 @@ fi
 
 # Context / Identity Segment (Unified Google & SSH Logic)
 prompt_context() {
-  local h="${HOST:-$HOSTNAME}"
-  [[ -z "$h" ]] && h=$(hostname)
+  local h="${(%):-%M}"
+  [[ -z "$h" ]] && h="${HOST:-$HOSTNAME}"
 
   # 1. Google Identity (Official Brand Colors)
   if [[ "$h" == *"google"* || -n "$GOOGLE_PROMPT" ]]; then
@@ -167,6 +168,8 @@ build_prompt() {
 }
 
 # --- 6. Passive Update Check (Git & Non-Git ETag) ---
+export DOTFILES_REMOTE_API="https://api.github.com/repos/janhrabcak/dotfiles/commits/main"
+
 _dotfiles_check_updates() {
   [[ -o interactive && "${GITHUB_ACTIONS:-}" != "true" && "${DOTFILES_AUTO_CHECK:-1}" != "0" && -d "$DOT" ]] || return 0
 
@@ -202,16 +205,22 @@ _dotfiles_check_updates() {
         rm -f "$notice_file"
       fi
     elif command -v curl >/dev/null 2>&1; then
-      local api_url="https://api.github.com/repos/janhrabcak/dotfiles/commits/main"
-      local saved_etag="" headers http_code new_etag
-      [[ -f "$etag_file" ]] && saved_etag="$(<"$etag_file")"
-      if [[ -n "$saved_etag" ]]; then
-        headers="$(curl -fsSI --max-time 5 -H "If-None-Match: $saved_etag" "$api_url" 2>/dev/null)" || exit 0
-      else
-        headers="$(curl -fsSI --max-time 5 "$api_url" 2>/dev/null)" || exit 0
+      local saved_etag="" headers hdr http_code="" new_etag=""
+      local curl_args=(-fsSI --max-time 5)
+      if [[ -f "$etag_file" ]]; then
+        saved_etag="$(<"$etag_file")"
+        [[ -n "$saved_etag" ]] && curl_args+=(-H "If-None-Match: $saved_etag")
       fi
-      http_code="$(printf '%s\n' "$headers" | awk 'NR==1 {print $2}')"
-      new_etag="$(printf '%s\n' "$headers" | awk 'tolower($1)=="etag:" {gsub(/\r/,""); print $2; exit}')"
+      headers="$(curl "${curl_args[@]}" "$DOTFILES_REMOTE_API" 2>/dev/null)" || exit 0
+      while IFS= read -r hdr; do
+        hdr="${hdr%$'\r'}"
+        if [[ -z "$http_code" && "$hdr" == HTTP/* ]]; then
+          http_code="${${=hdr}[2]}"
+        elif [[ "${hdr:l}" == etag:* ]]; then
+          new_etag="${${hdr#*:}# }"
+          break
+        fi
+      done <<< "$headers"
       if [[ "$http_code" == "304" ]]; then
         rm -f "$notice_file"
       elif [[ "$http_code" == "200" && -n "$new_etag" ]]; then

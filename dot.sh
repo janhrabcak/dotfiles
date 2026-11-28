@@ -115,47 +115,53 @@ init_backup_dir() {
     fi
 }
 
-safe_append() {
-    local line="$1"
-    local file="$2"
+ensure_file() {
+    local file="$1"
     if [[ ! -f "$file" ]]; then
         [[ -d "${file:h}" ]] || run_cmd mkdir -p "${file:h}"
         run_cmd touch "$file"
-    fi
-    if [[ -f "$file" ]] && grep -qxF "$line" "$file"; then
-        log_success "Entry already exists in ${file:t}"
-    else
-        if [[ "$DRY_RUN" == "true" ]]; then
-            echo "   [DRY-RUN] Would append to $file: $line"
-        else
-            printf '%s\n' "$line" >> "$file"
-        fi
-        log_success "Updated ${file:t} (appended)"
     fi
 }
 
-safe_prepend() {
-    local line="$1"
-    local file="$2"
-    if [[ ! -f "$file" ]]; then
-        [[ -d "${file:h}" ]] || run_cmd mkdir -p "${file:h}"
-        run_cmd touch "$file"
-    fi
+apt_update_once() {
+    [[ "${APT_UPDATED:-false}" == "true" ]] && return 0
+    APT_UPDATED=true
+    run_cmd sudo apt-get update
+}
+
+safe_append() {
+    local line="$1" file="$2"
+    ensure_file "$file"
     if [[ -f "$file" ]] && grep -qxF "$line" "$file"; then
         log_success "Entry already exists in ${file:t}"
-    else
-        if [[ "$DRY_RUN" == "true" ]]; then
-            echo "   [DRY-RUN] Would prepend to $file: $line"
-        else
-            local tmp_file
-            tmp_file="$(mktemp "${file}.tmp.XXXXXX")"
-            [[ "$file" == *"/ssh/"* ]] && chmod 600 "$tmp_file"
-            printf '%s\n' "$line" > "$tmp_file"
-            [[ -f "$file" ]] && cat "$file" >> "$tmp_file"
-            mv -f "$tmp_file" "$file"
-        fi
-        log_success "Updated ${file:t} (prepended)"
+        return 0
     fi
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "   [DRY-RUN] Would append to $file: $line"
+    else
+        printf '%s\n' "$line" >> "$file"
+    fi
+    log_success "Updated ${file:t} (appended)"
+}
+
+safe_prepend() {
+    local line="$1" file="$2"
+    ensure_file "$file"
+    if [[ -f "$file" ]] && grep -qxF "$line" "$file"; then
+        log_success "Entry already exists in ${file:t}"
+        return 0
+    fi
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "   [DRY-RUN] Would prepend to $file: $line"
+    else
+        local tmp_file
+        tmp_file="$(mktemp "${file}.tmp.XXXXXX")"
+        [[ "$file" == *"/ssh/"* ]] && chmod 600 "$tmp_file"
+        printf '%s\n' "$line" > "$tmp_file"
+        [[ -f "$file" ]] && cat "$file" >> "$tmp_file"
+        mv -f "$tmp_file" "$file"
+    fi
+    log_success "Updated ${file:t} (prepended)"
 }
 
 safe_link() {
@@ -300,18 +306,10 @@ restore_dotfiles() {
     fi
 
     local ssh_conf="$HOME/.ssh/config"
-    local ssh_name ssh_target tmp_conf
+    local ssh_name ssh_target
     for ssh_name in linux.config macos.config; do
         ssh_target="$DOTFILES_DIR/config/ssh/$ssh_name"
-        if has_ssh_include "$ssh_conf" "$ssh_target"; then
-            if [[ "$DRY_RUN" == "true" ]]; then
-                echo "   [DRY-RUN] Would remove Include $ssh_target from $ssh_conf"
-            else
-                tmp_conf="$(mktemp "${ssh_conf}.tmp.XXXXXX")"
-                chmod 600 "$tmp_conf"
-                grep -vxF "Include $ssh_target" "$ssh_conf" > "$tmp_conf" || true
-                mv -f "$tmp_conf" "$ssh_conf"
-            fi
+        if remove_ssh_include "$ssh_conf" "$ssh_target"; then
             log_success "Removed SSH include ($ssh_name) from $ssh_conf"
         fi
     done
@@ -353,7 +351,7 @@ check_dependencies() {
         if [[ "$AUTO_INSTALL_DEPS" == "true" ]]; then
             if command -v apt-get >/dev/null 2>&1; then
                 log_info "Installing missing packages via apt-get: ${missing[*]}..."
-                run_cmd sudo apt-get update
+                apt_update_once
                 run_cmd sudo apt-get install -y "${missing[@]}"
             elif command -v brew >/dev/null 2>&1; then
                 log_info "Installing missing packages via brew: ${missing[*]}..."
@@ -416,7 +414,7 @@ setup_packages() {
     if (( ${#missing_pkgs[@]} > 0 )); then
         if [[ "$AUTO_INSTALL_DEPS" == "true" ]]; then
             log_info "Installing optional CLI packages via apt-get: ${missing_pkgs[*]}..."
-            run_cmd sudo apt-get update
+            apt_update_once
             run_cmd sudo apt-get install -y "${missing_pkgs[@]}" || log_warn "Some optional apt packages could not be installed."
         else
             log_warn "Optional CLI packages not installed (${missing_pkgs[*]}). Run with --install-deps to install."
@@ -552,6 +550,20 @@ has_ssh_include() {
     return 1
 }
 
+remove_ssh_include() {
+    local conf_file="$1" target_path="$2"
+    has_ssh_include "$conf_file" "$target_path" || return 1
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "   [DRY-RUN] Would remove Include $target_path from $conf_file"
+        return 0
+    fi
+    local tmp_conf
+    tmp_conf="$(mktemp "${conf_file}.tmp.XXXXXX")"
+    chmod 600 "$tmp_conf"
+    grep -vxF "Include $target_path" "$conf_file" > "$tmp_conf" || true
+    mv -f "$tmp_conf" "$conf_file"
+}
+
 setup_git() {
     log_info "Configuring Git..."
     local git_conf_src="$DOTFILES_DIR/config/git/.gitconfig"
@@ -591,17 +603,7 @@ setup_ssh() {
         [[ "$ssh_filename" == "macos.config" ]] && other_filename="linux.config"
         local other_ssh_conf="$DOTFILES_DIR/config/ssh/$other_filename"
 
-        if has_ssh_include "$local_ssh_conf" "$other_ssh_conf"; then
-            if [[ "$DRY_RUN" == "true" ]]; then
-                echo "   [DRY-RUN] Would remove stale Include $other_ssh_conf from $local_ssh_conf"
-            else
-                local tmp_conf
-                tmp_conf="$(mktemp "${local_ssh_conf}.tmp.XXXXXX")"
-                chmod 600 "$tmp_conf"
-                grep -vxF "Include $other_ssh_conf" "$local_ssh_conf" > "$tmp_conf" || true
-                mv -f "$tmp_conf" "$local_ssh_conf"
-            fi
-        fi
+        remove_ssh_include "$local_ssh_conf" "$other_ssh_conf" || true
 
         safe_prepend "Include $git_ssh_conf" "$local_ssh_conf"
         run_cmd chmod 600 "$local_ssh_conf"
@@ -732,6 +734,15 @@ run_doctor() {
     fi
 }
 
+report_latency() {
+    local label="$1" ms="$2" target="$3"
+    if (( ms < target )); then
+        log_success "${label}: ${ms}ms (target < ${target}ms)"
+    else
+        log_warn "${label}: ${ms}ms (target < ${target}ms)"
+    fi
+}
+
 run_benchmark() {
     log_info "⚡ Running performance benchmarks..."
     zmodload zsh/datetime
@@ -740,13 +751,8 @@ run_benchmark() {
     # 1. Zsh Startup Time
     float t0=$(( EPOCHREALTIME * 1000 ))
     if zsh -i -c exit >/dev/null 2>&1; then
-        float t1=$(( EPOCHREALTIME * 1000 ))
-        integer zsh_ms=$(( t1 - t0 ))
-        if (( zsh_ms < 150 )); then
-            log_success "Zsh startup latency: ${zsh_ms}ms (target < 150ms)"
-        else
-            log_warn "Zsh startup latency: ${zsh_ms}ms (target < 150ms)"
-        fi
+        integer zsh_ms=$(( EPOCHREALTIME * 1000 - t0 ))
+        report_latency "Zsh startup latency" "$zsh_ms" 150
     else
         log_error "Zsh interactive startup failed."
         errors=$((errors + 1))
@@ -759,13 +765,8 @@ run_benchmark() {
         if [[ -f "$vimrc" ]]; then
             float vt0=$(( EPOCHREALTIME * 1000 ))
             if vim -u "$vimrc" -e -s -c "q" >/dev/null 2>&1; then
-                float vt1=$(( EPOCHREALTIME * 1000 ))
-                integer vim_ms=$(( vt1 - vt0 ))
-                if (( vim_ms < 150 )); then
-                    log_success "Vim startup latency: ${vim_ms}ms (target < 150ms)"
-                else
-                    log_warn "Vim startup latency: ${vim_ms}ms (target < 150ms)"
-                fi
+                integer vim_ms=$(( EPOCHREALTIME * 1000 - vt0 ))
+                report_latency "Vim startup latency" "$vim_ms" 150
             else
                 log_error "Vim startup check failed while loading $vimrc."
                 errors=$((errors + 1))
@@ -791,12 +792,7 @@ run_benchmark() {
             integer p_diff=\$(( pt1 - pt0 ))
             print \$p_diff
         " 2>/dev/null); then
-            integer prompt_ms=${prompt_raw:-0}
-            if (( prompt_ms < 50 )); then
-                log_success "Prompt render latency: ${prompt_ms}ms (target < 50ms)"
-            else
-                log_warn "Prompt render latency: ${prompt_ms}ms (target < 50ms)"
-            fi
+            report_latency "Prompt render latency" "${prompt_raw:-0}" 50
         else
             log_error "Prompt render benchmark failed while sourcing $zshrc."
             errors=$((errors + 1))

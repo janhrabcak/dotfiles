@@ -112,51 +112,39 @@ fi
 
 # Negative verification: ensure pre-commit secret scanner rejects staged secrets
 secret_sandbox="$(mktemp -d "/tmp/dotfiles-secret-test.XXXXXX")"
-mkdir -p "$secret_sandbox/config/zsh" "$secret_sandbox/config/vim" "$secret_sandbox/config/tmux" "$secret_sandbox/config/ai" "$secret_sandbox/config/iterm2" "$secret_sandbox/.devcontainer" "$secret_sandbox/.githooks" "$secret_sandbox/tests"
-cp "$REPO_ROOT/dot.sh" "$secret_sandbox/"
-cp "$REPO_ROOT/config/zsh/.zshrc" "$REPO_ROOT/config/zsh/aliases.zsh" "$secret_sandbox/config/zsh/"
-cp "$REPO_ROOT/config/vim/.vimrc" "$secret_sandbox/config/vim/"
-cp "$REPO_ROOT/config/tmux/.tmux.conf" "$secret_sandbox/config/tmux/"
-cp "$REPO_ROOT/config/ai/settings.json" "$REPO_ROOT/config/ai/mcp_config.json" "$secret_sandbox/config/ai/"
-cp "$REPO_ROOT/config/iterm2/profiles.json" "$secret_sandbox/config/iterm2/"
-cp "$REPO_ROOT/.devcontainer/devcontainer.json" "$secret_sandbox/.devcontainer/"
-cp "$REPO_ROOT/.githooks/pre-commit" "$REPO_ROOT/.githooks/pre-push" "$secret_sandbox/.githooks/"
-cp "$REPO_ROOT/tests/run-tests.sh" "$secret_sandbox/tests/"
+mkdir -p "$secret_sandbox/.githooks"
+cp "$REPO_ROOT/.githooks/pre-commit" "$secret_sandbox/.githooks/"
 git init -q "$secret_sandbox"
 printf 'AWS_KEY=%s%s\n' 'AKIA' 'IOSFODNN7EXAMPLE' > "$secret_sandbox/leak.txt"
 git -C "$secret_sandbox" add leak.txt
 set +e
-"$secret_sandbox/.githooks/pre-commit" >/dev/null 2>&1
+"$secret_sandbox/.githooks/pre-commit" --secrets-only >/dev/null 2>&1
 secret_rc=$?
 set -e
 rm -rf "$secret_sandbox"
 [[ $secret_rc -ne 0 ]] \
   && pass "Secret scanner rejects staged API key tokens with non-zero exit" \
-  || fail "Secret scanner negative test" ".githooks/pre-commit exited 0 despite staged AWS key"
+  || fail "Secret scanner negative test" ".githooks/pre-commit --secrets-only exited 0 despite staged AWS key"
 
 # ------------------------------------------------------------------------------
 # 2. Vim Headless Assertions
 # ------------------------------------------------------------------------------
 log_suite "Group 2: Vim Configuration Behavioral Assertions"
 
-vim_assert() {
-  local expr="$1" desc="$2" tmp_vh
-  tmp_vh="$(mktemp -d)"
-  if HOME="$tmp_vh" vim -u "$REPO_ROOT/config/vim/.vimrc" -e -s -c "if !($expr) | cquit 1 | endif" -c "qall" >/dev/null 2>&1; then
-    pass "Vim: $desc"
-  else
-    fail "Vim: $desc" "Assertion ($expr) evaluated to false"
-  fi
-  rm -rf "$tmp_vh"
-}
-
-vim_assert "g:mapleader ==# ','" "Map leader is comma (,)"
-vim_assert "&undofile == 1" "Persistent undo (undofile) is enabled"
-vim_assert "&ignorecase == 1" "Ignorecase search enabled"
-vim_assert "&smartcase == 1" "Smartcase search enabled"
-vim_assert "&relativenumber == 1" "Relative line numbering enabled"
-
 tmp_vh="$(mktemp -d)"
+vim_checks_out="$tmp_vh/vim_checks.txt"
+HOME="$tmp_vh" vim -u "$REPO_ROOT/config/vim/.vimrc" -e -s \
+  -c "call writefile([(g:mapleader ==# ',' ? 'PASS' : 'FAIL') . '|Map leader is comma (,)', (&undofile == 1 ? 'PASS' : 'FAIL') . '|Persistent undo (undofile) is enabled', (&ignorecase == 1 ? 'PASS' : 'FAIL') . '|Ignorecase search enabled', (&smartcase == 1 ? 'PASS' : 'FAIL') . '|Smartcase search enabled', (&relativenumber == 1 ? 'PASS' : 'FAIL') . '|Relative line numbering enabled'], '$vim_checks_out')" \
+  -c "qall" >/dev/null 2>&1 || true
+
+if [[ -f "$vim_checks_out" ]]; then
+  while IFS='|' read -r vstatus vdesc; do
+    [[ "$vstatus" == "PASS" ]] && pass "Vim: $vdesc" || fail "Vim: $vdesc" "Option assertion evaluated to false"
+  done < "$vim_checks_out"
+else
+  fail "Vim: Batched option assertions" "Headless Vim failed to write assertion results"
+fi
+
 if HOME="$tmp_vh" vim -u "$REPO_ROOT/config/vim/.vimrc" -e -s \
   -c "set filetype=go" -c "enew" \
   -c "if maparg('<leader>b', 'n') !=# ':Buffers<CR>' | cquit 1 | endif" -c "qall" >/dev/null 2>&1; then

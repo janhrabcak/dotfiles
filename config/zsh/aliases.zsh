@@ -75,8 +75,15 @@ dot-update() {
   else
     "$dot/dot.sh" --remote "$@" || return $?
     if command -v curl >/dev/null 2>&1; then
-      local new_etag
-      new_etag="$(curl -fsSI --max-time 5 "https://api.github.com/repos/janhrabcak/dotfiles/commits/main" 2>/dev/null | awk 'tolower($1)=="etag:" {gsub(/\r/,""); print $2; exit}')"
+      local api_url="${DOTFILES_REMOTE_API:-https://api.github.com/repos/janhrabcak/dotfiles/commits/main}"
+      local hdr new_etag=""
+      while IFS= read -r hdr; do
+        hdr="${hdr%$'\r'}"
+        if [[ "${hdr:l}" == etag:* ]]; then
+          new_etag="${${hdr#*:}# }"
+          break
+        fi
+      done < <(curl -fsSI --max-time 5 "$api_url" 2>/dev/null || true)
       if [[ -n "$new_etag" ]]; then
         mkdir -p "$cache_dir"
         printf '%s\n' "$new_etag" > "$cache_dir/remote.etag"

@@ -10,6 +10,10 @@ All notable changes to this project will be documented in this file.
 - **Passive Update Check & `dot-update` Helper**: Added a zero-latency weekly background update check in `config/zsh/.zshrc` (using `zsh/stat` mtime checks; `git fetch` for Git clones and HTTP `If-None-Match` `ETag` checks for non-Git `--remote` tarball installs) and a `dot-update` function in `config/zsh/aliases.zsh` that refuses dirty Git trees, runs `git pull --ff-only` (or `dot.sh --remote`), re-applies symlinks, and verifies with `--doctor`.
 
 ### Changed
+- **Zsh Startup & Config Simplification**:
+  - Enabled `ZSH_DISABLE_COMPFIX="true"`, pruned unused `colorize` plugin, switched `prompt_context` to zero-fork FQDN expansion `${(%):-%M}`, and replaced `awk` ETag parsing with pure Zsh header parsing using a shared `DOTFILES_REMOTE_API` variable.
+  - Shrunk `config/iterm2/profiles.json` by ~65% (1,841 to 644 lines) using iTerm2 Dynamic Profile inheritance (`"Dynamic Profile Parent Name": "Default"`) and removed unused `config/iterm2/google_bg_subtle.png`.
+  - Deduplicated `dot.sh` helpers (`ensure_file`, `apt_update_once`, `remove_ssh_include`, `report_latency`), eliminated duplicate `apt-get update` in `.devcontainer/devcontainer.json`, batched Vim headless assertions in `tests/run-tests.sh`, and added `--secrets-only` to `.githooks/pre-commit`.
 - **Git-First `--remote` Bootstrap**: Updated `download_assets` in `dot.sh` to prefer `git clone --depth=1` on fresh hosts so remote installs start with a full Git repository (retaining the `curl` tarball fallback for existing non-Git directories).
 - **Deduplicated Static Validation**: Consolidated duplicated Group 1 lint/JSON/SVG/Markdown checks in `tests/run-tests.sh` onto `.githooks/pre-commit` as the single source of truth, adding a negative unit test proving staged secrets are rejected.
 
