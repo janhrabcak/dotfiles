@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 # ==============================================================================
 # Git Pre-commit Hook
-# Single source of truth for pure-Zsh static syntax, JSON, SVG, and link checks.
+# Single source of truth for pure-Zsh static syntax, JSON, SVG, link & secret checks.
 # ==============================================================================
 set -eo pipefail
 setopt multibyte
@@ -11,7 +11,7 @@ REPO_ROOT="$(git -C "${0:A:h}" rev-parse --show-toplevel 2>/dev/null || echo "${
 echo "🔍 Running pre-commit validation..."
 
 # 1. Zsh syntax check
-echo "  [1/4] Checking Zsh script syntax..."
+echo "  [1/5] Checking Zsh script syntax..."
 zsh -n "$REPO_ROOT/dot.sh" \
        "$REPO_ROOT/config/zsh/.zshrc" \
        "$REPO_ROOT/config/zsh/aliases.zsh" \
@@ -21,7 +21,7 @@ zsh -n "$REPO_ROOT/dot.sh" \
 
 # 2. Tmux syntax check (isolated socket to protect active user sessions)
 if command -v tmux >/dev/null 2>&1; then
-  echo "  [2/4] Checking Tmux configuration..."
+  echo "  [2/5] Checking Tmux configuration..."
   tmux -L "dotfiles-precommit-$$" -f "$REPO_ROOT/config/tmux/.tmux.conf" start-server \; kill-server 2>/dev/null || {
     echo "❌ Tmux configuration check failed." >&2
     exit 1
@@ -30,7 +30,7 @@ fi
 
 # 3. Vim syntax check
 if command -v vim >/dev/null 2>&1; then
-  echo "  [3/4] Checking Vim configuration..."
+  echo "  [3/5] Checking Vim configuration..."
   vim_tmp_home="$(mktemp -d)"
   HOME="$vim_tmp_home" vim -u "$REPO_ROOT/config/vim/.vimrc" -e -s -c "q" >/dev/null 2>&1 || {
     rm -rf "$vim_tmp_home"
@@ -41,7 +41,7 @@ if command -v vim >/dev/null 2>&1; then
 fi
 
 # 4. JSON schemas, iTerm2 Dynamic Profiles, SVG assets & AI Skill links
-echo "  [4/4] Checking JSON schemas, SVG assets, and AI skill links..."
+echo "  [4/5] Checking JSON schemas, SVG assets, and AI skill links..."
 json_files=(
   "$REPO_ROOT/config/ai/settings.json"
   "$REPO_ROOT/config/ai/mcp_config.json"
@@ -50,8 +50,9 @@ json_files=(
 )
 if command -v jq >/dev/null 2>&1; then
   jq empty "${json_files[@]}" >/dev/null
-  [[ "$(jq '.Profiles | length' "$REPO_ROOT/config/iterm2/profiles.json")" -ge 3 ]] || {
-    echo "❌ Expected >=3 profiles in config/iterm2/profiles.json" >&2
+  jq -e '(.Profiles | length >= 3) and (.Profiles | all(has("Guid") and has("Name")))' \
+    "$REPO_ROOT/config/iterm2/profiles.json" >/dev/null || {
+    echo "❌ Expected >=3 valid profiles with Guid/Name in config/iterm2/profiles.json" >&2
     exit 1
   }
 else
@@ -110,5 +111,40 @@ for skill_md in "$REPO_ROOT"/config/ai/skills/**/*.md(N); do
     done
   done < "$skill_md"
 done
+
+# 5. Pure-Zsh Secret & Internal Hostname Scanner (staged files or all tracked files)
+echo "  [5/5] Scanning for leaked secrets, private keys, and internal hostnames..."
+scan_files=()
+if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  staged=("${(@f)$(git -C "$REPO_ROOT" diff --cached --name-only --diff-filter=ACMR 2>/dev/null || true)}")
+  for f in "${staged[@]}"; do
+    [[ -n "$f" ]] && scan_files+=("$f")
+  done
+  if (( ${#scan_files[@]} == 0 )); then
+    tracked=("${(@f)$(git -C "$REPO_ROOT" ls-files 2>/dev/null || true)}")
+    for f in "${tracked[@]}"; do
+      [[ -n "$f" ]] && scan_files+=("$f")
+    done
+  fi
+fi
+
+secret_pattern='(-----BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----|(^|[^A-Za-z0-9_])(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{30,}|(^|[^A-Za-z0-9_])AKIA[0-9A-Z]{16}([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])AIza[0-9A-Za-z_-]{35}|(^|[^A-Za-z0-9_])sk-(proj-|ant-)?[A-Za-z0-9_-]{20,}|corp\.google\.com)'
+secret_hits=0
+for rel_f in "${scan_files[@]}"; do
+  case "$rel_f" in
+    .githooks/pre-commit|tests/run-tests.sh) continue ;;
+  esac
+  full_f="$REPO_ROOT/$rel_f"
+  [[ -f "$full_f" ]] || continue
+  if grep -InE "$secret_pattern" "$full_f" >/dev/null 2>&1; then
+    echo "❌ Potential secret or internal hostname detected in $rel_f:" >&2
+    grep -InE "$secret_pattern" "$full_f" | sed 's/^/     /' >&2
+    secret_hits=$((secret_hits + 1))
+  fi
+done
+if (( secret_hits > 0 )); then
+  echo "❌ Secret scan failed ($secret_hits file(s) flagged). Remove sensitive material before committing." >&2
+  exit 1
+fi
 
 echo "✅ All pre-commit checks passed!"

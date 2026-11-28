@@ -14,12 +14,15 @@ An **"Infrastructure as Code"** approach to personal computing environments. Thi
 | **Update Deployment** | `dot-update` |
 | **Run Benchmarks** | `./dot.sh --benchmark` |
 | **Prune & Rotate Backups** | `./dot.sh --clean` |
+| **Restore / Uninstall** | `./dot.sh --restore` |
 | **Run Full Test Suite** | `tests/run-tests.sh` |
 | **Run Specific Step** | `./dot.sh --only setup_vim` |
 
 ### Script Flags
+*   `--help` (`-h`) / `--version` (`-V`): Print CLI usage summary or semantic version.
 *   `--clean`: Prunes dead dotfiles symlinks across `$HOME`, `~/.config`, `~/.gemini`, and `~/.claude` and rotates backups (retains 5 most recent).
-*   `--remote`: Downloads the latest archive directly from GitHub.
+*   `--restore` (`--uninstall`): Unlinks managed dotfiles symlinks, removes Git/SSH include directives, and restores the newest snapshot from `~/.dotfiles.backup/` without deleting `~/.dotfiles`.
+*   `--remote`: Shallow-clones the repository via `git clone --depth=1` on fresh hosts (or downloads the archive tarball for existing non-Git directories).
 *   `--doctor`: Runs a deep diagnostic of the system health, git hooks, and symlinks.
 *   `--benchmark`: Measures and logs execution latency for Zsh startup, headless Vim parsing, and prompt rendering.
 *   `--only <step>`: Runs a specific setup function only (e.g., `setup_vim`).
@@ -141,7 +144,8 @@ The script uses specialized shell functions to ensure consistency:
 *   **Doctor Logic**: The `--doctor` flag performs deep physical path resolution (`:A`) to verify integrity even across symlinked directories.
 *   **Maintenance & Pruning**: Running `./dot.sh --clean` safely purges broken dotfiles symlinks and rotates snapshot backups.
 *   **Local Overrides**: Machine-specific identity and private shell settings are decoupled from version control via optional `.local` files (`config/git/.gitconfig.local`, `~/.zshrc.local`, and `config/ssh/authorized_keys.local`).
-*   **Git Hooks (Pre-commit & Pre-push)**: Tracked in `.githooks/` and active through `core.hooksPath = .githooks`. `.githooks/pre-commit` serves as the single static/syntax validator across local commits and CI, while `.githooks/pre-push` fast-paths docs/SVG/skill-only pushes and runs the full sandboxed test suite whenever executable or config files change.
+*   **Git Hooks (Pre-commit & Pre-push)**: Tracked in `.githooks/` and active through `core.hooksPath = .githooks`. `.githooks/pre-commit` serves as the single static/syntax/secret validator across local commits, `tests/run-tests.sh`, and CI, while `.githooks/pre-push` fast-paths docs/SVG/skill-only pushes and runs the full sandboxed test suite whenever executable or config files change.
+*   **Automated GitHub Releases**: Pushing a `v*` tag triggers `.github/workflows/release.yml`, extracting the matching section from `CHANGELOG.md` and publishing a GitHub Release via `gh release create`.
 *   **Dependabot**: Configured in `.github/dependabot.yml` for automated weekly updates of GitHub Actions dependencies.
 
 ### 2. SSH Agent Strategy

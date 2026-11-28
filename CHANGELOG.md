@@ -4,7 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- **CLI Usage, Version & Rollback Modes (`--help`, `--version`, `--restore`)**: Added built-in `-h`/`--help`, `-V`/`--version`, and `--restore`/`--uninstall` flags to `dot.sh` to unlink managed symlinks, remove Git/SSH include directives, and restore the newest `~/.dotfiles.backup/` snapshot (with full `--dry-run` support).
+- **Pre-commit Secret Scanner**: Added pure-Zsh staged/tracked file secret scanning in `.githooks/pre-commit` blocking private keys, common cloud/API tokens (`ghp_`, `AKIA`, `AIza`, `sk-`), and internal corporate hostnames before commit.
+- **Automated GitHub Releases (`.github/workflows/release.yml`)**: Added tag-triggered (`v*`) workflow that extracts release notes from `CHANGELOG.md` and publishes a GitHub Release via `gh release create`.
 - **Passive Update Check & `dot-update` Helper**: Added a zero-latency weekly background update check in `config/zsh/.zshrc` (using `zsh/stat` mtime checks; `git fetch` for Git clones and HTTP `If-None-Match` `ETag` checks for non-Git `--remote` tarball installs) and a `dot-update` function in `config/zsh/aliases.zsh` that refuses dirty Git trees, runs `git pull --ff-only` (or `dot.sh --remote`), re-applies symlinks, and verifies with `--doctor`.
+
+### Changed
+- **Git-First `--remote` Bootstrap**: Updated `download_assets` in `dot.sh` to prefer `git clone --depth=1` on fresh hosts so remote installs start with a full Git repository (retaining the `curl` tarball fallback for existing non-Git directories).
+- **Deduplicated Static Validation**: Consolidated duplicated Group 1 lint/JSON/SVG/Markdown checks in `tests/run-tests.sh` onto `.githooks/pre-commit` as the single source of truth, adding a negative unit test proving staged secrets are rejected.
 
 ## [v3.8.0] - 2026-11-26
 ### Breaking Changes

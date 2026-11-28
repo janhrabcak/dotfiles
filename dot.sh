@@ -7,6 +7,7 @@
 set -eo pipefail
 
 # --- Configuration ---
+DOTFILES_VERSION="3.8.0"
 GITHUB_USER="janhrabcak"
 REPO_NAME="dotfiles"
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
@@ -15,8 +16,11 @@ DRY_RUN=false
 REMOTE_MODE=false
 AUTO_INSTALL_DEPS=false
 CLEAN_MODE=false
+RESTORE_MODE=false
 RUN_DOCTOR=false
 RUN_BENCHMARK=false
+SHOW_HELP=false
+SHOW_VERSION=false
 ONLY_STEP=""
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -31,22 +35,47 @@ log_warn()    { printf "\033[0;33m[WARN]\033[0m  %s\n" "$1"; }
 log_error()   { printf "\033[0;31m[ERROR]\033[0m %s\n" "$1"; }
 log_success() { printf "\033[0;32m[OK]\033[0m    %s\n" "$1"; }
 
+show_help() {
+    cat << EOF
+Dotfiles Bootstrapper v$DOTFILES_VERSION
+
+Usage: ./dot.sh [OPTIONS]
+
+Options:
+  -h, --help          Show this help message and exit
+  -V, --version       Print version and exit
+  -d, --dry-run       Preview actions without modifying the system
+      --doctor        Verify symlinks, Git/SSH includes, and platform links
+      --benchmark     Measure Zsh startup, Vim parse, and prompt latency
+      --clean         Prune dead dotfiles symlinks and rotate backups (keep 5)
+      --restore       Unlink managed symlinks, remove includes, and restore latest backup
+      --uninstall     Alias for --restore
+      --remote        Clone (or update) dotfiles from GitHub before applying
+      --mode <mode>   Override mode detection (macos, linux-server, linux-client)
+      --only <step>   Execute a single setup function (e.g. setup_vim, setup_git)
+      --install-deps  Permit installing packages, Oh My Zsh, fonts, and Vim plugins
+EOF
+}
+
 # --- CLI Argument Parsing ---
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        --dry-run|-d)   DRY_RUN=true; log_warn "DRY RUN MODE ENABLED."; shift ;;
-        --remote)       REMOTE_MODE=true; shift ;;
+        --help|-h)            SHOW_HELP=true; shift ;;
+        --version|-V)         SHOW_VERSION=true; shift ;;
+        --dry-run|-d)         DRY_RUN=true; log_warn "DRY RUN MODE ENABLED."; shift ;;
+        --remote)             REMOTE_MODE=true; shift ;;
         --mode)
             [[ -z "${2:-}" || "${2:-}" == -* ]] && { log_error "Option --mode requires a value."; exit 1; }
             WORK_MODE="$2"; shift 2 ;;
         --only)
             [[ -z "${2:-}" || "${2:-}" == -* ]] && { log_error "Option --only requires a value."; exit 1; }
             ONLY_STEP="$2"; shift 2 ;;
-        --doctor)       RUN_DOCTOR=true; shift ;;
-        --benchmark)    RUN_BENCHMARK=true; shift ;;
-        --clean)        CLEAN_MODE=true; shift ;;
-        --install-deps) AUTO_INSTALL_DEPS=true; export DOTFILES_INSTALL_DEPS=true; shift ;;
-        *)              log_error "Unknown parameter: $1"; exit 1 ;;
+        --doctor)             RUN_DOCTOR=true; shift ;;
+        --benchmark)          RUN_BENCHMARK=true; shift ;;
+        --clean)              CLEAN_MODE=true; shift ;;
+        --restore|--uninstall) RESTORE_MODE=true; shift ;;
+        --install-deps)       AUTO_INSTALL_DEPS=true; export DOTFILES_INSTALL_DEPS=true; shift ;;
+        *)                    log_error "Unknown parameter: $1 (try --help)"; exit 1 ;;
     esac
 done
 
@@ -236,6 +265,79 @@ clean_dotfiles() {
     log_success "Cleanup complete."
 }
 
+restore_dotfiles() {
+    log_info "♻️  Restoring environment and unlinking managed dotfiles..."
+    local canon_dotfiles="${DOTFILES_DIR:A}"
+    local raw_prefix="${DOTFILES_DIR%/}/"
+    local canon_prefix="${canon_dotfiles%/}/"
+    local entry rest dest target resolved
+
+    local managed_dests=()
+    for entry in "${LINK_MANIFEST[@]}"; do
+        rest="${entry#*:}"
+        managed_dests+=("${rest%%:*}")
+    done
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        managed_dests+=("$HOME/Library/Application Support/iTerm2/DynamicProfiles/dotfiles.json")
+    fi
+
+    for dest in "${managed_dests[@]}"; do
+        if [[ -L "$dest" ]]; then
+            target="$(readlink "$dest" 2>/dev/null || true)"
+            resolved="${dest:A}"
+            if [[ "$target" == "$raw_prefix"* || "$target" == "$canon_prefix"* || "$resolved" == "$canon_prefix"* ]]; then
+                run_cmd rm -f "$dest"
+                log_success "Unlinked: $dest"
+            fi
+        fi
+    done
+
+    local git_conf="$HOME/.gitconfig"
+    local git_src="$DOTFILES_DIR/config/git/.gitconfig"
+    if has_git_include "$git_conf" "$git_src"; then
+        run_cmd git config --file "$git_conf" --fixed-value --unset-all include.path "$git_src"
+        log_success "Removed Git include from $git_conf"
+    fi
+
+    local ssh_conf="$HOME/.ssh/config"
+    local ssh_name ssh_target tmp_conf
+    for ssh_name in linux.config macos.config; do
+        ssh_target="$DOTFILES_DIR/config/ssh/$ssh_name"
+        if has_ssh_include "$ssh_conf" "$ssh_target"; then
+            if [[ "$DRY_RUN" == "true" ]]; then
+                echo "   [DRY-RUN] Would remove Include $ssh_target from $ssh_conf"
+            else
+                tmp_conf="$(mktemp "${ssh_conf}.tmp.XXXXXX")"
+                chmod 600 "$tmp_conf"
+                grep -vxF "Include $ssh_target" "$ssh_conf" > "$tmp_conf" || true
+                mv -f "$tmp_conf" "$ssh_conf"
+            fi
+            log_success "Removed SSH include ($ssh_name) from $ssh_conf"
+        fi
+    done
+
+    local backup_root="$HOME/.dotfiles.backup"
+    if [[ -d "$backup_root" ]]; then
+        local all=("$backup_root"/*(/Non))
+        if (( ${#all[@]} > 0 )); then
+            local latest="${all[-1]}"
+            log_info "Restoring files from latest backup snapshot (${latest:t})..."
+            local item rel restore_dest
+            for item in "$latest"/**/*(D.N) "$latest"/**/*(D@N); do
+                rel="${item#$latest/}"
+                restore_dest="$HOME/$rel"
+                [[ -d "${restore_dest:h}" ]] || run_cmd mkdir -p "${restore_dest:h}"
+                run_cmd cp -a "$item" "$restore_dest"
+                log_success "Restored: $restore_dest"
+            done
+        else
+            log_info "No backup snapshots found in $backup_root."
+        fi
+    fi
+
+    log_success "Restore complete. Repository preserved at $DOTFILES_DIR."
+}
+
 # --- Setup Steps ---
 
 check_dependencies() {
@@ -331,10 +433,20 @@ setup_packages() {
 
 download_assets() {
     log_info "Syncing dotfiles repository..."
+    local repo_url="https://github.com/$GITHUB_USER/$REPO_NAME.git"
+    local tarball_url="https://github.com/$GITHUB_USER/$REPO_NAME/archive/refs/heads/main.tar.gz"
+
     if [[ -d "$DOTFILES_DIR/.git" ]]; then
         run_cmd git -C "$DOTFILES_DIR" pull --rebase
+    elif [[ ! -d "$DOTFILES_DIR" ]] && command -v git >/dev/null 2>&1; then
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "   [DRY-RUN] Would execute: git clone --depth=1 '$repo_url' '$DOTFILES_DIR'"
+        elif ! git clone --depth=1 "$repo_url" "$DOTFILES_DIR"; then
+            log_warn "git clone failed; falling back to archive download..."
+            mkdir -p "$DOTFILES_DIR"
+            curl -fsSL "$tarball_url" | tar -xzp -C "$DOTFILES_DIR" --strip-components=1
+        fi
     else
-        local tarball_url="https://github.com/$GITHUB_USER/$REPO_NAME/archive/refs/heads/main.tar.gz"
         [[ -d "$DOTFILES_DIR" ]] || run_cmd mkdir -p "$DOTFILES_DIR"
         if [[ "$DRY_RUN" == "true" ]]; then
             echo "   [DRY-RUN] Would execute: curl -fsSL '$tarball_url' | tar -xzp -C '$DOTFILES_DIR' --strip-components=1"
@@ -696,8 +808,23 @@ run_benchmark() {
 
 # --- Main Execution ---
 main() {
+    if [[ "$SHOW_HELP" == "true" ]]; then
+        show_help
+        exit 0
+    fi
+
+    if [[ "$SHOW_VERSION" == "true" ]]; then
+        echo "dotfiles v$DOTFILES_VERSION"
+        exit 0
+    fi
+
     if [[ "$CLEAN_MODE" == "true" ]]; then
         clean_dotfiles
+        exit 0
+    fi
+
+    if [[ "$RESTORE_MODE" == "true" ]]; then
+        restore_dotfiles
         exit 0
     fi
 

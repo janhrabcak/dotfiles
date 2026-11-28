@@ -80,20 +80,9 @@ echo "Repository: $REPO_ROOT"
 echo ""
 
 # ------------------------------------------------------------------------------
-# 1. Syntax & Static Lint Checks
+# 1. Syntax & Static Lint Checks (Single Source of Truth: .githooks/pre-commit)
 # ------------------------------------------------------------------------------
 log_suite "Group 1: Syntax & Linter Checks"
-
-if zsh -n "$REPO_ROOT/dot.sh" \
-   && zsh -n "$REPO_ROOT/config/zsh/.zshrc" \
-   && zsh -n "$REPO_ROOT/config/zsh/aliases.zsh" \
-   && zsh -n "$REPO_ROOT/.githooks/pre-commit" \
-   && zsh -n "$REPO_ROOT/.githooks/pre-push" \
-   && zsh -n "$REPO_ROOT/tests/run-tests.sh"; then
-  pass "Zsh syntax check (dot.sh, .zshrc, aliases, pre-commit, pre-push, run-tests)"
-else
-  fail "Zsh syntax check" "Syntax error detected in shell scripts"
-fi
 
 [[ -x "$REPO_ROOT/.githooks/pre-commit" ]] \
   && pass "Pre-commit hook is present and executable" \
@@ -107,111 +96,43 @@ fi
   && pass "Dependabot configuration present" \
   || fail "Dependabot configuration" ".github/dependabot.yml is missing"
 
-if command -v tmux >/dev/null 2>&1; then
-  if tmux -L "dotfiles-test-$$" -f "$REPO_ROOT/config/tmux/.tmux.conf" start-server \; kill-server >/dev/null 2>&1; then
-    pass "Tmux configuration syntax check"
-  else
-    fail "Tmux configuration syntax check" "tmux.conf failed to parse"
-  fi
-else
-  echo "  ${YELLOW}[SKIP]${RESET} Tmux configuration syntax check (tmux not installed)"
-fi
-
-vim_parse_home="$(mktemp -d)"
-if HOME="$vim_parse_home" vim -u "$REPO_ROOT/config/vim/.vimrc" -e -s -c "q" >/dev/null 2>&1; then
-  pass "Vim configuration parse check"
-else
-  fail "Vim configuration parse check" ".vimrc failed to parse cleanly"
-fi
-rm -rf "$vim_parse_home"
+[[ -f "$REPO_ROOT/.github/workflows/release.yml" ]] \
+  && pass "Automated GitHub Release workflow present" \
+  || fail "Release workflow" ".github/workflows/release.yml is missing"
 
 [[ -f "$REPO_ROOT/config/brew/Brewfile" ]] \
   && pass "Homebrew Brewfile present" \
   || fail "Homebrew Brewfile" "config/brew/Brewfile is missing"
 
-if grep -q "corp.google.com" "$REPO_ROOT/config/zsh/aliases.zsh"; then
-  fail "Secret sanitization" "Corporate hostnames detected in aliases.zsh"
+if "$REPO_ROOT/.githooks/pre-commit" >/dev/null 2>&1; then
+  pass "Unified static validator (.githooks/pre-commit: Zsh, Tmux, Vim, JSON, SVG, links, secrets)"
 else
-  pass "Secret sanitization: no internal corporate hostnames in public config"
+  fail "Unified static validator" ".githooks/pre-commit failed execution"
 fi
 
-check_iterm_profiles() {
-  local pfile="$REPO_ROOT/config/iterm2/profiles.json"
-  [[ -f "$pfile" ]] || return 1
-  ! grep -q '/Users/' "$pfile" || return 1
-  if command -v jq >/dev/null 2>&1; then
-    jq -e '(.Profiles | length >= 3) and (.Profiles | all(has("Guid") and has("Name")))' "$pfile" >/dev/null 2>&1 || return 1
-  else
-    [[ "$(grep -c '"Guid"' "$pfile" || true)" -ge 3 ]] || return 1
-  fi
-}
-
-if check_iterm_profiles; then
-  pass "iTerm2 Dynamic Profiles JSON integrity check (portable ~ paths)"
-else
-  fail "iTerm2 Dynamic Profiles integrity" "config/iterm2/profiles.json failed schema or portability check"
-fi
-
-if command -v jq >/dev/null 2>&1; then
-  if jq empty "$REPO_ROOT/config/ai/settings.json" "$REPO_ROOT/config/ai/mcp_config.json" "$REPO_ROOT/.devcontainer/devcontainer.json" >/dev/null 2>&1; then
-    pass "Configuration JSON syntax check (jq)"
-  else
-    fail "Configuration JSON syntax check" "Invalid JSON in config/ai/ or .devcontainer/"
-  fi
-else
-  echo "  ${YELLOW}[SKIP]${RESET} Configuration JSON syntax check (jq not installed)"
-fi
-
-check_assets_and_skill_links() {
-  setopt localoptions multibyte
-  local svg svg_data
-  for svg in "$REPO_ROOT"/assets/*.svg(N); do
-    svg_data="$(<"$svg")"
-    [[ "$svg_data" == *"<svg"* && "$svg_data" == *"</svg>"* ]] || return 1
-    [[ "$svg_data" != *[$'\ue000'-$'\uf8ff']* ]] || return 1
-  done
-  if command -v xmllint >/dev/null 2>&1; then
-    xmllint --noout "$REPO_ROOT"/assets/*.svg >/dev/null 2>&1 || return 1
-  fi
-
-  local skill_md line clean_line rest target rel_path fence_char
-  integer fence_len=0
-  for skill_md in "$REPO_ROOT"/config/ai/skills/**/*.md(N); do
-    fence_char=""
-    fence_len=0
-    while IFS= read -r line || [[ -n "$line" ]]; do
-      if (( fence_len > 0 )); then
-        if [[ "$line" =~ "^[[:space:]]*${fence_char}{${fence_len},}[[:space:]]*$" ]]; then
-          fence_char=""
-          fence_len=0
-        fi
-        continue
-      elif [[ "$line" =~ '^[[:space:]]*(`{3,}|~{3,})' ]]; then
-        fence_char="${match[1][1]}"
-        fence_len=${#match[1]}
-        continue
-      fi
-      clean_line="$line"
-      while [[ "$clean_line" =~ '`+[^`]+`+' ]]; do
-        clean_line="${clean_line//$MATCH/}"
-      done
-      rest="$clean_line"
-      while [[ "$rest" =~ '\[[^]]+\]\(([^)[:space:]]+)\)' ]]; do
-        target="${match[1]}"
-        rest="${rest#*$MATCH}"
-        [[ "${target[1]}" == "#" || "$target" =~ '^[a-zA-Z][a-zA-Z0-9+.-]*:' ]] && continue
-        rel_path="${target%%#*}"
-        [[ -z "$rel_path" || -e "${skill_md:h}/$rel_path" ]] || return 1
-      done
-    done < "$skill_md"
-  done
-}
-
-if check_assets_and_skill_links; then
-  pass "SVG asset & AI skill Markdown link integrity check"
-else
-  fail "SVG asset & AI skill link check" "Malformed SVG, PUA glyph, or broken relative Markdown link"
-fi
+# Negative verification: ensure pre-commit secret scanner rejects staged secrets
+secret_sandbox="$(mktemp -d "/tmp/dotfiles-secret-test.XXXXXX")"
+mkdir -p "$secret_sandbox/config/zsh" "$secret_sandbox/config/vim" "$secret_sandbox/config/tmux" "$secret_sandbox/config/ai" "$secret_sandbox/config/iterm2" "$secret_sandbox/.devcontainer" "$secret_sandbox/.githooks" "$secret_sandbox/tests"
+cp "$REPO_ROOT/dot.sh" "$secret_sandbox/"
+cp "$REPO_ROOT/config/zsh/.zshrc" "$REPO_ROOT/config/zsh/aliases.zsh" "$secret_sandbox/config/zsh/"
+cp "$REPO_ROOT/config/vim/.vimrc" "$secret_sandbox/config/vim/"
+cp "$REPO_ROOT/config/tmux/.tmux.conf" "$secret_sandbox/config/tmux/"
+cp "$REPO_ROOT/config/ai/settings.json" "$REPO_ROOT/config/ai/mcp_config.json" "$secret_sandbox/config/ai/"
+cp "$REPO_ROOT/config/iterm2/profiles.json" "$secret_sandbox/config/iterm2/"
+cp "$REPO_ROOT/.devcontainer/devcontainer.json" "$secret_sandbox/.devcontainer/"
+cp "$REPO_ROOT/.githooks/pre-commit" "$REPO_ROOT/.githooks/pre-push" "$secret_sandbox/.githooks/"
+cp "$REPO_ROOT/tests/run-tests.sh" "$secret_sandbox/tests/"
+git init -q "$secret_sandbox"
+printf 'AWS_KEY=%s%s\n' 'AKIA' 'IOSFODNN7EXAMPLE' > "$secret_sandbox/leak.txt"
+git -C "$secret_sandbox" add leak.txt
+set +e
+"$secret_sandbox/.githooks/pre-commit" >/dev/null 2>&1
+secret_rc=$?
+set -e
+rm -rf "$secret_sandbox"
+[[ $secret_rc -ne 0 ]] \
+  && pass "Secret scanner rejects staged API key tokens with non-zero exit" \
+  || fail "Secret scanner negative test" ".githooks/pre-commit exited 0 despite staged AWS key"
 
 # ------------------------------------------------------------------------------
 # 2. Vim Headless Assertions
@@ -251,6 +172,14 @@ rm -rf "$tmp_vh"
 log_suite "Group 3: CLI Flags & Safety"
 
 setup_sandbox
+
+help_out=$(zsh "$DOTFILES_DIR/dot.sh" --help 2>&1)
+ver_out=$(zsh "$DOTFILES_DIR/dot.sh" --version 2>&1)
+if echo "$help_out" | grep -q "Usage: ./dot.sh" && echo "$ver_out" | grep -qE "^dotfiles v[0-9]+\.[0-9]+\.[0-9]+$"; then
+  pass "CLI --help and --version print usage and SemVer string cleanly"
+else
+  fail "CLI --help/--version" "Unexpected output: help='$help_out' ver='$ver_out'"
+fi
 
 set +e
 zsh "$DOTFILES_DIR/dot.sh" --invalid-flag >/dev/null 2>&1
@@ -334,16 +263,20 @@ zsh -c "DOTFILES_DIR='$HOME/nonexistent_dotfiles' zsh '$DOTFILES_DIR/dot.sh' --d
 remote_missing_code=$?
 remote_dry_run_out=$(zsh -c "DOTFILES_DIR='$HOME/nonexistent_dotfiles' zsh '$DOTFILES_DIR/dot.sh' --remote --dry-run 2>&1")
 remote_dry_run_code=$?
+mkdir -p "$HOME/nongit_dotfiles"
+nongit_dry_run_out=$(zsh -c "DOTFILES_DIR='$HOME/nongit_dotfiles' zsh '$DOTFILES_DIR/dot.sh' --remote --dry-run 2>&1")
+nongit_dry_run_code=$?
 set -e
 
 [[ $remote_missing_code -eq 1 ]] \
   && pass "Day-zero: missing dotfiles directory without --remote fails cleanly" \
   || fail "Day-zero missing directory" "Expected exit code 1, got $remote_missing_code"
 
-if [[ $remote_dry_run_code -eq 0 ]] && echo "$remote_dry_run_out" | grep -q "Would execute: curl"; then
-  pass "Day-zero: --remote flag triggers remote asset download flow"
+if [[ $remote_dry_run_code -eq 0 ]] && echo "$remote_dry_run_out" | grep -q "Would execute: git clone --depth=1" \
+   && [[ $nongit_dry_run_code -eq 0 ]] && echo "$nongit_dry_run_out" | grep -q "Would execute: curl"; then
+  pass "Day-zero: --remote prefers git clone for fresh installs and curl tarball for non-Git dirs"
 else
-  fail "Day-zero --remote execution" "Expected 0 with curl download command, got code $remote_dry_run_code"
+  fail "Day-zero --remote execution" "Expected git clone (rc=$remote_dry_run_code) and curl fallback (rc=$nongit_dry_run_code)"
 fi
 
 mock_bin="$SANDBOX/mock_bin"
@@ -404,6 +337,24 @@ else
   fail "Nested backup hierarchy" "Relative directory hierarchy was not preserved in backup"
 fi
 
+# Verify --restore unlinks managed symlinks and restores latest backup snapshot
+zsh "$DOTFILES_DIR/dot.sh" --only setup_git >/dev/null 2>&1
+zsh "$DOTFILES_DIR/dot.sh" --only setup_ssh >/dev/null 2>&1
+zsh "$DOTFILES_DIR/dot.sh" --restore --dry-run >/dev/null 2>&1
+[[ -L "$HOME/.zshrc" && -L "$HOME/.gemini/config/AGENTS.md" ]] \
+  && pass "--restore --dry-run leaves managed symlinks untouched" \
+  || fail "--restore --dry-run" "Symlink was modified during dry-run restore"
+
+zsh "$DOTFILES_DIR/dot.sh" --restore >/dev/null 2>&1
+if [[ ! -L "$HOME/.zshrc" && -f "$HOME/.zshrc" ]] && grep -q "$UNIQUE_CONTENT" "$HOME/.zshrc" \
+   && [[ ! -L "$HOME/.gemini/config/AGENTS.md" ]] && grep -q "GEMINI_BACKUP_TOKEN" "$HOME/.gemini/config/AGENTS.md" \
+   && ! git config --file "$HOME/.gitconfig" --get-all include.path 2>/dev/null | grep -qxF "$DOTFILES_DIR/config/git/.gitconfig" \
+   && ! grep -qF "Include $DOTFILES_DIR/config/ssh/" "$HOME/.ssh/config"; then
+  pass "--restore unlinks symlinks, removes Git/SSH includes, and restores backed-up files"
+else
+  fail "--restore recovery" "Failed to cleanly unlink symlinks, remove includes, or restore backup contents"
+fi
+
 for i in {1..8}; do
   mkdir -p "$HOME/.dotfiles.backup/2026010${i}_000000"
   touch "$HOME/.dotfiles.backup/2026010${i}_000000/test.txt"
@@ -459,12 +410,6 @@ hooks_path=$(git -C "$DOTFILES_DIR" config core.hooksPath 2>/dev/null || true)
 [[ -L "$HOME/.gitignore_global" ]] \
   && pass "Git setup symlinks global .gitignore (~/.gitignore_global)" \
   || fail "Git global gitignore" "Expected symlink at $HOME/.gitignore_global"
-
-if "$REPO_ROOT/.githooks/pre-commit" >/dev/null 2>&1; then
-  pass "Git pre-commit hook runs and passes validation"
-else
-  fail "Git pre-commit hook" ".githooks/pre-commit failed execution"
-fi
 
 if [[ -f "$DOTFILES_DIR/.githooks/pre-push" ]]; then
   pass "Git pre-push hook installed in repository hooks"
